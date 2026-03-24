@@ -953,7 +953,32 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div class="fd"><label>Clinic Type</label><select id="pf-ct"><option value="">—</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select></div>
       <div class="fd"><label>Charged ($)</label><input type="number" id="pf-ch" step="0.01"></div>
       <div class="fd"><label>Paid ($)</label><input type="number" id="pf-pd2" step="0.01"></div>
-    </div></div>
+    </div>
+    <!-- Check Images -->
+    <div style="margin-top:16px;border-top:1px solid var(--g200);padding-top:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:10px">📸 Check Images</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--g700);margin-bottom:6px">Front</div>
+          <div id="pf-chk-front-zone" style="border:2px dashed var(--g300);border-radius:10px;padding:16px;text-align:center;cursor:pointer;min-height:100px;display:flex;align-items:center;justify-content:center;transition:.15s;background:#fff;position:relative;overflow:hidden">
+            <div id="pf-chk-front-placeholder"><div style="font-size:22px;margin-bottom:4px">📷</div><div style="font-size:11px;color:var(--g400)">Click or drag</div></div>
+            <img id="pf-chk-front-img" style="display:none;max-width:100%;max-height:120px;object-fit:contain;border-radius:6px">
+            <button id="pf-chk-front-clear" class="ib del" style="display:none;position:absolute;top:4px;right:4px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:1" title="Remove">×</button>
+          </div>
+          <input type="file" id="pf-chk-front-input" style="display:none" accept="image/*,.pdf">
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--g700);margin-bottom:6px">Back</div>
+          <div id="pf-chk-back-zone" style="border:2px dashed var(--g300);border-radius:10px;padding:16px;text-align:center;cursor:pointer;min-height:100px;display:flex;align-items:center;justify-content:center;transition:.15s;background:#fff;position:relative;overflow:hidden">
+            <div id="pf-chk-back-placeholder"><div style="font-size:22px;margin-bottom:4px">📷</div><div style="font-size:11px;color:var(--g400)">Click or drag</div></div>
+            <img id="pf-chk-back-img" style="display:none;max-width:100%;max-height:120px;object-fit:contain;border-radius:6px">
+            <button id="pf-chk-back-clear" class="ib del" style="display:none;position:absolute;top:4px;right:4px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:1" title="Remove">×</button>
+          </div>
+          <input type="file" id="pf-chk-back-input" style="display:none" accept="image/*,.pdf">
+        </div>
+      </div>
+    </div>
+    </div>
     <div class="mft"><button class="btn bs" id="mx2-pay">Cancel</button><button class="btn bp" id="save-pay">Save</button></div>
   </div>
 </div>
@@ -1201,7 +1226,8 @@ function loadFromSupabase() {
       DB.pays = dbPays.map(function(r) {
         return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
                 dol:r.date_of_loss,pd:r.pay_date,cs:r.check_status,ct:r.clinic_type,
-                ch:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0};
+                ch:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0,
+                chkFrontPath:r.check_front_path||null,chkBackPath:r.check_back_path||null};
       });
     }
     if (dbFUs.length) {
@@ -1291,6 +1317,8 @@ function sbSavePay(o, id) {
   var row = {law_office:o.lo,account_num:o.acct,patient_name:o.pat,provider:o.prov,
              date_of_loss:o.dol||null,pay_date:o.pd||null,check_status:o.cs||null,
              clinic_type:o.ct||null,charged:o.ch,paid:o.paid};
+  if(o.chkFrontPath)row.check_front_path=o.chkFrontPath;
+  if(o.chkBackPath)row.check_back_path=o.chkBackPath;
   if (id) return SB.update('payments', id, row);
   return SB.insert('payments', row).then(function(r){return r&&r[0]?r[0]:r;});
 }
@@ -1531,7 +1559,8 @@ function rPay(){
   });
   document.getElementById('pay-rc').textContent=data.length+' records';
   document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
-    return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td><span class="mn">'+(p.acct||'—')+'</span></td><td>'+(p.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-pay="'+p.id+'">✏️</button><button class="ib del" data-del-pay="'+p.id+'">🗑️</button></td></tr>';
+    var hasChk=p.chkFrontPath||p.chkBackPath;
+    return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td><span class="mn">'+(p.acct||'—')+'</span></td><td>'+(p.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+(hasChk?' <span title="Check images attached" style="cursor:pointer" data-view-chk="'+p.id+'">📸</span>':'')+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap">'+(hasChk?'<button class="ib" title="View check" data-view-chk="'+p.id+'">📸</button>':'')+'<button class="ib" data-edit-pay="'+p.id+'">✏️</button><button class="ib del" data-del-pay="'+p.id+'">🗑️</button></td></tr>';
   }).join(''):'<tr><td colspan="10"><div class="empty"><div class="ei">📭</div><div class="et">No payments found</div></div></td></tr>';
 }
 
@@ -2044,6 +2073,8 @@ function openModal(type,id){
     document.getElementById('m-pay-title').textContent=id?'Edit Payment':'Add Payment';
     if(p){document.getElementById('pf-law').value=p.lo||'';document.getElementById('pf-acct').value=p.acct||'';document.getElementById('pf-pat').value=p.pat||'';document.getElementById('pf-prov').value=p.prov||'';document.getElementById('pf-dol').value=p.dol||'';document.getElementById('pf-pd').value=p.pd||'';document.getElementById('pf-st').value=p.cs||'';document.getElementById('pf-ch').value=p.ch||'';document.getElementById('pf-pd2').value=p.paid||'';document.getElementById('pf-ct').value=p.ct||'';}
     else{['pf-law','pf-acct','pf-pat','pf-prov','pf-dol','pf-pd','pf-ch','pf-pd2'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('pf-st').value='';}
+    if(!chkFrontZone)initCheckZones();
+    loadCheckImages(p);
     document.getElementById('m-pay').classList.add('open');
   } else if(type==='case'){
     var c=id?DB.cases.find(function(x){return x.id===id;}):null;
@@ -2073,22 +2104,135 @@ function openModal(type,id){
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
+// ── CHECK IMAGE STATE ────────────────────────────────────────
+var CHK_IMG = {front:null, back:null, frontFile:null, backFile:null}; // dataUrl + File
+
+function setupCheckZone(side) {
+  var zone=document.getElementById('pf-chk-'+side+'-zone');
+  var input=document.getElementById('pf-chk-'+side+'-input');
+  var img=document.getElementById('pf-chk-'+side+'-img');
+  var ph=document.getElementById('pf-chk-'+side+'-placeholder');
+  var clr=document.getElementById('pf-chk-'+side+'-clear');
+
+  function showImg(src){img.src=src;img.style.display='block';ph.style.display='none';clr.style.display='block';zone.style.borderColor='var(--accent)';zone.style.borderStyle='solid';}
+  function clearImg(){img.src='';img.style.display='none';ph.style.display='';clr.style.display='none';zone.style.borderColor='var(--g300)';zone.style.borderStyle='dashed';CHK_IMG[side]=null;CHK_IMG[side+'File']=null;}
+
+  function handleFile(file){
+    if(!file)return;
+    CHK_IMG[side+'File']=file;
+    var reader=new FileReader();
+    reader.onload=function(e){CHK_IMG[side]=e.target.result;showImg(e.target.result);};
+    reader.readAsDataURL(file);
+  }
+
+  zone.onclick=function(e){if(e.target===clr||clr.contains(e.target))return;input.click();};
+  input.onchange=function(){handleFile(this.files[0]);this.value='';};
+  clr.onclick=function(e){e.stopPropagation();clearImg();};
+  zone.ondragover=function(e){e.preventDefault();zone.style.borderColor='var(--accent)';zone.style.background='#eef2ff';};
+  zone.ondragleave=function(){zone.style.background='';if(!CHK_IMG[side])zone.style.borderColor='var(--g300)';};
+  zone.ondrop=function(e){e.preventDefault();zone.style.background='';handleFile(e.dataTransfer.files[0]);};
+
+  return {show:showImg, clear:clearImg};
+}
+
+var chkFrontZone, chkBackZone;
+
+function initCheckZones(){
+  chkFrontZone=setupCheckZone('front');
+  chkBackZone=setupCheckZone('back');
+}
+
+function resetCheckImages(){
+  CHK_IMG={front:null,back:null,frontFile:null,backFile:null};
+  if(chkFrontZone)chkFrontZone.clear();
+  if(chkBackZone)chkBackZone.clear();
+}
+
+function loadCheckImages(pay){
+  resetCheckImages();
+  if(!pay)return;
+  if(pay.chkFrontPath){
+    STORAGE.getSignedUrl(pay.chkFrontPath).then(function(url){
+      CHK_IMG.front=url;chkFrontZone.show(url);
+    }).catch(function(){
+      var pub=STORAGE.getPublicUrl(pay.chkFrontPath);
+      CHK_IMG.front=pub;chkFrontZone.show(pub);
+    });
+  }
+  if(pay.chkBackPath){
+    STORAGE.getSignedUrl(pay.chkBackPath).then(function(url){
+      CHK_IMG.back=url;chkBackZone.show(url);
+    }).catch(function(){
+      var pub=STORAGE.getPublicUrl(pay.chkBackPath);
+      CHK_IMG.back=pub;chkBackZone.show(pub);
+    });
+  }
+}
+
+function uploadCheckImages(payId){
+  var promises=[];
+  if(CHK_IMG.frontFile){
+    var fp='checks/'+payId+'_front_'+CHK_IMG.frontFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    promises.push(STORAGE.upload(fp,CHK_IMG.frontFile).then(function(){
+      var pay=DB.pays.find(function(p){return p.id===payId;});
+      if(pay)pay.chkFrontPath=fp;
+      SB.update('payments',payId,{check_front_path:fp}).catch(function(){});
+    }));
+  }
+  if(CHK_IMG.backFile){
+    var bp='checks/'+payId+'_back_'+CHK_IMG.backFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    promises.push(STORAGE.upload(bp,CHK_IMG.backFile).then(function(){
+      var pay=DB.pays.find(function(p){return p.id===payId;});
+      if(pay)pay.chkBackPath=bp;
+      SB.update('payments',payId,{check_back_path:bp}).catch(function(){});
+    }));
+  }
+  return Promise.all(promises);
+}
+
 // ── SAVE ─────────────────────────────────────────────────────
 function savePay(){
   var id=S.eid.pay;
   var o={lo:document.getElementById('pf-law').value,acct:document.getElementById('pf-acct').value,pat:document.getElementById('pf-pat').value,prov:document.getElementById('pf-prov').value,dol:document.getElementById('pf-dol').value||null,pd:document.getElementById('pf-pd').value||null,cs:document.getElementById('pf-st').value||null,ch:parseFloat(document.getElementById('pf-ch').value)||0,paid:parseFloat(document.getElementById('pf-pd2').value)||0,ct:document.getElementById('pf-ct').value||null};
+  // Preserve existing check image paths
+  if(id){var existing=DB.pays.find(function(p){return p.id===id;});if(existing){o.chkFrontPath=existing.chkFrontPath;o.chkBackPath=existing.chkBackPath;}}
   closeModal('m-pay');
   sbSavePay(o, id).then(function(r){
     if(id){Object.assign(DB.pays.find(function(p){return p.id===id;}),o);}
     else{o.id=r?r.id:DB.nid.pay++;DB.pays.unshift(o);}
-    toast(id?'Payment updated':'Payment saved','✅');rPay();
+    var payId=o.id||id;
+    uploadCheckImages(payId).then(function(){toast(id?'Payment updated':'Payment saved','✅');rPay();}).catch(function(){toast(id?'Payment updated (image upload failed)':'Payment saved (image upload failed)','⚠️');rPay();});
   }).catch(function(e){
     if(id){Object.assign(DB.pays.find(function(p){return p.id===id;}),o);}
     else{o.id=DB.nid.pay++;DB.pays.unshift(o);}
+    var payId=o.id||id;
+    uploadCheckImages(payId).catch(function(){});
     toast('Saved locally (DB error)','⚠️');rPay();
   });
 }
-function delPay(id){if(!confirm('Delete?'))return;SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');}
+function delPay(id){if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');}
+
+function viewCheckImages(payId){
+  var p=DB.pays.find(function(x){return x.id===payId;});
+  if(!p)return;
+  var title=p.pat||'Payment #'+payId;
+  document.getElementById('m-fp-title').textContent='📸 Check Images — '+title;
+  var body=document.getElementById('fp-body');
+  body.innerHTML='<div style="color:var(--g400)">Loading check images...</div>';
+  document.getElementById('m-file-preview').classList.add('open');
+  var frontP=p.chkFrontPath?STORAGE.getSignedUrl(p.chkFrontPath).catch(function(){return STORAGE.getPublicUrl(p.chkFrontPath);}):Promise.resolve(null);
+  var backP=p.chkBackPath?STORAGE.getSignedUrl(p.chkBackPath).catch(function(){return STORAGE.getPublicUrl(p.chkBackPath);}):Promise.resolve(null);
+  Promise.all([frontP,backP]).then(function(urls){
+    var html='<div style="display:flex;gap:20px;padding:20px;flex-wrap:wrap;align-items:flex-start;justify-content:center;width:100%">';
+    if(urls[0]){html+='<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:var(--g600);margin-bottom:8px">FRONT</div><img src="'+urls[0]+'" style="max-width:400px;max-height:60vh;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.15);cursor:pointer" onclick="window.open(this.src)"></div>';}
+    if(urls[1]){html+='<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:var(--g600);margin-bottom:8px">BACK</div><img src="'+urls[1]+'" style="max-width:400px;max-height:60vh;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.15);cursor:pointer" onclick="window.open(this.src)"></div>';}
+    if(!urls[0]&&!urls[1]){html+='<div style="text-align:center;color:var(--g400);padding:40px"><div style="font-size:40px;margin-bottom:10px">📷</div>No check images available</div>';}
+    html+='</div>';
+    body.innerHTML=html;
+    var dlBtn=document.getElementById('fp-download');
+    if(urls[0])dlBtn.href=urls[0];else if(urls[1])dlBtn.href=urls[1];else dlBtn.style.display='none';
+  });
+}
 
 function saveCase(){
   var id=S.eid.case;
@@ -2331,9 +2475,10 @@ function bindAll(){
 
   // Pay table (delegated)
   document.getElementById('pay-tb').addEventListener('click',function(e){
-    var ep=e.target.closest('[data-edit-pay]');var dp=e.target.closest('[data-del-pay]');
-    if(ep)openModal('pay',parseInt(ep.dataset.editPay));
-    if(dp)delPay(parseInt(dp.dataset.delPay));
+    var ep=e.target.closest('[data-edit-pay]');var dp=e.target.closest('[data-del-pay]');var vc=e.target.closest('[data-view-chk]');
+    if(vc)viewCheckImages(parseInt(vc.dataset.viewChk));
+    else if(ep)openModal('pay',parseInt(ep.dataset.editPay));
+    else if(dp)delPay(parseInt(dp.dataset.delPay));
   });
   document.getElementById('case-tb').addEventListener('click',function(e){
     var oc=e.target.closest('[data-open-case]');var ec=e.target.closest('[data-edit-case]');var dc=e.target.closest('[data-del-case]');
