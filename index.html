@@ -461,15 +461,20 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div><div class="pt">Files</div><div class="ps">Upload and manage documents</div></div>
           <div class="ha">
             <button class="btn bp bsm" id="btn-upload">↑ Upload File</button>
-            <input type="file" id="fi" style="display:none" multiple>
+            <input type="file" id="fi" style="display:none" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt">
           </div>
+        </div>
+        <div id="file-drop-zone" style="border:2px dashed var(--g300);border-radius:12px;padding:18px;text-align:center;cursor:pointer;margin-bottom:16px;transition:.15s">
+          <div style="font-size:24px;margin-bottom:4px">📂</div>
+          <div style="font-size:13px;font-weight:600;color:var(--g700)">Drag & drop files here or click Upload</div>
+          <div style="font-size:12px;color:var(--g400);margin-top:2px">PDF, Images, Office documents</div>
         </div>
         <div class="tb">
           <div class="sw"><span class="si">🔍</span><input id="file-q" placeholder="Search file name..."></div>
           <select class="fl" id="file-cat-filter"><option value="">All Categories</option><option>General</option><option>Medical Records</option><option>Legal</option><option>Insurance</option><option>Billing</option></select>
           <span class="rc" id="file-rc"></span>
         </div>
-        <div class="card tw"><table><thead><tr><th>File Name</th><th>Case</th><th>Category</th><th>Uploaded By</th><th>Date</th><th></th></tr></thead><tbody id="file-tb"></tbody></table></div>
+        <div class="card tw"><table><thead><tr><th>File Name</th><th>Case</th><th>Category</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead><tbody id="file-tb"></tbody></table></div>
       </div>
 
       <div id="pg-reports" class="pg">
@@ -1024,6 +1029,13 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
   </div>
 </div>
 
+<div class="mb" id="m-file-preview">
+  <div class="modal" style="max-width:900px;height:85vh;display:flex;flex-direction:column">
+    <div class="mh"><span class="mtt" id="m-fp-title">File Preview</span><div style="display:flex;gap:6px;align-items:center"><a class="btn bs bsm" id="fp-download" href="#" download style="text-decoration:none">↓ Download</a><button class="mx" id="mx-fp">×</button></div></div>
+    <div id="fp-body" style="flex:1;overflow:auto;background:var(--g100);display:flex;align-items:center;justify-content:center;border-radius:0 0 14px 14px"></div>
+  </div>
+</div>
+
 <button class="ai-fab" id="ai-fab">🤖</button>
 <div class="ai-panel" id="ai-panel">
   <div class="aih">
@@ -1100,6 +1112,59 @@ var SB = {
   },
 };
 
+// ── SUPABASE STORAGE ─────────────────────────────────────────
+var STORAGE_BUCKET = 'files';
+var STORAGE = {
+  upload: function(path, file) {
+    var url = SUPA_URL + '/storage/v1/object/' + STORAGE_BUCKET + '/' + path;
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+      body: file,
+    }).then(function(r) {
+      if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+      return r.json();
+    });
+  },
+  getPublicUrl: function(path) {
+    return SUPA_URL + '/storage/v1/object/public/' + STORAGE_BUCKET + '/' + path;
+  },
+  getSignedUrl: function(path) {
+    var url = SUPA_URL + '/storage/v1/object/sign/' + STORAGE_BUCKET + '/' + path;
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ expiresIn: 3600 }),
+    }).then(function(r) {
+      if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+      return r.json();
+    }).then(function(data) {
+      return SUPA_URL + '/storage/v1' + data.signedURL;
+    });
+  },
+  remove: function(path) {
+    var url = SUPA_URL + '/storage/v1/object/' + STORAGE_BUCKET;
+    return fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prefixes: [path] }),
+    });
+  },
+};
+
 var DB_READY = false;
 
 // Load all data from Supabase on startup
@@ -1162,7 +1227,7 @@ function loadFromSupabase() {
     }
     if (dbFiles.length) {
       DB.files = dbFiles.map(function(r) {
-        return {id:r.id,cid:r.case_id,name:r.file_name,cat:r.category,by:r.uploaded_by,date:r.created_at?r.created_at.slice(0,10):null};
+        return {id:r.id,cid:r.case_id,name:r.file_name,cat:r.category,by:r.uploaded_by,date:r.created_at?r.created_at.slice(0,10):null,storagePath:r.storage_path||null};
       });
     }
     if (dbUsers.length) {
@@ -1598,6 +1663,16 @@ function genFU(){
 }
 
 // ── FILES ────────────────────────────────────────────────────
+function fileIcon(name){
+  var ext=(name||'').split('.').pop().toLowerCase();
+  if(ext==='pdf')return'📕';if(ext==='png'||ext==='jpg'||ext==='jpeg'||ext==='gif'||ext==='webp')return'🖼️';
+  if(ext==='doc'||ext==='docx')return'📘';if(ext==='xls'||ext==='xlsx'||ext==='csv')return'📗';
+  return'📄';
+}
+function isPreviewable(name){
+  var ext=(name||'').split('.').pop().toLowerCase();
+  return['pdf','png','jpg','jpeg','gif','webp'].indexOf(ext)>=0;
+}
 function rFile(){
   var data=DB.files.filter(function(f){
     var m=!S.fileQ||f.name.toLowerCase().indexOf(S.fileQ.toLowerCase())>=0;
@@ -1605,11 +1680,64 @@ function rFile(){
   });
   document.getElementById('file-rc').textContent=data.length+' record'+(data.length!==1?'s':'');
   document.getElementById('file-tb').innerHTML=data.length?data.map(function(f){
-    return '<tr><td><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">📄</span><span style="font-weight:600">'+f.name+'</span></div></td><td><span class="mn" style="font-size:12px">'+(f.cid?'#'+f.cid:'—')+'</span></td><td><span class="bdg bgr">'+f.cat+'</span></td><td style="font-size:12px;color:var(--g500)">'+(f.by||'—')+'</td><td style="font-size:12px">'+fd(f.date)+'</td><td><button class="ib del" data-del-file="'+f.id+'">🗑️</button></td></tr>';
+    var hasData=!!FILE_STORE[f.id]||!!f.storagePath;
+    var canPreview=hasData&&isPreviewable(f.name);
+    return '<tr><td><div style="display:flex;align-items:center;gap:8px;cursor:'+(canPreview?'pointer':'default')+'" '+(canPreview?'data-preview-file="'+f.id+'"':'')+'><span style="font-size:18px">'+fileIcon(f.name)+'</span><span style="font-weight:600;color:'+(canPreview?'var(--accent)':'inherit')+'">'+f.name+'</span></div></td><td><span class="mn" style="font-size:12px">'+(f.cid?'#'+f.cid:'—')+'</span></td><td><span class="bdg bgr">'+f.cat+'</span></td><td style="font-size:12px;color:var(--g500)">'+(f.by||'—')+'</td><td style="font-size:12px">'+fd(f.date)+'</td><td style="white-space:nowrap">'+(canPreview?'<button class="ib" title="Preview" data-preview-file="'+f.id+'">👁️</button>':'')+(hasData?'<button class="ib ok" title="Download" data-dl-file="'+f.id+'">↓</button>':'')+'<button class="ib del" data-del-file="'+f.id+'">🗑️</button></td></tr>';
   }).join(''):'<tr><td colspan="6"><div class="empty"><div class="ei">📁</div><div class="et">No files yet</div></div></td></tr>';
   document.querySelectorAll('[data-del-file]').forEach(function(el){el.addEventListener('click',function(){delFile(parseInt(el.dataset.delFile));});});
+  document.querySelectorAll('[data-preview-file]').forEach(function(el){el.addEventListener('click',function(){previewFile(parseInt(el.dataset.previewFile));});});
+  document.querySelectorAll('[data-dl-file]').forEach(function(el){el.addEventListener('click',function(){downloadFile(parseInt(el.dataset.dlFile));});});
 }
-function delFile(id){if(!confirm('Delete?'))return;DB.files=DB.files.filter(function(f){return f.id!==id;});rFile();toast('Deleted','🗑️');}
+
+function getFileUrl(f){
+  if(FILE_STORE[f.id])return Promise.resolve(FILE_STORE[f.id]);
+  if(f.storagePath){
+    return STORAGE.getSignedUrl(f.storagePath).catch(function(){
+      return STORAGE.getPublicUrl(f.storagePath);
+    });
+  }
+  return Promise.resolve(null);
+}
+
+function previewFile(id){
+  var f=DB.files.find(function(x){return x.id===id;});
+  if(!f){toast('File not found','⚠️');return;}
+  document.getElementById('m-fp-title').textContent=f.name;
+  document.getElementById('fp-body').innerHTML='<div style="color:var(--g400)">Loading...</div>';
+  document.getElementById('m-file-preview').classList.add('open');
+  getFileUrl(f).then(function(url){
+    if(!url){document.getElementById('fp-body').innerHTML='<div style="color:var(--g400);text-align:center"><div style="font-size:40px;margin-bottom:10px">📄</div>Preview not available</div>';return;}
+    var ext=(f.name||'').split('.').pop().toLowerCase();
+    var body=document.getElementById('fp-body');
+    var dlBtn=document.getElementById('fp-download');
+    dlBtn.href=url;dlBtn.download=f.name;
+    if(ext==='pdf'){
+      body.innerHTML='<iframe src="'+url+'" style="width:100%;height:100%;border:none"></iframe>';
+    }else{
+      body.innerHTML='<img src="'+url+'" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px">';
+    }
+  });
+}
+
+function downloadFile(id){
+  var f=DB.files.find(function(x){return x.id===id;});
+  if(!f){toast('File not found','⚠️');return;}
+  getFileUrl(f).then(function(url){
+    if(!url){toast('File not available','⚠️');return;}
+    var a=document.createElement('a');a.href=url;a.download=f.name;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  });
+}
+
+function delFile(id){
+  if(!confirm('Delete?'))return;
+  var f=DB.files.find(function(x){return x.id===id;});
+  if(f&&f.storagePath)STORAGE.remove(f.storagePath).catch(function(){});
+  delete FILE_STORE[id];
+  SB.delete('files',id).catch(function(){});
+  DB.files=DB.files.filter(function(x){return x.id!==id;});
+  rFile();toast('Deleted','🗑️');
+}
 
 // ── PATIENTS ─────────────────────────────────────────────────
 function rPatients(){
@@ -2147,12 +2275,41 @@ function bindAll(){
   // Files
   document.getElementById('btn-upload').addEventListener('click',function(){document.getElementById('fi').click();});
   document.getElementById('fi').addEventListener('change',function(){
+    var input=this;
     var t=today();
-    Array.from(this.files).forEach(function(f){DB.files.unshift({id:DB.nid.file++,cid:null,name:f.name,cat:'General',by:S.user?S.user.name:'admin',date:t});});
-    rFile();toast('Uploaded '+this.files.length+' file'+(this.files.length>1?'s':''),'📎');this.value='';
+    var catOptions=['General','Medical Records','Legal','Insurance','Billing'];
+    var picked=prompt('File category:\n1. General\n2. Medical Records\n3. Legal\n4. Insurance\n5. Billing\n\nEnter 1-5 (default: General):');
+    var cat=catOptions[(parseInt(picked)||1)-1]||'General';
+    var count=input.files.length;
+    Array.from(input.files).forEach(function(file){
+      var reader=new FileReader();
+      reader.onload=function(e){
+        var localId=DB.nid.file++;
+        var storagePath='uploads/'+localId+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var newFile={id:localId,cid:null,name:file.name,cat:cat,by:S.user?S.user.name:'admin',date:t,storagePath:storagePath};
+        FILE_STORE[localId]=e.target.result;
+        DB.files.unshift(newFile);
+        rFile();
+        // Upload to Supabase Storage
+        STORAGE.upload(storagePath,file).then(function(){
+          return SB.insert('files',{file_name:file.name,category:cat,uploaded_by:newFile.by,storage_path:storagePath});
+        }).then(function(r){
+          if(r&&r[0]){var oldId=newFile.id;newFile.id=r[0].id;FILE_STORE[r[0].id]=FILE_STORE[oldId];delete FILE_STORE[oldId];rFile();}
+        }).catch(function(err){console.error('Storage upload error:',err);});
+      };
+      reader.readAsDataURL(file);
+    });
+    toast('Uploading '+count+' file'+(count>1?'s':'')+'...','📎');
+    input.value='';
   });
   document.getElementById('file-q').addEventListener('input',function(){S.fileQ=this.value;rFile();});
   document.getElementById('file-cat-filter').addEventListener('change',function(){S.fileCat=this.value;rFile();});
+  // File drop zone
+  var fdz=document.getElementById('file-drop-zone');
+  fdz.addEventListener('click',function(){document.getElementById('fi').click();});
+  fdz.addEventListener('dragover',function(e){e.preventDefault();fdz.style.borderColor='var(--accent)';fdz.style.background='#eef2ff';});
+  fdz.addEventListener('dragleave',function(){fdz.style.borderColor='var(--g300)';fdz.style.background='';});
+  fdz.addEventListener('drop',function(e){e.preventDefault();fdz.style.borderColor='var(--g300)';fdz.style.background='';if(e.dataTransfer.files.length){var fi=document.getElementById('fi');fi.files=e.dataTransfer.files;fi.dispatchEvent(new Event('change'));}});
 
   // Reports
   ['all','month','last30','lastmonth'].forEach(function(p){
@@ -2186,7 +2343,7 @@ function bindAll(){
   });
 
   // Modals close
-  [['mx-pay','m-pay'],['mx2-pay','m-pay'],['mx-case','m-case'],['mx2-case','m-case'],['mx-fu','m-fu'],['mx2-fu','m-fu'],['mx-memo','m-memo'],['mx2-memo','m-memo'],['mx-user','m-user'],['mx2-user','m-user'],['mx-kpi','m-kpi'],['mx2-kpi','m-kpi']].forEach(function(pair){
+  [['mx-pay','m-pay'],['mx2-pay','m-pay'],['mx-case','m-case'],['mx2-case','m-case'],['mx-fu','m-fu'],['mx2-fu','m-fu'],['mx-memo','m-memo'],['mx2-memo','m-memo'],['mx-user','m-user'],['mx2-user','m-user'],['mx-kpi','m-kpi'],['mx2-kpi','m-kpi'],['mx-fp','m-file-preview']].forEach(function(pair){
     var el=document.getElementById(pair[0]);
     if(el)el.addEventListener('click',function(){closeModal(pair[1]);});
   });
