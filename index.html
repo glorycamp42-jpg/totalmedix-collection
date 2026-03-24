@@ -1124,40 +1124,52 @@ function loadFromSupabase() {
     var dbUsers    = results[6] || [];
     var dbKPI      = results[7] || [];
 
-    // Map Supabase rows → app format
-    DB.cases = dbCases.map(function(r) {
-      return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
-              dol:r.date_of_loss,st:r.status,ct:r.clinic_type,bi:parseFloat(r.billed)||0,
-              bal:parseFloat(r.balance)||0,gr:r.grade,notes:r.notes||''};
-    });
-    DB.pays = dbPays.map(function(r) {
-      return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
-              dol:r.date_of_loss,pd:r.pay_date,cs:r.check_status,ct:r.clinic_type,
-              ch:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0};
-    });
-    DB.fus = dbFUs.map(function(r) {
-      return {id:r.id,cid:r.case_id,acct:r.account_num,pat:r.patient_name,lo:r.law_office,
-              gr:r.grade,bal:parseFloat(r.balance)||0,act:r.action,subj:r.subject,
-              pri:r.priority,st:r.status,due:r.due_date,notes:r.notes||''};
-    });
+    // Map Supabase rows → app format (keep demo data if Supabase table is empty)
+    if (dbCases.length) {
+      DB.cases = dbCases.map(function(r) {
+        return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
+                dol:r.date_of_loss,st:r.status,ct:r.clinic_type,bi:parseFloat(r.billed)||0,
+                bal:parseFloat(r.balance)||0,gr:r.grade,notes:r.notes||''};
+      });
+    }
+    if (dbPays.length) {
+      DB.pays = dbPays.map(function(r) {
+        return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
+                dol:r.date_of_loss,pd:r.pay_date,cs:r.check_status,ct:r.clinic_type,
+                ch:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0};
+      });
+    }
+    if (dbFUs.length) {
+      DB.fus = dbFUs.map(function(r) {
+        return {id:r.id,cid:r.case_id,acct:r.account_num,pat:r.patient_name,lo:r.law_office,
+                gr:r.grade,bal:parseFloat(r.balance)||0,act:r.action,subj:r.subject,
+                pri:r.priority,st:r.status,due:r.due_date,notes:r.notes||''};
+      });
+    }
     // Activities: group by case_id
-    DB.acts = {};
-    dbActs.forEach(function(r) {
-      if (!DB.acts[r.case_id]) DB.acts[r.case_id] = [];
-      DB.acts[r.case_id].push({id:r.id,type:r.activity_type,text:r.text,date:r.created_at?r.created_at.slice(0,10):null,by:r.created_by});
-    });
+    if (dbActs.length) {
+      DB.acts = {};
+      dbActs.forEach(function(r) {
+        if (!DB.acts[r.case_id]) DB.acts[r.case_id] = [];
+        DB.acts[r.case_id].push({id:r.id,type:r.activity_type,text:r.text,date:r.created_at?r.created_at.slice(0,10):null,by:r.created_by});
+      });
+    }
     // Notices
-    if (typeof NOTICE_STATE !== 'undefined') {
+    if (typeof NOTICE_STATE !== 'undefined' && dbNotices.length) {
       NOTICE_STATE.sent = dbNotices.map(function(r) {
         return {caseId:r.case_id,stage:r.stage,date:r.sent_at?r.sent_at.slice(0,10):null,to:r.sent_to,cc:r.sent_cc};
       });
     }
-    DB.files = dbFiles.map(function(r) {
-      return {id:r.id,cid:r.case_id,name:r.file_name,cat:r.category,by:r.uploaded_by,date:r.created_at?r.created_at.slice(0,10):null};
-    });
-    DB.users = dbUsers.map(function(r) {
-      return {id:r.id,name:r.name,email:r.email,role:r.role,st:r.status,color:r.color||'#3b5bdb'};
-    });
+    if (dbFiles.length) {
+      DB.files = dbFiles.map(function(r) {
+        return {id:r.id,cid:r.case_id,name:r.file_name,cat:r.category,by:r.uploaded_by,date:r.created_at?r.created_at.slice(0,10):null};
+      });
+    }
+    if (dbUsers.length) {
+      DB.users = dbUsers.map(function(r) {
+        return {id:r.id,name:r.name,email:r.email,role:r.role,st:r.status,color:r.color||'#3b5bdb'};
+      });
+    }
     if (dbKPI.length) {
       DB.kpi = {
         collectionRate: parseFloat(dbKPI[0].collection_rate)||40,
@@ -1179,6 +1191,11 @@ function loadFromSupabase() {
     toast('Connected to Supabase ✓', '🟢');
     rDash();
     updFUBadge();
+    // Re-render Users page if currently active
+    var pgUsers = document.getElementById('pg-users');
+    if (pgUsers && pgUsers.classList.contains('on')) rUsers();
+    var pgSettings = document.getElementById('pg-settings');
+    if (pgSettings && pgSettings.classList.contains('on')) rSettingsUsers();
   }).catch(function(err) {
     DB_READY = false;
     showGlobalLoader(false);
