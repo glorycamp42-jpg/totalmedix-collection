@@ -34,6 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lbtn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;transition:.15s}
 .lbtn:hover{background:var(--accent2)}
 .lhint{text-align:center;font-size:12px;color:var(--g400);margin-top:10px}
+.lbtn:disabled{opacity:.6;cursor:not-allowed}
 
 /* APP */
 #app{display:none;min-height:100vh}
@@ -397,16 +398,12 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div class="lbrand-inner"><span class="brand-dot"></span>TotalMedix</div>
       <p>Medical Collection Management</p>
     </div>
-    <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Sign in as</div>
-    <div class="role-row">
-      <button class="rbtn on" id="r-admin">👑 Admin</button>
-      <button class="rbtn" id="r-manager">📋 Manager</button>
-      <button class="rbtn" id="r-staff">👤 Staff</button>
-    </div>
-    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@totalmedix.com"></div>
-    <div class="lf"><label>Password</label><input type="password" id="l-pw" placeholder="••••••••"></div>
+    <div id="login-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:14px;text-align:center"></div>
+    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@totalmedix.com" autocomplete="email"></div>
+    <div class="lf"><label>Password</label><input type="password" id="l-pw" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="lbtn" id="login-btn">Sign in</button>
-    <p class="lhint">Demo — any credentials work</p>
+    <div id="login-spinner" style="display:none;text-align:center;margin-top:10px"><span class="agent-spinner" style="border-color:rgba(59,91,219,.3);border-top-color:var(--accent)"></span> <span style="font-size:13px;color:var(--g500)">Authenticating...</span></div>
+    <p class="lhint">Sign in with your TotalMedix account</p>
   </div>
 </div>
 
@@ -1244,12 +1241,12 @@ var SUPA_KEY = 'sb_publishable_UBlSo4cvTc56SrBviNJHqw_IrIeN6g_';
 
 function supaFetch(path, opts) {
   var url = SUPA_URL + '/rest/v1/' + path;
+  var token = AUTH_TOKEN || localStorage.getItem('sb_access_token') || SUPA_KEY;
   var headers = {
     'apikey': SUPA_KEY,
-    'Authorization': 'Bearer ' + SUPA_KEY,
+    'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json',
     'Prefer': opts && opts.prefer ? opts.prefer : 'return=representation',
-    'Access-Control-Allow-Origin': '*',
   };
   return fetch(url, {
     method: opts && opts.method ? opts.method : 'GET',
@@ -1261,6 +1258,96 @@ function supaFetch(path, opts) {
     if (r.status === 204) return null;
     return r.json();
   });
+}
+
+// ── SUPABASE AUTH ────────────────────────────────────────────
+var AUTH_TOKEN = null; // current access token
+
+function supaAuth(endpoint, body) {
+  return fetch(SUPA_URL + '/auth/v1/' + endpoint, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  }).then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error(data.error_description || data.msg || data.message || 'Auth error');
+      return data;
+    });
+  });
+}
+
+function supaAuthGet(endpoint, token) {
+  return fetch(SUPA_URL + '/auth/v1/' + endpoint, {
+    method: 'GET',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + token,
+    },
+  }).then(function(r) {
+    if (!r.ok) throw new Error('Session expired');
+    return r.json();
+  });
+}
+
+function setAuthToken(session) {
+  if (session && session.access_token) {
+    AUTH_TOKEN = session.access_token;
+    localStorage.setItem('sb_access_token', session.access_token);
+    localStorage.setItem('sb_refresh_token', session.refresh_token);
+    localStorage.setItem('sb_expires_at', Date.now() + (session.expires_in * 1000));
+  }
+}
+
+function clearAuthToken() {
+  AUTH_TOKEN = null;
+  localStorage.removeItem('sb_access_token');
+  localStorage.removeItem('sb_refresh_token');
+  localStorage.removeItem('sb_expires_at');
+}
+
+function refreshSession() {
+  var rt = localStorage.getItem('sb_refresh_token');
+  if (!rt) return Promise.reject(new Error('No refresh token'));
+  return supaAuth('token?grant_type=refresh_token', {refresh_token: rt}).then(function(data) {
+    setAuthToken(data);
+    return data;
+  });
+}
+
+function supaSignIn(email, password) {
+  return supaAuth('token?grant_type=password', {email: email, password: password});
+}
+
+function supaSignUp(email, password) {
+  return fetch(SUPA_URL + '/auth/v1/signup', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({email: email, password: password, email_confirm: true}),
+  }).then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error(data.error_description || data.msg || data.message || 'Signup error');
+      return data;
+    });
+  });
+}
+
+function supaSignOut() {
+  var token = AUTH_TOKEN || localStorage.getItem('sb_access_token');
+  clearAuthToken();
+  if (!token) return Promise.resolve();
+  return fetch(SUPA_URL + '/auth/v1/logout', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + token,
+    },
+  }).catch(function(){});
 }
 
 // CRUD helpers
@@ -2727,31 +2814,83 @@ function applyPermissions(){
   }
 }
 
-// ── BIND ALL EVENTS ──────────────────────────────────────────
-function bindAll(){
-  // Login
-  // Role selection
-  function selectRole(role){
+// ── AUTH UI HELPERS (global scope for auto-login access) ─────
+function showLoginError(msg){
+  var el=document.getElementById('login-error');
+  if(msg){el.textContent=msg;el.style.display='block';}
+  else el.style.display='none';
+}
+function setLoginLoading(on){
+  document.getElementById('login-btn').disabled=on;
+  document.getElementById('login-btn').textContent=on?'Signing in...':'Sign in';
+  document.getElementById('login-spinner').style.display=on?'block':'none';
+}
+function completeLogin(authEmail){
+  return supaFetch('app_users?email=eq.'+encodeURIComponent(authEmail)+'&limit=1').then(function(rows){
+    var u=rows&&rows[0];
+    if(!u) u={name:authEmail.split('@')[0],email:authEmail,role:'staff',status:'active'};
+    var role=u.role||'staff';
+    var name=u.name||authEmail;
     S.role=role;
-    ['r-admin','r-manager','r-staff'].forEach(function(id){document.getElementById(id).classList.remove('on');});
-    document.getElementById('r-'+role).classList.add('on');
-  }
-  document.getElementById('r-admin').addEventListener('click',function(){selectRole('admin');});
-  document.getElementById('r-manager').addEventListener('click',function(){selectRole('manager');});
-  document.getElementById('r-staff').addEventListener('click',function(){selectRole('staff');});
-  document.getElementById('login-btn').addEventListener('click',function(){
-    var nameMap={admin:'Eugene Yu',manager:'David Park',staff:'Sarah Kim'};
-    var name=nameMap[S.role]||'User';
-    S.user={name:name,role:S.role};
+    S.user={name:name,role:role,email:authEmail};
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     document.getElementById('sb-uname').textContent=name;
-    document.getElementById('sb-urole').textContent=S.role;
-    document.getElementById('sb-urole').className='sb-urole role-'+S.role;
+    document.getElementById('sb-urole').textContent=role;
+    document.getElementById('sb-urole').className='sb-urole role-'+role;
     document.getElementById('sb-av').textContent=ini(name);
     applyPermissions();
     updFUBadge();go('dashboard');
     loadFromSupabase();
+    // Check first login flag
+    var firstLogin=localStorage.getItem('sb_first_login_'+authEmail);
+    if(firstLogin){
+      localStorage.removeItem('sb_first_login_'+authEmail);
+      setTimeout(function(){
+        if(confirm('Welcome! Your account was created with a temporary password.\n\nWould you like to change your password now?')){
+          showChangePasswordPrompt();
+        }
+      },1000);
+    }
+  });
+}
+function showChangePasswordPrompt(){
+  var newPw=prompt('Enter your new password (min 6 characters):');
+  if(!newPw||newPw.length<6){if(newPw!==null)alert('Password must be at least 6 characters.');return;}
+  var token=AUTH_TOKEN||localStorage.getItem('sb_access_token');
+  fetch(SUPA_URL+'/auth/v1/user',{
+    method:'PUT',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({password:newPw})
+  }).then(function(r){
+    if(!r.ok) throw new Error('Failed');
+    toast('Password updated successfully','✅');
+  }).catch(function(){
+    toast('Failed to update password','❌');
+  });
+}
+
+// ── BIND ALL EVENTS ──────────────────────────────────────────
+function bindAll(){
+  // Login
+  document.getElementById('login-btn').addEventListener('click',function(){
+    var email=document.getElementById('l-email').value.trim();
+    var pw=document.getElementById('l-pw').value;
+    showLoginError(null);
+    if(!email||!pw){showLoginError('Please enter email and password.');return;}
+
+    setLoginLoading(true);
+    supaSignIn(email,pw).then(function(data){
+      setAuthToken(data);
+      return completeLogin(data.user.email);
+    }).then(function(){
+      setLoginLoading(false);
+    }).catch(function(err){
+      setLoginLoading(false);
+      var msg=err.message||'Login failed';
+      if(msg.indexOf('Invalid login')>=0) msg='Invalid email or password.';
+      showLoginError(msg);
+    });
   });
   document.getElementById('l-pw').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('login-btn').click();});
 
@@ -2760,7 +2899,7 @@ function bindAll(){
   Object.keys(navMap).forEach(function(k){
     var el=document.getElementById('ni-'+k);
     if(el)el.addEventListener('click',function(){
-      if(navMap[k]==='__logout'){document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';}
+      if(navMap[k]==='__logout'){supaSignOut();S.user=null;S.role='staff';document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';document.getElementById('l-email').value='';document.getElementById('l-pw').value='';showLoginError(null);}
       else go(navMap[k]);
     });
   });
@@ -2911,6 +3050,50 @@ function bindAll(){
 
 // ── INIT ─────────────────────────────────────────────────────
 bindAll();
+
+// ── AUTO-LOGIN (restore session) ────────────────────────────
+(function(){
+  var token = localStorage.getItem('sb_access_token');
+  var expiresAt = parseInt(localStorage.getItem('sb_expires_at'))||0;
+  if (!token) return; // no saved session
+
+  // Show loading state
+  document.getElementById('login-btn').disabled=true;
+  document.getElementById('login-btn').textContent='Restoring session...';
+  document.getElementById('login-spinner').style.display='block';
+
+  function restore(t){
+    AUTH_TOKEN=t;
+    supaAuthGet('user',t).then(function(user){
+      if(!user||!user.email) throw new Error('No user');
+      return completeLogin(user.email);
+    }).then(function(){
+      document.getElementById('login-btn').disabled=false;
+      document.getElementById('login-btn').textContent='Sign in';
+      document.getElementById('login-spinner').style.display='none';
+    }).catch(function(){
+      clearAuthToken();
+      document.getElementById('login-btn').disabled=false;
+      document.getElementById('login-btn').textContent='Sign in';
+      document.getElementById('login-spinner').style.display='none';
+    });
+  }
+
+  if(Date.now()<expiresAt){
+    // Token not expired yet
+    restore(token);
+  } else {
+    // Try refresh
+    refreshSession().then(function(data){
+      restore(data.access_token);
+    }).catch(function(){
+      clearAuthToken();
+      document.getElementById('login-btn').disabled=false;
+      document.getElementById('login-btn').textContent='Sign in';
+      document.getElementById('login-spinner').style.display='none';
+    });
+  }
+})();
 </script>
 </body>
 </html>
@@ -4146,18 +4329,46 @@ function inviteUser() {
   var email = prompt('Email:'); if (!email) return;
   var role  = prompt('Role (admin/manager/staff):') || 'staff';
   if(['admin','manager','staff'].indexOf(role)<0) role='staff';
+  // Generate a temp password
+  var tempPw = 'Tmp'+Math.random().toString(36).slice(2,8)+'!'+Math.floor(Math.random()*90+10);
   var color = clr(name);
-  var u = {name:name,email:email,role:role,st:'active',color:color};
-  SB.insert('app_users', u).then(function(r){
-    u.id = r&&r[0]?r[0].id:DB.nid.user++;
-    DB.users.push(u);
-    rSettingsUsers();
-    toast('User '+name+' added','✅');
-  }).catch(function(){
-    u.id = DB.nid.user++;
-    DB.users.push(u);
-    rSettingsUsers();
-    toast('User added (local)','✅');
+
+  // Step 1: Create Supabase Auth account
+  supaSignUp(email, tempPw).then(function(authData){
+    // Step 2: Insert into app_users table
+    var u = {name:name,email:email,role:role,st:'active',color:color,auth_uid:authData.id||null};
+    return SB.insert('app_users', u).then(function(r){
+      u.id = r&&r[0]?r[0].id:DB.nid.user++;
+      DB.users.push(u);
+      rSettingsUsers();
+      // Mark for first-login password change
+      localStorage.setItem('sb_first_login_'+email,'1');
+      // Show the temp password to admin
+      alert('User created successfully!\n\nName: '+name+'\nEmail: '+email+'\nRole: '+role+'\nTemp Password: '+tempPw+'\n\nShare these credentials with the user.\nThey will be prompted to change their password on first login.');
+      toast('User '+name+' created with Auth account','✅');
+    });
+  }).catch(function(err){
+    var msg = err.message||'';
+    if(msg.indexOf('already been registered')>=0||msg.indexOf('already exists')>=0){
+      // Auth user exists, just add to app_users
+      var u = {name:name,email:email,role:role,st:'active',color:color};
+      SB.insert('app_users', u).then(function(r){
+        u.id=r&&r[0]?r[0].id:DB.nid.user++;
+        DB.users.push(u);
+        rSettingsUsers();
+        toast('User added (Auth account already exists)','✅');
+      }).catch(function(){
+        u.id=DB.nid.user++;DB.users.push(u);rSettingsUsers();
+        toast('User added locally','⚠️');
+      });
+    } else {
+      alert('Failed to create Auth account: '+msg+'\n\nUser will be added to app_users only.');
+      var u = {name:name,email:email,role:role,st:'active',color:color};
+      SB.insert('app_users', u).then(function(r){
+        u.id=r&&r[0]?r[0].id:DB.nid.user++;
+        DB.users.push(u);rSettingsUsers();toast('User added (without Auth)','⚠️');
+      }).catch(function(){u.id=DB.nid.user++;DB.users.push(u);rSettingsUsers();});
+    }
   });
 }
 
