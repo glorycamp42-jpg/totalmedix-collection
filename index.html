@@ -653,7 +653,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="tab" id="stab-schedule">⏰ Auto Schedule</div>
           <div class="tab" id="stab-api">🔑 API Keys</div>
           <div class="tab" id="stab-kpi">🎯 KPI Goals</div>
-          <div class="tab" id="stab-export">📤 Export</div>
+          <div class="tab" id="stab-export">📤 Import / Export</div>
         </div>
 
         <!-- ── USERS TAB ── -->
@@ -934,14 +934,46 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           </div>
         </div>
 
-        <!-- ── EXPORT TAB ── -->
+        <!-- ── EXPORT / IMPORT TAB ── -->
         <div id="settings-export" class="stab-content" style="display:none">
-          <div class="card">
-            <div class="ch"><span class="ct">📤 Export Data</span></div>
-            <div class="cb" style="display:flex;flex-direction:column;gap:10px">
-              <button class="btn bs" id="btn-exp-pays">↓ Export Payments CSV</button>
-              <button class="btn bs" id="btn-exp-cases">↓ Export Cases CSV</button>
-              <button class="btn bs" id="btn-exp-fus">↓ Export Follow-ups CSV</button>
+          <div class="g2" style="margin-bottom:0">
+            <div class="card">
+              <div class="ch"><span class="ct">📤 Export Data</span></div>
+              <div class="cb" style="display:flex;flex-direction:column;gap:10px">
+                <button class="btn bs" id="btn-exp-pays">↓ Export Payments CSV</button>
+                <button class="btn bs" id="btn-exp-cases">↓ Export Cases CSV</button>
+                <button class="btn bs" id="btn-exp-fus">↓ Export Follow-ups CSV</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch"><span class="ct">📥 Import CSV</span></div>
+              <div class="cb" style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;gap:8px">
+                  <button class="btn bp" id="btn-imp-cases" style="flex:1">↑ Import Cases</button>
+                  <button class="btn bp" id="btn-imp-pays" style="flex:1">↑ Import Payments</button>
+                </div>
+                <input type="file" id="csv-file-input" accept=".csv" style="display:none">
+                <div style="font-size:11px;color:var(--g500);line-height:1.5">
+                  <strong>Cases columns:</strong> law_office, account_num, patient_name, provider, date_of_loss, clinic_type, status, billed, balance, grade, notes<br>
+                  <strong>Payments columns:</strong> law_office, account_num, patient_name, provider, date_of_loss, pay_date, clinic_type, charged, paid, check_status<br>
+                  <span style="color:var(--accent)">Tip: Export first to see the format, then edit and re-import.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Import Preview Area -->
+          <div id="import-preview" style="display:none;margin-top:16px">
+            <div class="card">
+              <div class="ch">
+                <span class="ct" id="import-title">📋 Import Preview</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span id="import-count" style="font-size:12px;color:var(--g500)"></span>
+                  <button class="btn bp bsm" id="btn-confirm-import">Confirm Import</button>
+                  <button class="btn bs bsm" id="btn-cancel-import">Cancel</button>
+                </div>
+              </div>
+              <div class="tw" id="import-table-wrap" style="max-height:300px;overflow-y:auto"></div>
+              <div id="import-result" style="display:none;padding:16px 18px"></div>
             </div>
           </div>
         </div>
@@ -2627,6 +2659,234 @@ function exportCSV(type){
   var csv=[headers.join(',')].concat(rows.map(function(r){return r.map(function(v){return'"'+(v||'').toString().replace(/"/g,'""')+'"';}).join(',');})).join('\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='totalmedix_'+type+'_'+today()+'.csv';a.click();
   toast('Exported','↓');
+}
+
+// ── CSV IMPORT ───────────────────────────────────────────────
+var IMPORT_STATE = {type:null, rows:[], headers:[]};
+
+function parseCSV(text){
+  var lines=[];var cur='';var inQ=false;
+  for(var i=0;i<text.length;i++){
+    var ch=text[i];
+    if(ch==='"'){
+      if(inQ&&text[i+1]==='"'){cur+='"';i++;}
+      else inQ=!inQ;
+    } else if(ch===','&&!inQ){
+      lines.push===undefined;// handled below
+    } else if((ch==='\n'||(ch==='\r'&&text[i+1]==='\n'))&&!inQ){
+      if(ch==='\r')i++;
+      // end of line — but we need to split by commas too
+    } else {
+      cur+=ch;
+    }
+  }
+  // Better approach: split by lines then parse each
+  var rawLines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(function(l){return l.trim();});
+  return rawLines.map(function(line){
+    var fields=[];var field='';var inQuote=false;
+    for(var j=0;j<line.length;j++){
+      var c=line[j];
+      if(c==='"'){if(inQuote&&line[j+1]==='"'){field+='"';j++;}else inQuote=!inQuote;}
+      else if(c===','&&!inQuote){fields.push(field);field='';}
+      else field+=c;
+    }
+    fields.push(field);
+    return fields.map(function(f){return f.trim();});
+  });
+}
+
+function normalizeHeader(h){
+  return h.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+}
+
+function startImport(type){
+  IMPORT_STATE.type=type;
+  document.getElementById('csv-file-input').click();
+}
+
+function handleCSVFile(file){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var parsed=parseCSV(e.target.result);
+    if(parsed.length<2){toast('CSV must have header + at least 1 row','⚠️');return;}
+
+    var rawHeaders=parsed[0];
+    var normalized=rawHeaders.map(normalizeHeader);
+    var dataRows=parsed.slice(1);
+
+    // Map headers based on import type
+    var colMap;
+    if(IMPORT_STATE.type==='cases'){
+      colMap={
+        law_office:['law_office','lawoffice','law office'],
+        account_num:['account_num','account','account_number','account #','acct'],
+        patient_name:['patient_name','patient','patient name','name'],
+        provider:['provider'],
+        date_of_loss:['date_of_loss','dol','date of loss'],
+        clinic_type:['clinic_type','clinic','clinic type','ct'],
+        status:['status','st'],
+        billed:['billed','bi','billed_amount'],
+        balance:['balance','bal','outstanding'],
+        grade:['grade','gr'],
+        notes:['notes','note'],
+      };
+    } else {
+      colMap={
+        law_office:['law_office','lawoffice','law office'],
+        account_num:['account_num','account','account_number','account #','acct'],
+        patient_name:['patient_name','patient','patient name','name'],
+        provider:['provider'],
+        date_of_loss:['date_of_loss','dol','date of loss'],
+        pay_date:['pay_date','paydate','pay date','payment_date'],
+        clinic_type:['clinic_type','clinic','clinic type','ct'],
+        charged:['charged','ch','charge','amount_charged'],
+        paid:['paid','amount_paid','payment'],
+        check_status:['check_status','status','cs','check'],
+      };
+    }
+
+    // Resolve column indices
+    var mapping={};
+    Object.keys(colMap).forEach(function(field){
+      var aliases=colMap[field];
+      for(var i=0;i<normalized.length;i++){
+        if(aliases.indexOf(normalized[i])>=0){mapping[field]=i;break;}
+      }
+    });
+
+    // Check required fields
+    var required=IMPORT_STATE.type==='cases'?['account_num','patient_name']:['account_num','patient_name'];
+    var missing=required.filter(function(f){return mapping[f]===undefined;});
+    if(missing.length){
+      toast('Missing required columns: '+missing.join(', '),'❌');
+      return;
+    }
+
+    // Build mapped rows
+    var mappedRows=dataRows.map(function(row,idx){
+      var obj={_row:idx+2}; // 1-based, +1 for header
+      Object.keys(mapping).forEach(function(field){
+        obj[field]=row[mapping[field]]||'';
+      });
+      return obj;
+    }).filter(function(obj){return obj.account_num;}); // skip empty rows
+
+    IMPORT_STATE.rows=mappedRows;
+    IMPORT_STATE.headers=Object.keys(mapping);
+
+    // Show preview
+    showImportPreview();
+  };
+  reader.readAsText(file);
+}
+
+function showImportPreview(){
+  var rows=IMPORT_STATE.rows;
+  var headers=IMPORT_STATE.headers;
+  var type=IMPORT_STATE.type;
+
+  document.getElementById('import-preview').style.display='block';
+  document.getElementById('import-title').textContent='📋 '+( type==='cases'?'Cases':'Payments')+' Import Preview';
+  document.getElementById('import-count').textContent=rows.length+' rows to import';
+  document.getElementById('import-result').style.display='none';
+
+  var displayHeaders=headers.filter(function(h){return h!=='_row';});
+  var preview=rows.slice(0,5);
+
+  var html='<table><thead><tr><th>#</th>'+displayHeaders.map(function(h){
+    return '<th>'+h.replace(/_/g,' ')+'</th>';
+  }).join('')+'</tr></thead><tbody>';
+
+  preview.forEach(function(r,i){
+    html+='<tr><td style="color:var(--g400)">'+r._row+'</td>'+displayHeaders.map(function(h){
+      var v=r[h]||'';
+      var style='font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      return '<td style="'+style+'">'+v+'</td>';
+    }).join('')+'</tr>';
+  });
+
+  if(rows.length>5){
+    html+='<tr><td colspan="'+(displayHeaders.length+1)+'" style="text-align:center;color:var(--g400);font-size:12px;padding:8px">... and '+(rows.length-5)+' more rows</td></tr>';
+  }
+  html+='</tbody></table>';
+
+  document.getElementById('import-table-wrap').innerHTML=html;
+}
+
+function confirmImport(){
+  var type=IMPORT_STATE.type;
+  var rows=IMPORT_STATE.rows;
+  if(!rows.length){toast('No data to import','⚠️');return;}
+
+  var btn=document.getElementById('btn-confirm-import');
+  btn.disabled=true;btn.innerHTML='<span class="agent-spinner"></span> Importing...';
+
+  var success=0,failed=0,errors=[];
+  var idx=0;
+
+  function processNext(){
+    if(idx>=rows.length){
+      // Done
+      btn.disabled=false;btn.textContent='Confirm Import';
+      var resultEl=document.getElementById('import-result');
+      resultEl.style.display='block';
+      var html='<div style="display:flex;gap:16px;margin-bottom:10px">'+
+        '<div style="background:#dcfce7;color:#166534;padding:8px 16px;border-radius:8px;font-weight:700;font-size:14px">✅ '+success+' imported</div>'+
+        (failed?'<div style="background:#fef2f2;color:#991b1b;padding:8px 16px;border-radius:8px;font-weight:700;font-size:14px">❌ '+failed+' failed</div>':'')+
+      '</div>';
+      if(errors.length){
+        html+='<div style="font-size:12px;color:var(--red);max-height:120px;overflow-y:auto">'+
+          errors.map(function(e){return '<div style="padding:2px 0">Row '+e.row+': '+e.msg+'</div>';}).join('')+
+        '</div>';
+      }
+      resultEl.innerHTML=html;
+      // Reload data
+      loadFromSupabase();
+      toast(success+' records imported','✅');
+      return;
+    }
+
+    var r=rows[idx++];
+    var row;
+    try{
+      if(type==='cases'){
+        row={
+          law_office:r.law_office||null,account_num:r.account_num,patient_name:r.patient_name||null,
+          provider:r.provider||null,date_of_loss:r.date_of_loss||null,clinic_type:r.clinic_type||null,
+          status:r.status||'active',billed:parseFloat(r.billed)||0,balance:parseFloat(r.balance)||0,
+          grade:r.grade||null,notes:r.notes||'',
+        };
+        // Upsert by account_num
+        supaFetch('cases?account_num=eq.'+encodeURIComponent(row.account_num)+'&limit=1').then(function(existing){
+          if(existing&&existing.length){
+            return SB.update('cases',existing[0].id,row).then(function(){success++;processNext();});
+          } else {
+            return SB.insert('cases',row).then(function(){success++;processNext();});
+          }
+        }).catch(function(e){
+          failed++;errors.push({row:r._row,msg:e.message||'Insert failed'});processNext();
+        });
+      } else {
+        row={
+          law_office:r.law_office||null,account_num:r.account_num,patient_name:r.patient_name||null,
+          provider:r.provider||null,date_of_loss:r.date_of_loss||null,pay_date:r.pay_date||null,
+          clinic_type:r.clinic_type||null,charged:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0,
+          check_status:r.check_status||null,
+        };
+        SB.insert('payments',row).then(function(){success++;processNext();})
+        .catch(function(e){failed++;errors.push({row:r._row,msg:e.message||'Insert failed'});processNext();});
+      }
+    } catch(e){
+      failed++;errors.push({row:r._row,msg:e.message||'Parse error'});processNext();
+    }
+  }
+  processNext();
+}
+
+function cancelImport(){
+  IMPORT_STATE={type:null,rows:[],headers:[]};
+  document.getElementById('import-preview').style.display='none';
+  document.getElementById('csv-file-input').value='';
 }
 
 // ── AI CHAT (Claude API) ─────────────────────────────────────
@@ -4500,6 +4760,18 @@ function bindSettingsEvents() {
   if (btnExpCases2) btnExpCases2.addEventListener('click', function(){ exportCSV('cases'); });
   var btnExpFUs2 = document.getElementById('btn-exp-fus');
   if (btnExpFUs2) btnExpFUs2.addEventListener('click', function(){ exportCSV('fus'); });
+
+  // Import
+  var btnImpCases = document.getElementById('btn-imp-cases');
+  if (btnImpCases) btnImpCases.addEventListener('click', function(){ startImport('cases'); });
+  var btnImpPays = document.getElementById('btn-imp-pays');
+  if (btnImpPays) btnImpPays.addEventListener('click', function(){ startImport('pays'); });
+  var csvInput = document.getElementById('csv-file-input');
+  if (csvInput) csvInput.addEventListener('change', function(){ if(this.files[0]) handleCSVFile(this.files[0]); this.value=''; });
+  var btnConfirm = document.getElementById('btn-confirm-import');
+  if (btnConfirm) btnConfirm.addEventListener('click', confirmImport);
+  var btnCancel = document.getElementById('btn-cancel-import');
+  if (btnCancel) btnCancel.addEventListener('click', cancelImport);
 }
 
 // Override rSettings to initialize the new settings page
