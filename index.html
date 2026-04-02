@@ -60,6 +60,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sb-uname{color:#fff;font-size:12px;font-weight:600}
 .sb-urole{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;display:inline-block;margin-top:1px}
 .role-admin{background:rgba(94,193,165,.2);color:#5DCAA5}
+.role-manager{background:rgba(59,91,219,.2);color:#7ba0ff}
 .role-staff{background:rgba(148,163,184,.2);color:rgba(255,255,255,.6)}
 
 /* MAIN */
@@ -96,6 +97,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mc-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.06}
 .kpi-prog{margin-top:8px;background:var(--g100);border-radius:4px;height:4px}
 .kpi-bar{height:4px;border-radius:4px}
+/* Staff mode: hide financial KPI values */
+body.staff-mode .mv{filter:blur(8px);pointer-events:none;user-select:none}
+body.staff-mode .mc-sub{filter:blur(6px)}
+body.staff-mode .dstats .mv{filter:blur(8px)}
 
 /* CARDS */
 .card{background:#fff;border:1px solid var(--g200);border-radius:14px;box-shadow:0 1px 3px rgba(15,23,42,.06);overflow:hidden;margin-bottom:18px}
@@ -395,6 +400,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Sign in as</div>
     <div class="role-row">
       <button class="rbtn on" id="r-admin">👑 Admin</button>
+      <button class="rbtn" id="r-manager">📋 Manager</button>
       <button class="rbtn" id="r-staff">👤 Staff</button>
     </div>
     <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@totalmedix.com"></div>
@@ -675,13 +681,28 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
                       <div>✅ Run AI Agent tasks</div>
                     </div>
                   </div>
+                  <div style="background:#eff6ff;border-radius:10px;padding:14px">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:6px;font-size:11px">Manager</span></div>
+                    <div style="font-size:12px;color:var(--g600);display:flex;flex-direction:column;gap:4px">
+                      <div>✅ View all pages (Dashboard, Cases, Payments, Reports)</div>
+                      <div>✅ Add / edit cases & payments</div>
+                      <div>✅ Manage follow-ups</div>
+                      <div>✅ Send notices & emails</div>
+                      <div>✅ Run AI Agent tasks</div>
+                      <div>❌ Delete cases</div>
+                      <div>❌ User management</div>
+                      <div>❌ Admin settings</div>
+                    </div>
+                  </div>
                   <div style="background:var(--g50);border-radius:10px;padding:14px">
                     <div style="font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="background:var(--g100);color:var(--g600);padding:2px 8px;border-radius:6px;font-size:11px">Staff</span></div>
                     <div style="font-size:12px;color:var(--g600);display:flex;flex-direction:column;gap:4px">
-                      <div>✅ View dashboard & reports</div>
-                      <div>✅ Add / edit cases & payments</div>
-                      <div>✅ Manage follow-ups</div>
+                      <div>✅ View dashboard & reports (KPI/financial numbers hidden)</div>
+                      <div>✅ View cases (read-only)</div>
+                      <div>✅ Process follow-ups (complete/reschedule only)</div>
                       <div>✅ Send notices</div>
+                      <div>❌ Add / edit / delete payments</div>
+                      <div>❌ AI Agent</div>
                       <div>❌ User management</div>
                       <div>❌ Admin settings</div>
                     </div>
@@ -1167,7 +1188,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     <div class="mbd"><div class="fg">
       <div class="fd"><label>Full Name</label><input id="uf-name"></div>
       <div class="fd"><label>Email</label><input type="email" id="uf-email"></div>
-      <div class="fd"><label>Role</label><select id="uf-role"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+      <div class="fd"><label>Role</label><select id="uf-role"><option value="staff">Staff</option><option value="manager">Manager</option><option value="admin">Admin</option></select></div>
       <div class="fd"><label>Status</label><select id="uf-st"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
     </div></div>
     <div class="mft"><button class="btn bs" id="mx2-user">Cancel</button><button class="btn bp" id="save-user">Save</button></div>
@@ -1515,10 +1536,11 @@ var DB = {
     {id:1,name:"Eugene Yu",email:"eugene@totalmedix.com",role:"admin",st:"active",color:"#3b5bdb"},
     {id:2,name:"Sarah Kim",email:"sarah@totalmedix.com",role:"staff",st:"active",color:"#0ea472"},
     {id:3,name:"James Park",email:"james@totalmedix.com",role:"staff",st:"active",color:"#f59e0b"},
+    {id:4,name:"David Park",email:"david@totalmedix.com",role:"manager",st:"active",color:"#7c3aed"},
   ],
   acts:{},
   kpi:{collectionRate:40,monthlyTarget:500000,avgDays:60,resolutionRate:70},
-  nid:{pay:11,case:9,fu:7,file:3,user:4,act:1}
+  nid:{pay:11,case:9,fu:7,file:3,user:5,act:1}
 };
 
 // ── STATE ────────────────────────────────────────────────────
@@ -1571,6 +1593,8 @@ function updFUBadge(){
 // ── NAVIGATION ───────────────────────────────────────────────
 var PAGES=['dashboard','payments','cases','casedetail','patients','patprofile','followups','files','reports','notices','agent','users','settings'];
 function go(pg){
+  if((pg==='users'||pg==='settings')&&!can('settings')){toast('Access restricted','⚠️');return;}
+  if(pg==='agent'&&!can('ai_agent')){toast('AI Agent is not available for your role','⚠️');return;}
   PAGES.forEach(function(p){
     var el=document.getElementById('pg-'+p);
     if(el)el.className='pg';
@@ -1688,7 +1712,7 @@ function rPay(){
   document.getElementById('pay-rc').textContent=data.length+' records';
   document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
     var hasChk=p.chkFrontPath||p.chkBackPath;
-    return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td><span class="mn">'+(p.acct||'—')+'</span></td><td>'+(p.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+(hasChk?' <span title="Check images attached" style="cursor:pointer" data-view-chk="'+p.id+'">📸</span>':'')+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap">'+(hasChk?'<button class="ib" title="View check" data-view-chk="'+p.id+'">📸</button>':'')+'<button class="ib" data-edit-pay="'+p.id+'">✏️</button><button class="ib del" data-del-pay="'+p.id+'">🗑️</button></td></tr>';
+    return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td><span class="mn">'+(p.acct||'—')+'</span></td><td>'+(p.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+(hasChk?' <span title="Check images attached" style="cursor:pointer" data-view-chk="'+p.id+'">📸</span>':'')+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap">'+(hasChk?'<button class="ib" title="View check" data-view-chk="'+p.id+'">📸</button>':'')+''+(can('edit_pay')?'<button class="ib" data-edit-pay="'+p.id+'">✏️</button>':'')+(can('delete_pay')?'<button class="ib del" data-del-pay="'+p.id+'">🗑️</button>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="10"><div class="empty"><div class="ei">📭</div><div class="et">No payments found</div></div></td></tr>';
 }
 
@@ -1701,7 +1725,7 @@ function rCase(){
   });
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap">'+(can('edit_case')?'<button class="ib" data-edit-case="'+c.id+'">✏️</button>':'')+(can('delete_case')?'<button class="ib del" data-del-case="'+c.id+'">🗑️</button>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="10"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
 }
 
@@ -2176,10 +2200,11 @@ function rReport(preset){
 }
 
 // ── USERS ────────────────────────────────────────────────────
+function roleBadgeClass(role){return role==='admin'?'bb':role==='manager'?'bb':'bgr';}
 function rUsers(){
   if(!DB.users||!DB.users.length){document.getElementById('users-list').innerHTML='<div class="empty" style="padding:30px"><div class="ei">👥</div><div class="et">No users yet</div><div class="es">Add users in Admin Settings</div></div>';return;}
   document.getElementById('users-list').innerHTML=DB.users.map(function(u){
-    return '<div class="ucard"><div class="uav" style="background:'+u.color+'">'+ini(u.name)+'</div><div><div class="un">'+u.name+'</div><div class="ue">'+u.email+'</div></div><div class="ua"><span class="bdg '+(u.role==='admin'?'bb':'bgr')+'">'+u.role+'</span><span class="bdg '+(u.st==='active'?'bg3':'bgr')+'" style="margin-left:4px">'+u.st+'</span>'+(S.role==='admin'&&u.id!==1?'<button class="ib del" data-del-user="'+u.id+'">🗑️</button>':'')+'</div></div>';
+    return '<div class="ucard"><div class="uav" style="background:'+u.color+'">'+ini(u.name)+'</div><div><div class="un">'+u.name+'</div><div class="ue">'+u.email+'</div></div><div class="ua"><span class="bdg '+roleBadgeClass(u.role)+'">'+u.role+'</span><span class="bdg '+(u.st==='active'?'bg3':'bgr')+'" style="margin-left:4px">'+u.st+'</span>'+(S.role==='admin'&&u.id!==1?'<button class="ib del" data-del-user="'+u.id+'">🗑️</button>':'')+'</div></div>';
   }).join('');
   document.querySelectorAll('[data-del-user]').forEach(function(el){el.addEventListener('click',function(){delUser(parseInt(el.dataset.delUser));});});
 }
@@ -2195,6 +2220,11 @@ function rSettings(){
 
 // ── MODALS ───────────────────────────────────────────────────
 function openModal(type,id){
+  // Permission checks
+  if(type==='pay'&&!can('add_pay')){toast('Permission denied — payments restricted','⚠️');return;}
+  if(type==='case'&&!id&&!can('add_case')){toast('Permission denied','⚠️');return;}
+  if(type==='case'&&id&&!can('edit_case')){toast('Permission denied','⚠️');return;}
+  if(type==='fu'&&!id&&!can('create_fu')){toast('Permission denied','⚠️');return;}
   S.eid[type]=id;
   if(type==='pay'){
     var p=id?DB.pays.find(function(x){return x.id===id;}):null;
@@ -2338,7 +2368,7 @@ function savePay(){
     toast('Saved locally (DB error)','⚠️');rPay();
   });
 }
-function delPay(id){if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');}
+function delPay(id){if(!can('delete_pay')){toast('Permission denied','⚠️');return;}if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');}
 
 function viewCheckImages(payId){
   var p=DB.pays.find(function(x){return x.id===payId;});
@@ -2376,7 +2406,7 @@ function saveCase(){
     toast('Saved locally (DB error)','⚠️');rCase();
   });
 }
-function delCase(id){if(!confirm('Delete?'))return;SB.delete('cases',id).catch(function(){});DB.cases=DB.cases.filter(function(c){return c.id!==id;});rCase();toast('Deleted','🗑️');}
+function delCase(id){if(!can('delete_case')){toast('Permission denied','⚠️');return;}if(!confirm('Delete?'))return;SB.delete('cases',id).catch(function(){});DB.cases=DB.cases.filter(function(c){return c.id!==id;});rCase();toast('Deleted','🗑️');}
 
 function saveFU(){
   var id=S.eid.fu;
@@ -2572,13 +2602,64 @@ function aiAnalyzeCase(id){
   setTimeout(sendAI,200);
 }
 
+// ── PERMISSIONS ──────────────────────────────────────────────
+function can(action){
+  var r=S.role;
+  if(r==='admin') return true;
+  if(r==='manager'){
+    if(action==='delete_case'||action==='settings'||action==='users') return false;
+    return true;
+  }
+  // staff
+  if(action==='view') return true;
+  if(action==='send_notice') return true;
+  if(action==='complete_fu'||action==='reschedule_fu') return true;
+  return false; // staff cannot: add_pay, edit_pay, delete_pay, add_case, edit_case, delete_case, ai_agent, settings, users, create_fu
+}
+
+function applyPermissions(){
+  var r=S.role;
+  // Sidebar: Users & Settings — admin only
+  document.getElementById('ni-users').style.display=(r==='admin'?'':'none');
+  document.getElementById('ni-settings').style.display=(r==='admin'?'':'none');
+  // Sidebar: AI Agent — admin & manager only
+  document.getElementById('ni-agent').style.display=(r==='staff'?'none':'');
+  // AI FAB button — hide for staff
+  var fab=document.getElementById('ai-fab');if(fab) fab.style.display=(r==='staff'?'none':'');
+
+  // Payment add buttons — admin & manager only
+  var payBtns=['btn-add-pay','btn-add-pay2'];
+  payBtns.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=(r==='staff'?'none':'');});
+  // Case add button — admin & manager only
+  var addCase=document.getElementById('btn-add-case');
+  if(addCase) addCase.style.display=(r==='staff'?'none':'');
+  // Follow-up schedule button — admin & manager only
+  var addFu=document.getElementById('btn-add-fu');
+  if(addFu) addFu.style.display=(r==='staff'?'none':'');
+
+  // Dashboard & Reports KPI metrics — hide values for staff
+  if(r==='staff'){
+    document.body.classList.add('staff-mode');
+  } else {
+    document.body.classList.remove('staff-mode');
+  }
+}
+
 // ── BIND ALL EVENTS ──────────────────────────────────────────
 function bindAll(){
   // Login
-  document.getElementById('r-admin').addEventListener('click',function(){S.role='admin';document.getElementById('r-admin').classList.add('on');document.getElementById('r-staff').classList.remove('on');});
-  document.getElementById('r-staff').addEventListener('click',function(){S.role='staff';document.getElementById('r-staff').classList.add('on');document.getElementById('r-admin').classList.remove('on');});
+  // Role selection
+  function selectRole(role){
+    S.role=role;
+    ['r-admin','r-manager','r-staff'].forEach(function(id){document.getElementById(id).classList.remove('on');});
+    document.getElementById('r-'+role).classList.add('on');
+  }
+  document.getElementById('r-admin').addEventListener('click',function(){selectRole('admin');});
+  document.getElementById('r-manager').addEventListener('click',function(){selectRole('manager');});
+  document.getElementById('r-staff').addEventListener('click',function(){selectRole('staff');});
   document.getElementById('login-btn').addEventListener('click',function(){
-    var name=S.role==='admin'?'Eugene Yu':'Sarah Kim';
+    var nameMap={admin:'Eugene Yu',manager:'David Park',staff:'Sarah Kim'};
+    var name=nameMap[S.role]||'User';
     S.user={name:name,role:S.role};
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
@@ -2586,7 +2667,7 @@ function bindAll(){
     document.getElementById('sb-urole').textContent=S.role;
     document.getElementById('sb-urole').className='sb-urole role-'+S.role;
     document.getElementById('sb-av').textContent=ini(name);
-    if(S.role!=='admin')document.getElementById('ni-users').style.display='none';
+    applyPermissions();
     updFUBadge();go('dashboard');
     loadFromSupabase();
   });
@@ -3697,6 +3778,7 @@ function bindAgentEvents() {
 }
 
 function goAgent() {
+  if(!can('ai_agent')){toast('AI Agent is not available for your role','⚠️');return;}
   PAGES.forEach(function(p){
     var el = document.getElementById('pg-'+p);
     if (el) el.className = 'pg';
@@ -3952,7 +4034,7 @@ function rSettingsUsers() {
         '<div class="ue">'+u.email+'</div>'+
       '</div>'+
       '<div class="ua">'+
-        '<span class="bdg '+(u.role==='admin'?'bb':'bgr')+'">'+u.role+'</span>'+
+        '<span class="bdg '+roleBadgeClass(u.role)+'">'+u.role+'</span>'+
         '<span class="bdg '+(u.st==='active'?'bg3':'bgr')+'" style="margin-left:4px">'+u.st+'</span>'+
         (S.role==='admin'?
           '<button class="ib" data-edit-su="'+u.id+'" title="Edit">✏️</button>'+
@@ -3980,7 +4062,8 @@ function rSettingsUsers() {
 function inviteUser() {
   var name  = prompt('Full Name:'); if (!name) return;
   var email = prompt('Email:'); if (!email) return;
-  var role  = prompt('Role (admin/staff):') || 'staff';
+  var role  = prompt('Role (admin/manager/staff):') || 'staff';
+  if(['admin','manager','staff'].indexOf(role)<0) role='staff';
   var color = clr(name);
   var u = {name:name,email:email,role:role,st:'active',color:color};
   SB.insert('app_users', u).then(function(r){
