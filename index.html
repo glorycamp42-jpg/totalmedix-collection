@@ -268,9 +268,95 @@ tr.ov td{background:#fff9f9}
 .topbar{display:none;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;border-bottom:1px solid var(--g200);position:sticky;top:0;z-index:100}
 .hamburger{background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--g700)}
 @media print{
-  body *{visibility:hidden}
-  #letter-preview,#letter-preview *{visibility:visible}
-  #letter-preview{position:fixed;top:0;left:0;width:100%;padding:40px 60px;font-size:13px;background:#fff;color:#000}
+  /* ── BASE RESET ── */
+  @page{size:A4;margin:18mm 15mm 20mm 15mm}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff!important;color:#000!important;font-size:11pt!important;line-height:1.5!important}
+
+  /* ── HIDE UI CHROME (only when printing reports) ── */
+  body.print-report .sb,body.print-report .topbar,body.print-report #sidebar,
+  body.print-report .ai-panel,body.print-report .modal,body.print-report .overlay{display:none!important}
+  body.print-report #pg-reports .rq,
+  body.print-report #pg-reports .tab,
+  body.print-report #pg-reports [style*="gap:6px;margin-bottom:16px;background"],
+  body.print-report #pg-reports [style*="gap:6px;margin-bottom:20px"]{display:none!important}
+
+  /* ── LETTER PRINT (existing) ── */
+  body.print-letter *{visibility:hidden}
+  body.print-letter #letter-preview,
+  body.print-letter #letter-preview *{visibility:visible}
+  body.print-letter #letter-preview{position:fixed;top:0;left:0;width:100%;padding:40px 60px;font-size:13px;background:#fff;color:#000}
+
+  /* ── REPORT PRINT ── */
+  body.print-report .layout{display:block!important}
+  body.print-report .main{margin:0!important;padding:0!important;width:100%!important}
+  body.print-report .pg{display:none!important}
+  body.print-report #pg-reports{display:block!important}
+
+  /* Print header */
+  body.print-report #print-report-header{display:flex!important;align-items:center;justify-content:space-between;border-bottom:2.5pt solid #000;padding-bottom:10pt;margin-bottom:14pt}
+  body.print-report #print-report-header .prh-left{display:flex;align-items:center;gap:10pt}
+  body.print-report #print-report-header .prh-logo{width:32pt;height:32pt;background:#0f1e4a;color:#fff;border-radius:6pt;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16pt;font-family:Arial,sans-serif}
+  body.print-report #print-report-header .prh-title{font-size:16pt;font-weight:800;color:#0f1e4a;letter-spacing:-.3pt}
+  body.print-report #print-report-header .prh-subtitle{font-size:9pt;color:#555;margin-top:1pt}
+  body.print-report #print-report-header .prh-right{text-align:right;font-size:8.5pt;color:#444;line-height:1.6}
+
+  /* Page header hidden (we use print header instead) */
+  body.print-report .ph{display:none!important}
+
+  /* KPI Metrics: 2x2 grid */
+  body.print-report .metrics{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10pt!important;margin-bottom:14pt!important}
+  body.print-report .mc{border:1.5pt solid #333!important;border-radius:6pt!important;padding:10pt 14pt!important;background:#fff!important;box-shadow:none!important;page-break-inside:avoid}
+  body.print-report .mc-bar{display:none!important}
+  body.print-report .mc-icon{display:none!important}
+  body.print-report .ml{font-size:8pt!important;font-weight:700!important;color:#333!important;text-transform:uppercase!important;letter-spacing:.1em!important;margin-bottom:4pt!important}
+  body.print-report .mv{font-size:16pt!important;font-weight:800!important;color:#000!important}
+  body.print-report .mv.g,body.print-report .mv.r,body.print-report .mv.a{color:#000!important}
+  body.print-report .mc-sub{font-size:7.5pt!important;color:#555!important}
+
+  /* Cards */
+  body.print-report .card{border:1.5pt solid #333!important;border-radius:6pt!important;box-shadow:none!important;margin-bottom:12pt!important;page-break-inside:avoid;break-inside:avoid}
+  body.print-report .ch{border-bottom:1pt solid #999!important;padding:8pt 12pt!important}
+  body.print-report .ct{font-size:10pt!important;font-weight:700!important;color:#000!important}
+  body.print-report .cb{padding:10pt 12pt!important}
+
+  /* 2-col grid */
+  body.print-report .g2{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12pt!important;margin-bottom:12pt!important}
+
+  /* Tables */
+  body.print-report table{width:100%!important;border-collapse:collapse!important;font-size:8.5pt!important}
+  body.print-report thead tr{background:#f0f0f0!important;-webkit-print-color-adjust:exact}
+  body.print-report th{border:1pt solid #555!important;padding:5pt 8pt!important;font-weight:700!important;text-align:left!important;color:#000!important;font-size:8pt!important;text-transform:uppercase!important;letter-spacing:.05em!important}
+  body.print-report td{border:1pt solid #999!important;padding:4pt 8pt!important;color:#111!important}
+  body.print-report tbody tr:nth-child(even){background:#f8f8f8!important}
+  body.print-report .tw{overflow:visible!important}
+
+  /* Canvas charts - show at reasonable size */
+  body.print-report canvas{max-height:180pt!important;width:100%!important}
+
+  /* Bar charts rendered as divs */
+  body.print-report .cb div[style*="background"]{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  /* Status badges - B&W friendly */
+  body.print-report .badge,.print-report .stage-60,.print-report .stage-90,
+  body.print-report .stage-120,.print-report .stage-sent{background:transparent!important;color:#000!important;border:1pt solid #555!important;font-weight:700!important}
+
+  /* Page breaks */
+  body.print-report .card{page-break-inside:avoid;break-inside:avoid}
+  body.print-report .g2{page-break-inside:avoid;break-inside:avoid}
+  body.print-report .metrics{page-break-inside:avoid;break-inside:avoid}
+  body.print-report #rpt-paytb tr{page-break-inside:avoid}
+
+  /* Law office view */
+  body.print-report #rview-lawoffice-content .sw,
+  body.print-report #rview-lawoffice-content select{display:none!important}
+  body.print-report #lo-grid .card{page-break-inside:avoid;break-inside:avoid}
+
+  /* Footer on each page */
+  body.print-report::after{content:"TotalMedix - Confidential";position:fixed;bottom:5mm;left:0;right:0;text-align:center;font-size:7pt;color:#999}
+
+  /* Record count badges */
+  body.print-report .rc{border:1pt solid #666!important;background:transparent!important;color:#000!important}
 }
 .stage-60{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .stage-90{background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
@@ -2859,7 +2945,39 @@ function bindNoticeEvents() {
   if (btnAll) btnAll.addEventListener('click', sendAllNotices);
 
   var btnRptPrint = document.getElementById('btn-rpt-print');
-  if (btnRptPrint) btnRptPrint.addEventListener('click', function(){ window.print(); });
+  if (btnRptPrint) btnRptPrint.addEventListener('click', function(){
+    // Inject print header if not exists
+    var hdr = document.getElementById('print-report-header');
+    if (!hdr) {
+      hdr = document.createElement('div');
+      hdr.id = 'print-report-header';
+      hdr.style.display = 'none';
+      var pg = document.getElementById('pg-reports');
+      pg.insertBefore(hdr, pg.firstChild);
+    }
+    // Determine active view
+    var isLawOffice = document.getElementById('rview-lawoffice-content').style.display !== 'none';
+    var viewTitle = isLawOffice ? 'Law Office Analysis Report' : 'Collections Overview Report';
+    // Date range
+    var lbl = document.getElementById('rpt-lbl');
+    var dateRange = lbl && lbl.textContent ? lbl.textContent : 'All Time';
+    var today = new Date();
+    var printDate = (today.getMonth()+1)+'/'+today.getDate()+'/'+today.getFullYear();
+    hdr.innerHTML =
+      '<div class="prh-left">'+
+        '<div class="prh-logo">M</div>'+
+        '<div><div class="prh-title">TotalMedix</div>'+
+        '<div class="prh-subtitle">'+viewTitle+'</div></div>'+
+      '</div>'+
+      '<div class="prh-right">'+
+        'Date: <strong>'+printDate+'</strong><br>'+
+        'Period: <strong>'+dateRange+'</strong><br>'+
+        'Medical Billing Collections'+
+      '</div>';
+    document.body.classList.add('print-report');
+    window.print();
+    document.body.classList.remove('print-report');
+  });
 
   var btnRef = document.getElementById('btn-refresh-notices');
   if (btnRef) btnRef.addEventListener('click', rNotices);
