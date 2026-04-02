@@ -695,20 +695,62 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <!-- ── CLINIC INFO TAB ── -->
         <div id="settings-clinic" class="stab-content" style="display:none">
           <div class="card">
-            <div class="ch"><span class="ct">🏥 Clinic Information</span><button class="btn bp bsm" id="btn-save-clinic">Save Changes</button></div>
+            <div class="ch"><span class="ct">🏥 Clinic Information</span><button class="btn bp bsm" id="btn-save-clinic">Save All Clinics</button></div>
             <div class="cb">
-              <div class="fg">
-                <div class="fd full"><label>Clinic / Practice Name</label><input id="clinic-name" value="TotalMedix Medical Group"></div>
-                <div class="fd full"><label>Address</label><input id="clinic-address" value="123 Medical Center Drive, Los Angeles, CA 90001"></div>
-                <div class="fd"><label>Phone</label><input id="clinic-phone" value="(213) 555-0100"></div>
-                <div class="fd"><label>Fax</label><input id="clinic-fax" value="(213) 555-0101"></div>
-                <div class="fd"><label>Billing Email</label><input id="clinic-email" type="email" value="billing@totalmedix.com"></div>
-                <div class="fd"><label>Website</label><input id="clinic-website" placeholder="https://totalmedix.com"></div>
-                <div class="fd"><label>NPI Number</label><input id="clinic-npi" placeholder="1234567890"></div>
-                <div class="fd"><label>Tax ID (EIN)</label><input id="clinic-ein" placeholder="12-3456789"></div>
+              <!-- Clinic Type Tabs -->
+              <div style="display:flex;gap:0;margin-bottom:18px;border-bottom:2px solid var(--g200)">
+                <button class="clinic-tab on" data-clinic="MRI" onclick="switchClinicTab('MRI',this)" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;cursor:pointer;color:var(--g400);border-bottom:2.5px solid transparent;margin-bottom:-2px;font-family:inherit">🔵 MRI</button>
+                <button class="clinic-tab" data-clinic="Chiro" onclick="switchClinicTab('Chiro',this)" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;cursor:pointer;color:var(--g400);border-bottom:2.5px solid transparent;margin-bottom:-2px;font-family:inherit">🟢 Chiropractic</button>
+                <button class="clinic-tab" data-clinic="Pain" onclick="switchClinicTab('Pain',this)" style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;cursor:pointer;color:var(--g400);border-bottom:2.5px solid transparent;margin-bottom:-2px;font-family:inherit">🟡 Pain Management</button>
               </div>
-              <div style="margin-top:16px;background:var(--accent-light);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--accent)">
-                ℹ️ This information appears on all notice letters and reports.
+
+              <!-- MRI Fields -->
+              <div id="clinic-fields-MRI" class="clinic-fields">
+                <div class="fg">
+                  <div class="fd full"><label>Clinic Name</label><input id="cl-MRI-name" placeholder="e.g., TotalMedix MRI Center"></div>
+                  <div class="fd full"><label>Address</label><input id="cl-MRI-address" placeholder="123 Medical Center Dr, Los Angeles, CA 90001"></div>
+                  <div class="fd"><label>Phone</label><input id="cl-MRI-phone" placeholder="(213) 555-0100"></div>
+                  <div class="fd"><label>Fax</label><input id="cl-MRI-fax" placeholder="(213) 555-0101"></div>
+                  <div class="fd"><label>NPI Number</label><input id="cl-MRI-npi" placeholder="1234567890"></div>
+                  <div class="fd"><label>Tax ID (EIN)</label><input id="cl-MRI-ein" placeholder="12-3456789"></div>
+                  <div class="fd full"><label>Provider Name</label><input id="cl-MRI-provider" placeholder="Dr. John Smith, MD"></div>
+                  <div class="fd full"><label>Billing Email</label><input id="cl-MRI-email" type="email" placeholder="mri-billing@totalmedix.com"></div>
+                  <div class="fd full"><label>Signature Line</label><input id="cl-MRI-signature" placeholder="Dr. John Smith, MD — Medical Director, MRI Division"></div>
+                </div>
+              </div>
+
+              <!-- Chiro Fields -->
+              <div id="clinic-fields-Chiro" class="clinic-fields" style="display:none">
+                <div class="fg">
+                  <div class="fd full"><label>Clinic Name</label><input id="cl-Chiro-name" placeholder="e.g., TotalMedix Chiropractic"></div>
+                  <div class="fd full"><label>Address</label><input id="cl-Chiro-address" placeholder="456 Spine Care Blvd, Los Angeles, CA 90002"></div>
+                  <div class="fd"><label>Phone</label><input id="cl-Chiro-phone" placeholder="(213) 555-0200"></div>
+                  <div class="fd"><label>Fax</label><input id="cl-Chiro-fax" placeholder="(213) 555-0201"></div>
+                  <div class="fd"><label>NPI Number</label><input id="cl-Chiro-npi" placeholder="1234567891"></div>
+                  <div class="fd"><label>Tax ID (EIN)</label><input id="cl-Chiro-ein" placeholder="12-3456790"></div>
+                  <div class="fd full"><label>Provider Name</label><input id="cl-Chiro-provider" placeholder="Dr. Jane Doe, DC"></div>
+                  <div class="fd full"><label>Billing Email</label><input id="cl-Chiro-email" type="email" placeholder="chiro-billing@totalmedix.com"></div>
+                  <div class="fd full"><label>Signature Line</label><input id="cl-Chiro-signature" placeholder="Dr. Jane Doe, DC — Chiropractic Director"></div>
+                </div>
+              </div>
+
+              <!-- Pain Management Fields -->
+              <div id="clinic-fields-Pain" class="clinic-fields" style="display:none">
+                <div class="fg">
+                  <div class="fd full"><label>Clinic Name</label><input id="cl-Pain-name" placeholder="e.g., TotalMedix Pain Management"></div>
+                  <div class="fd full"><label>Address</label><input id="cl-Pain-address" placeholder="789 Pain Relief Ave, Los Angeles, CA 90003"></div>
+                  <div class="fd"><label>Phone</label><input id="cl-Pain-phone" placeholder="(213) 555-0300"></div>
+                  <div class="fd"><label>Fax</label><input id="cl-Pain-fax" placeholder="(213) 555-0301"></div>
+                  <div class="fd"><label>NPI Number</label><input id="cl-Pain-npi" placeholder="1234567892"></div>
+                  <div class="fd"><label>Tax ID (EIN)</label><input id="cl-Pain-ein" placeholder="12-3456791"></div>
+                  <div class="fd full"><label>Provider Name</label><input id="cl-Pain-provider" placeholder="Dr. Robert Lee, MD"></div>
+                  <div class="fd full"><label>Billing Email</label><input id="cl-Pain-email" type="email" placeholder="pain-billing@totalmedix.com"></div>
+                  <div class="fd full"><label>Signature Line</label><input id="cl-Pain-signature" placeholder="Dr. Robert Lee, MD — Pain Management Specialist"></div>
+                </div>
+              </div>
+
+              <div style="margin-top:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;font-size:12px;color:#0369a1">
+                ℹ️ Each clinic's info is automatically inserted into notice letters and emails based on the case's clinic type (MRI / Chiropractic / Pain Mgmt). Cases without a clinic type will use the MRI clinic as default.
               </div>
             </div>
           </div>
@@ -1154,7 +1196,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     <button class="ai-x" id="ai-x">×</button>
   </div>
   <div class="ai-msgs" id="ai-msgs">
-    <div class="ai-msg b">👋 Hi! I can help you analyze cases, generate follow-up messages, and recommend billing codes.<br><br>What do you need?</div>
+    <div class="ai-msg b">👋 Hi! I'm <strong>MedixAI</strong>, powered by Claude. I have full access to your live case data, payments, and follow-ups.<br><br>Ask me anything — collection analysis, case risk assessment, billing codes, follow-up drafting, and more.</div>
   </div>
   <div class="ai-quick" id="ai-quick">
     <button id="aq1">📊 Collection analysis</button>
@@ -2388,41 +2430,145 @@ function exportCSV(type){
   toast('Exported','↓');
 }
 
-// ── AI ───────────────────────────────────────────────────────
+// ── AI CHAT (Claude API) ─────────────────────────────────────
+var AI_CHAT_HISTORY = [];
+
 function addMsg(text,cls){
   var el=document.createElement('div');el.className='ai-msg '+cls;el.innerHTML=text;
   document.getElementById('ai-msgs').appendChild(el);
   document.getElementById('ai-msgs').scrollTop=99999;
 }
+
+function getAppContext(){
+  var P=DB.pays;
+  var tCh=P.reduce(function(s,p){return s+(p.ch||0);},0);
+  var tPd=P.reduce(function(s,p){return s+(p.paid||0);},0);
+  var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
+  var t=today?today():new Date().toISOString().slice(0,10);
+  var activeCases=DB.cases.filter(function(c){return c.st==='active';});
+  var pendingFU=DB.fus.filter(function(f){return f.st==='pending';});
+  var overdueFU=pendingFU.filter(function(f){return f.due<t;});
+  var topBal=DB.cases.filter(function(c){return c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10);
+  var recentPays=P.sort(function(a,b){return (b.dt||'').localeCompare(a.dt||'');}).slice(0,10);
+
+  return 'TODAY: '+t+'\n'+
+    '=== COLLECTION SUMMARY ===\n'+
+    'Total Charged: '+fc(tCh)+'\nTotal Collected: '+fc(tPd)+'\nOutstanding: '+fc(tCh-tPd)+'\nCollection Rate: '+rate+'%\nGoal: '+DB.kpi.collectionRate+'%\n\n'+
+    '=== CASES ('+DB.cases.length+' total, '+activeCases.length+' active) ===\n'+
+    activeCases.map(function(c){
+      var days=typeof getDaysOverdue==='function'?getDaysOverdue(c):0;
+      return 'Acct#'+c.acct+' | '+c.pat+' | LawOffice: '+c.lo+' | Balance: '+fc(c.bal)+' | Grade: '+(c.gr||'N/A')+' | Status: '+c.st+' | DaysOverdue: '+days+(c.dol?' | DOL: '+c.dol:'');
+    }).join('\n')+'\n\n'+
+    '=== FOLLOW-UPS ('+pendingFU.length+' pending, '+overdueFU.length+' overdue) ===\n'+
+    pendingFU.slice(0,15).map(function(f){return f.pat+' | '+fc(f.bal)+' | Priority: '+f.pri+' | Due: '+f.due+' | Action: '+f.act;}).join('\n')+'\n\n'+
+    '=== TOP OUTSTANDING BALANCES ===\n'+
+    topBal.map(function(c,i){return (i+1)+'. '+c.pat+' ('+c.lo+') — '+fc(c.bal)+' Grade:'+(c.gr||'N/A');}).join('\n')+'\n\n'+
+    '=== RECENT PAYMENTS ===\n'+
+    recentPays.map(function(p){return p.dt+' | '+p.pat+' | Charged: '+fc(p.ch)+' | Paid: '+fc(p.paid)+' | Status: '+p.st;}).join('\n');
+}
+
+function callClaudeAPI(messages, systemPrompt, maxTokens){
+  return fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':S.aiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:maxTokens||1024,
+      system:systemPrompt,
+      messages:messages,
+    })
+  }).then(function(r){return r.json();}).then(function(data){
+    if(data.error) throw new Error(data.error.message||'API error');
+    return (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+  });
+}
+
+function callClaudeWithMCP(messages, systemPrompt, mcpServers, maxTokens){
+  return fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':S.aiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:maxTokens||1024,
+      system:systemPrompt,
+      messages:messages,
+      mcp_servers:mcpServers,
+    })
+  }).then(function(r){return r.json();}).then(function(data){
+    if(data.error) throw new Error(data.error.message||'API error');
+    return (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+  });
+}
+
 function sendAI(){
   var input=document.getElementById('ai-input');
   var q=input.value.trim();if(!q)return;
   addMsg(q,'u');input.value='';
   document.getElementById('ai-quick').style.display='none';
-  var P=DB.pays,tCh=P.reduce(function(s,p){return s+(p.ch||0);},0),tPd=P.reduce(function(s,p){return s+(p.paid||0);},0);
-  var rate=tCh>0?(tPd/tCh*100):0;
-  var ov=DB.fus.filter(function(f){return f.st==='pending'&&f.due<today();}).length;
-  var ql=q.toLowerCase();
-  var res;
-  if(ql.indexOf('collection')>=0||ql.indexOf('analyz')>=0||ql.indexOf('performance')>=0){
-    var top=DB.cases.filter(function(c){return c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,3);
-    res='<strong>📊 Collection Performance</strong><br><br>• Total charged: <strong>'+fc(tCh)+'</strong><br>• Collected: <strong>'+fc(tPd)+'</strong><br>• Rate: <strong>'+rate.toFixed(1)+'%</strong> '+(rate>=DB.kpi.collectionRate?'✅ Above goal':'⚠️ Below '+DB.kpi.collectionRate+'% goal')+'<br>• Overdue follow-ups: <strong>'+ov+'</strong><br><br><strong>Top balances:</strong><br>'+top.map(function(c,i){return (i+1)+'. '+c.pat+' — '+fc(c.bal);}).join('<br>');
-  } else if(ql.indexOf('urgent')>=0||ql.indexOf('priority')>=0){
-    var hp=DB.fus.filter(function(f){return f.st==='pending'&&f.pri==='high';});
-    res='<strong>🔥 High Priority ('+hp.length+')</strong><br><br>'+hp.slice(0,5).map(function(f,i){return (i+1)+'. <strong>'+f.pat+'</strong><br>   Balance: '+fc(f.bal)+' · Due: '+fd(f.due);}).join('<br><br>');
-  } else if(ql.indexOf('follow')>=0||ql.indexOf('message')>=0||ql.indexOf('write')>=0){
-    res='<strong>✉️ Follow-up Email Template</strong><br><br>Subject: Outstanding Balance — Action Required<br><br>Dear [Attorney],<br><br>This is a follow-up regarding your client\'s outstanding medical balance of <strong>$[AMOUNT]</strong> (Account: [ACCT #]).<br><br>Please contact us at your earliest convenience to arrange payment.<br><br>Best regards,<br>TotalMedix Team';
-  } else if(ql.indexOf('billing')>=0||ql.indexOf('code')>=0){
-    res='<strong>💡 Pain Management Billing Codes</strong><br><br>• <strong>99213</strong> — Office visit, moderate complexity<br>• <strong>99214</strong> — Office visit, high complexity<br>• <strong>64483</strong> — Epidural steroid injection<br>• <strong>64490</strong> — Facet joint injection<br>• <strong>97110</strong> — Therapeutic exercise<br>• <strong>72148</strong> — MRI lumbar spine';
-  } else {
-    res='I can help with:<br><br>• <strong>📊 Collection analysis</strong><br>• <strong>🔥 Urgent/priority cases</strong><br>• <strong>✉️ Follow-up messages</strong><br>• <strong>💡 Billing codes</strong><br><br><em>Add your Anthropic API key in Settings for full Claude AI.</em>';
+
+  if(!S.aiKey){
+    addMsg('⚠️ Please add your Anthropic API key in <strong>Settings → Anthropic AI</strong> to enable Claude AI chat.','b');
+    return;
   }
-  setTimeout(function(){addMsg(res,'b');},600);
+
+  // Show typing indicator
+  var typingEl=document.createElement('div');
+  typingEl.className='ai-msg b';typingEl.id='ai-typing';
+  typingEl.innerHTML='<span class="agent-spinner" style="border-color:rgba(124,58,237,.3);border-top-color:var(--purple);width:12px;height:12px;margin-right:6px"></span> Thinking...';
+  document.getElementById('ai-msgs').appendChild(typingEl);
+  document.getElementById('ai-msgs').scrollTop=99999;
+
+  var systemPrompt='You are MedixAI, an expert medical billing collections assistant for TotalMedix Medical Group. '+
+    'You specialize in pain management billing, personal injury/lien-based collections, and law office account management.\n\n'+
+    'Your capabilities:\n'+
+    '- Analyze collection performance, KPIs, and trends\n'+
+    '- Identify high-risk accounts and recommend action plans\n'+
+    '- Draft professional follow-up letters and emails to law offices\n'+
+    '- Advise on CPT/billing codes for pain management\n'+
+    '- Provide strategic recommendations to improve collection rates\n'+
+    '- Assess case grades (A/B/C/D) and prioritize collection efforts\n\n'+
+    'Respond concisely in HTML format (use <strong>, <br>, bullet points). Be data-driven — reference specific cases, amounts, and metrics from the data provided.\n\n'+
+    'CURRENT APP DATA:\n'+getAppContext();
+
+  AI_CHAT_HISTORY.push({role:'user',content:q});
+  // Keep last 10 turns to manage token usage
+  var msgs=AI_CHAT_HISTORY.slice(-20);
+
+  callClaudeAPI(msgs,systemPrompt,1024)
+    .then(function(text){
+      var el=document.getElementById('ai-typing');if(el)el.remove();
+      AI_CHAT_HISTORY.push({role:'assistant',content:text});
+      addMsg(text,'b');
+    })
+    .catch(function(err){
+      var el=document.getElementById('ai-typing');if(el)el.remove();
+      addMsg('❌ <strong>Error:</strong> '+err.message+'<br><em>Check your API key in Settings.</em>','b');
+    });
 }
+
 function aiAnalyzeCase(id){
   var c=DB.cases.find(function(x){return x.id===id;});if(!c)return;
   if(!document.getElementById('ai-panel').classList.contains('open'))document.getElementById('ai-panel').classList.add('open');
-  document.getElementById('ai-input').value='Analyze case: '+c.pat+', balance '+fc(c.bal)+', grade '+(c.gr||'N/A');
+  var pays=DB.pays.filter(function(p){return p.acct===c.acct||p.pat===c.pat;});
+  var fus=DB.fus.filter(function(f){return f.cid===c.id;});
+  var days=typeof getDaysOverdue==='function'?getDaysOverdue(c):0;
+  document.getElementById('ai-input').value=
+    'Analyze this specific case in detail:\n'+
+    'Patient: '+c.pat+' | Acct#: '+c.acct+' | Law Office: '+c.lo+'\n'+
+    'Balance: '+fc(c.bal)+' | Grade: '+(c.gr||'N/A')+' | Status: '+c.st+' | Days Overdue: '+days+'\n'+
+    'Payments: '+pays.length+' (Total Paid: '+fc(pays.reduce(function(s,p){return s+(p.paid||0);},0))+')\n'+
+    'Follow-ups: '+fus.length+' (Pending: '+fus.filter(function(f){return f.st==='pending';}).length+')\n'+
+    'Give me: risk assessment, collection probability %, and recommended next actions.';
   setTimeout(sendAI,200);
 }
 
@@ -2554,7 +2700,6 @@ function bindAll(){
 
   // Settings
   document.getElementById('btn-save-kpi').addEventListener('click',saveKPI);
-  document.getElementById('btn-save-ai').addEventListener('click',function(){var k=document.getElementById('ai-key-input').value.trim();if(k){S.aiKey=k;toast('API key saved','🤖');}else toast('Enter a valid key','⚠️');});
   document.getElementById('btn-exp-pays').addEventListener('click',function(){exportCSV('pays');});
   document.getElementById('btn-exp-cases').addEventListener('click',function(){exportCSV('cases');});
   document.getElementById('btn-exp-fus').addEventListener('click',function(){exportCSV('fus');});
@@ -2624,6 +2769,33 @@ var COMPANY = {
   fax: '(213) 555-0101',
   email: 'billing@totalmedix.com',
 };
+
+var CLINICS = {
+  MRI: {
+    name: 'TotalMedix MRI Center',
+    address: '123 Medical Center Drive, Los Angeles, CA 90001',
+    phone: '(213) 555-0100', fax: '(213) 555-0101',
+    npi: '', ein: '', provider: '', email: 'mri-billing@totalmedix.com', signature: '',
+  },
+  Chiro: {
+    name: 'TotalMedix Chiropractic',
+    address: '123 Medical Center Drive, Los Angeles, CA 90001',
+    phone: '(213) 555-0200', fax: '(213) 555-0201',
+    npi: '', ein: '', provider: '', email: 'chiro-billing@totalmedix.com', signature: '',
+  },
+  Pain: {
+    name: 'TotalMedix Pain Management',
+    address: '123 Medical Center Drive, Los Angeles, CA 90001',
+    phone: '(213) 555-0300', fax: '(213) 555-0301',
+    npi: '', ein: '', provider: '', email: 'pain-billing@totalmedix.com', signature: '',
+  },
+};
+
+function getClinicInfo(c) {
+  var ct = c && c.ct;
+  if (ct && CLINICS[ct]) return CLINICS[ct];
+  return CLINICS.MRI; // default
+}
 
 // Calculate days since DOL (date of loss) for each case
 function getDaysOverdue(c) {
@@ -2755,6 +2927,7 @@ function rNotices() {
 
 // ── LETTER TEMPLATES ────────────────────────────────────────
 function buildLetter(c, stage) {
+  var cl = getClinicInfo(c);
   var _ld=new Date();
   var _lm=['January','February','March','April','May','June','July','August','September','October','November','December'];
   var today2 = _lm[_ld.getMonth()]+' '+_ld.getDate()+', '+_ld.getFullYear();
@@ -2764,7 +2937,7 @@ function buildLetter(c, stage) {
   var tmpl = TEMPLATES[stage] || {};
   var body = tmpl.body || '';
 
-  // Replace variables
+  // Replace variables — use clinic-specific info
   body = body
     .replace(/\[PATIENT_NAME\]/g,  c.pat  || '—')
     .replace(/\[LAW_OFFICE\]/g,    c.lo   || '—')
@@ -2772,11 +2945,11 @@ function buildLetter(c, stage) {
     .replace(/\[BALANCE\]/g,       fc(c.bal))
     .replace(/\[DAYS_OVERDUE\]/g,  daysOv + ' days')
     .replace(/\[DATE\]/g,          today2)
-    .replace(/\[CLINIC_NAME\]/g,   COMPANY.name)
-    .replace(/\[CLINIC_PHONE\]/g,  COMPANY.phone)
-    .replace(/\[CLINIC_FAX\]/g,    COMPANY.fax)
-    .replace(/\[CLINIC_EMAIL\]/g,  COMPANY.email)
-    .replace(/\[CLINIC_ADDRESS\]/g,COMPANY.address);
+    .replace(/\[CLINIC_NAME\]/g,   cl.name)
+    .replace(/\[CLINIC_PHONE\]/g,  cl.phone)
+    .replace(/\[CLINIC_FAX\]/g,    cl.fax)
+    .replace(/\[CLINIC_EMAIL\]/g,  cl.email)
+    .replace(/\[CLINIC_ADDRESS\]/g,cl.address);
 
   var stageTitles = {
     '60':  'SECOND NOTICE — OUTSTANDING BALANCE',
@@ -2789,13 +2962,31 @@ function buildLetter(c, stage) {
   // Format body as HTML (newlines → <br>)
   var bodyHtml = body.replace(/\n/g,'<br>');
 
+  // NPI/Tax ID line for letterhead
+  var npiLine = '';
+  if (cl.npi || cl.ein) {
+    npiLine = '<div style="font-size:11px;color:#777;margin-top:3px">'+
+      (cl.npi ? 'NPI: '+cl.npi : '')+(cl.npi && cl.ein ? ' &nbsp;|&nbsp; ' : '')+(cl.ein ? 'Tax ID: '+cl.ein : '')+
+    '</div>';
+  }
+
+  // Signature block
+  var sigBlock = cl.signature
+    ? '<p>'+(cl.signature.replace(/\n/g,'<br>'))+'</p>'
+    : '<p><strong>Billing Department</strong><br>'+cl.name+'<br>'+cl.phone+'<br>'+cl.email+'</p>';
+  if (cl.provider && !cl.signature) {
+    sigBlock = '<p><strong>'+cl.provider+'</strong><br>'+cl.name+'<br>'+cl.phone+'<br>'+cl.email+'</p>';
+  }
+
   return '<div class="letter-paper" style="font-family:Georgia,serif;font-size:14px;line-height:1.9;color:#111;max-width:680px;margin:0 auto">'+
 
-    // Letterhead
+    // Letterhead — clinic-specific
     '<div style="text-align:center;border-bottom:3px solid #111;padding-bottom:16px;margin-bottom:28px">'+
-      '<div style="font-size:22px;font-weight:bold;letter-spacing:1px">'+COMPANY.name+'</div>'+
-      '<div style="font-size:12px;color:#555;margin-top:6px">'+COMPANY.address+'</div>'+
-      '<div style="font-size:12px;color:#555">Tel: '+COMPANY.phone+' &nbsp;|&nbsp; Fax: '+COMPANY.fax+' &nbsp;|&nbsp; '+COMPANY.email+'</div>'+
+      '<div style="font-size:22px;font-weight:bold;letter-spacing:1px">'+cl.name+'</div>'+
+      '<div style="font-size:12px;color:#555;margin-top:6px">'+cl.address+'</div>'+
+      '<div style="font-size:12px;color:#555">Tel: '+cl.phone+' &nbsp;|&nbsp; Fax: '+cl.fax+' &nbsp;|&nbsp; '+cl.email+'</div>'+
+      npiLine+
+      (cl.provider ? '<div style="font-size:11px;color:#777;margin-top:2px">Provider: '+cl.provider+'</div>' : '')+
     '</div>'+
 
     // Date
@@ -2821,7 +3012,8 @@ function buildLetter(c, stage) {
       '<table style="width:100%;font-size:13px;border-collapse:collapse">'+
         '<tr><td style="padding:4px 0;color:#555;width:50%">Patient Name:</td><td style="font-weight:bold">'+(c.pat||'—')+'</td></tr>'+
         '<tr><td style="padding:4px 0;color:#555">Account Number:</td><td style="font-weight:bold">'+(c.acct||'—')+'</td></tr>'+
-        '<tr><td style="padding:4px 0;color:#555">Provider:</td><td>'+(c.prov||'—')+'</td></tr>'+
+        '<tr><td style="padding:4px 0;color:#555">Provider:</td><td>'+(cl.provider||c.prov||'—')+'</td></tr>'+
+        '<tr><td style="padding:4px 0;color:#555">Clinic Type:</td><td>'+(c.ct==='MRI'?'MRI':c.ct==='Chiro'?'Chiropractic':c.ct==='Pain'?'Pain Management':'—')+'</td></tr>'+
         '<tr><td style="padding:4px 0;color:#555">Days Outstanding:</td><td style="color:'+stageColor+';font-weight:bold">'+daysOv+' days</td></tr>'+
         '<tr style="border-top:2px solid #ccc"><td style="padding:8px 0 0;font-weight:bold;font-size:15px">TOTAL AMOUNT DUE:</td>'+
         '<td style="font-weight:bold;font-size:18px;color:'+stageColor+';padding-top:8px">'+fc(c.bal)+'</td></tr>'+
@@ -2831,10 +3023,10 @@ function buildLetter(c, stage) {
     // Body from template
     '<div style="margin:20px 0;line-height:2">'+bodyHtml+'</div>'+
 
-    // Signature
+    // Signature — clinic-specific
     '<div style="margin-top:36px">'+
       '<p style="margin-bottom:40px">Sincerely,</p>'+
-      '<p><strong>Billing Department</strong><br>'+COMPANY.name+'<br>'+COMPANY.phone+'<br>'+COMPANY.email+'</p>'+
+      sigBlock+
     '</div>'+
 
     // CC
@@ -3030,7 +3222,7 @@ rNotices(); // update badge on load
 </script>
 <script>
 // ════════════════════════════════════════════════════════════
-// AI AGENT MODULE
+// AI AGENT MODULE (Claude API Powered)
 // ════════════════════════════════════════════════════════════
 
 var AGENT = {
@@ -3044,9 +3236,18 @@ function agentLog(msg, type) {
   var logEl = document.getElementById('agent-log');
   if (!logEl) return;
   logEl.innerHTML = AGENT.log.map(function(e) {
-    var ic = e.type==='success'?'✅':e.type==='error'?'❌':e.type==='gmail'?'📧':'▸';
+    var ic = e.type==='success'?'✅':e.type==='error'?'❌':e.type==='gmail'?'📧':e.type==='ai'?'🤖':'▸';
     return '<div class="log-entry"><span class="log-time">'+e.time+'</span><span class="log-'+e.type+'">'+ ic+' '+e.msg+'</span></div>';
   }).join('');
+}
+
+function requireApiKey(taskName){
+  if(!S.aiKey){
+    agentLog(taskName+': API key required — go to Settings → Anthropic AI','error');
+    toast('Add your Anthropic API key in Settings first','⚠️');
+    return false;
+  }
+  return true;
 }
 
 function rAgent() {
@@ -3073,7 +3274,7 @@ function rAgent() {
   // Task 3 preview: risk summary
   var highRisk = DB.cases.filter(function(c){return c.st==='active'&&c.bal>5000&&(!c.gr||c.gr==='C'||c.gr==='D');});
   document.getElementById('task3-preview').innerHTML = highRisk.length
-    ? '<strong>'+highRisk.length+' high-risk cases</strong> identified (balance >$5k, grade C/D or ungraded)<br>Click to run full AI analysis.'
+    ? '<strong>'+highRisk.length+' high-risk cases</strong> identified (balance >$5k, grade C/D or ungraded)<br>Claude AI will analyze each case and predict collection probability.'
     : '<span style="color:var(--green)">✓ No high-risk cases detected</span>';
 
   // Task 4 preview
@@ -3087,85 +3288,100 @@ function rAgent() {
     '• Collection Rate: <strong>'+rate+'%</strong> | Active Cases: <strong>'+DB.cases.filter(function(c){return c.st==='active';}).length+'</strong>';
 }
 
-// ── TASK 1: Send Notices via Gmail ───────────────────────────
+// ── TASK 1: Send Notices via Gmail MCP ─────────────────────────
 function runNoticeEmails() {
   var from = document.getElementById('agent-gmail-from').value.trim();
   if (!from) { alert('Please enter your Gmail address first.'); return; }
+  if (!requireApiKey('Notice Emails')) return;
 
-  var apiKey = S.aiKey;
   var pending = typeof getOverdueCases === 'function' ? getOverdueCases().filter(function(x){return !x.sent;}) : [];
-
   if (!pending.length) { agentLog('No pending notices to send', 'success'); return; }
 
   setTaskRunning('task1', true);
-  agentLog('Starting notice email task — '+pending.length+' pending', 'info');
+  agentLog('Starting AI-powered notice emails — '+pending.length+' pending', 'info');
+  document.getElementById('task1-log').innerHTML = '';
 
   var idx = 0;
   function sendNext() {
     if (idx >= pending.length) {
       setTaskRunning('task1', false);
-      agentLog('All '+pending.length+' notices sent successfully', 'success');
+      agentLog('All '+pending.length+' notices processed successfully', 'success');
       rAgent();
       if (typeof rNotices === 'function') rNotices();
       return;
     }
     var x = pending[idx++];
     var c = x.case;
-    var subject = getStageName(x.stage) + ' — Account #' + (c.acct||'') + ' / ' + (c.pat||'');
-    var body = buildPlainEmail(c, x.stage);
+    var days = typeof getDaysOverdue==='function'?getDaysOverdue(c):0;
 
-    if (apiKey) {
-      // Real Gmail send via Claude API + Gmail MCP
-      sendViaGmailMCP(from, c.lo||'Law Office', c.pat||'Patient', subject, body, x, sendNext);
-    } else {
-      // Demo mode
-      setTimeout(function() {
+    agentLog('Generating '+x.stage+'-day notice for '+c.pat+'...', 'ai');
+
+    // Step 1: Use Claude to generate a professional notice letter
+    var toneMap = {
+      '60': 'Write a COURTEOUS, professional first reminder. Tone: friendly but firm. This is a courtesy reminder.',
+      '90': 'Write an URGENT past-due notice. Tone: serious, formal, emphasizing immediate payment required. Mention potential consequences.',
+      '120': 'Write a FINAL NOTICE / pre-collection letter. Tone: very formal, legal-sounding. Warn that the account WILL be referred to an outside collection agency within 10 business days if not resolved.',
+    };
+
+    var letterPrompt = toneMap[x.stage] || toneMap['60'];
+
+    var cl = getClinicInfo(c);
+    var ctLabel = c.ct==='MRI'?'MRI':c.ct==='Chiro'?'Chiropractic':c.ct==='Pain'?'Pain Management':'Medical';
+
+    callClaudeAPI([{
+      role: 'user',
+      content: letterPrompt + '\n\n'+
+        'Case details:\n'+
+        '- Patient: '+(c.pat||'—')+'\n'+
+        '- Account #: '+(c.acct||'—')+'\n'+
+        '- Law Office: '+(c.lo||'—')+'\n'+
+        '- Outstanding Balance: '+fc(c.bal)+'\n'+
+        '- Days Overdue: '+days+'\n'+
+        '- Grade: '+(c.gr||'N/A')+'\n'+
+        '- Clinic Type: '+ctLabel+'\n\n'+
+        'CLINIC LETTERHEAD INFO (use this in the letter):\n'+
+        'Clinic: '+cl.name+'\n'+
+        'Address: '+cl.address+'\n'+
+        'Phone: '+cl.phone+' | Fax: '+cl.fax+'\n'+
+        'Email: '+cl.email+'\n'+
+        (cl.npi?'NPI: '+cl.npi+'\n':'')+
+        (cl.provider?'Provider: '+cl.provider+'\n':'')+
+        (cl.signature?'Signature: '+cl.signature+'\n':'')+'\n'+
+        'Write ONLY the email body (no subject line). Keep it under 200 words. Professional medical billing tone. Sign with the provider/clinic info above.'
+    }],
+    'You are a medical billing collections specialist. Write professional collection notice letters.',
+    512
+    ).then(function(letterBody){
+      var subject = (x.stage==='120'?'FINAL NOTICE':x.stage==='90'?'URGENT: Past Due Notice':'Payment Reminder') +
+        ' — Account #'+(c.acct||'')+' / '+(c.pat||'');
+
+      // Step 2: Send via Gmail MCP
+      return callClaudeWithMCP([{
+        role: 'user',
+        content: 'Send this email via Gmail:\n'+
+          'From: '+from+'\n'+
+          'To: '+(c.lo||'Law Office')+'\n'+
+          'Subject: '+subject+'\n\n'+
+          letterBody
+      }],
+      'You are an email sending assistant. Use the Gmail MCP tool to send the email exactly as specified. If you cannot access Gmail, describe what would be sent.',
+      [{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail-mcp'}],
+      512
+      ).then(function(result){
         markNoticeSent(x);
-        agentLog('📧 [Demo] Sent to: '+( c.lo||'Law Office')+' — '+getStageName(x.stage), 'gmail');
-        document.getElementById('task1-log').innerHTML += '<div style="color:var(--green)">✓ '+(c.pat||'—')+' ('+x.stage+'d)</div>';
+        agentLog('📧 '+x.stage+'d notice sent: '+c.pat+' → '+(c.lo||'Law Office'), 'gmail');
+        document.getElementById('task1-log').innerHTML +=
+          '<div style="color:var(--green);padding:2px 0">✓ '+c.pat+' — '+x.stage+'d notice ('+fc(c.bal)+')</div>';
         sendNext();
-      }, 400);
-    }
+      });
+    }).catch(function(err){
+      agentLog('Error for '+c.pat+': '+err.message, 'error');
+      document.getElementById('task1-log').innerHTML +=
+        '<div style="color:var(--red);padding:2px 0">✗ '+c.pat+' — '+err.message+'</div>';
+      sendNext();
+    });
   }
   sendNext();
-}
-
-function sendViaGmailMCP(from, toName, ccName, subject, body, noticeObj, callback) {
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': S.aiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: 'You are a medical billing assistant. Use Gmail to send emails on behalf of the user.',
-      messages: [{
-        role: 'user',
-        content: 'Please send an email using Gmail:\nFrom: '+from+'\nTo: '+toName+' (use their business email if known, otherwise note it)\nSubject: '+subject+'\n\nBody:\n'+body+'\n\nIf you cannot find their email, just confirm you would send it and describe what you would do.'
-      }],
-      mcp_servers: [{
-        type: 'url',
-        url: 'https://gmail.mcp.claude.com/mcp',
-        name: 'gmail-mcp',
-      }],
-    })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-    markNoticeSent(noticeObj);
-    agentLog('📧 Gmail sent: '+toName+' — '+subject.slice(0,50), 'gmail');
-    document.getElementById('task1-log').innerHTML += '<div style="color:var(--green)">✓ Sent to '+toName+'</div>';
-    callback();
-  })
-  .catch(function(err) {
-    agentLog('Error sending to '+toName+': '+err.message, 'error');
-    callback();
-  });
 }
 
 function markNoticeSent(x) {
@@ -3180,214 +3396,280 @@ function markNoticeSent(x) {
   if (!DB.acts[x.case.id]) DB.acts[x.case.id] = [];
   DB.acts[x.case.id].unshift({
     id: DB.nid.act++, type: 'email',
-    text: (typeof getStageName==='function'?getStageName(x.stage):'Notice')+' sent via AI Agent',
+    text: (typeof getStageName==='function'?getStageName(x.stage):'Notice')+' sent via AI Agent (Claude-generated)',
     date: new Date().toISOString().slice(0,10),
     by: 'AI Agent',
   });
 }
 
-function buildPlainEmail(c, stage) {
-  var lines = {
-    '60': 'This is a courtesy reminder that Account #'+(c.acct||'—')+' for patient '+(c.pat||'—')+' has an outstanding balance of '+fc(c.bal)+'. Please arrange payment at your earliest convenience.',
-    '90': 'URGENT: Account #'+(c.acct||'—')+' for patient '+(c.pat||'—')+' is now 90+ days past due with a balance of '+fc(c.bal)+'. Immediate payment is required to avoid further collection action.',
-    '120': 'FINAL NOTICE: Account #'+(c.acct||'—')+' for patient '+(c.pat||'—')+' with a balance of '+fc(c.bal)+' has been flagged for collection. Payment must be received within 10 business days or this account will be referred to an outside collection agency.',
-  };
-  return 'Dear '+(c.lo||'Counsel')+',\n\n'+lines[stage]+'\n\nPlease contact our billing department at '+COMPANY.phone+' or '+COMPANY.email+' to resolve this matter.\n\nSincerely,\nBilling Department\n'+COMPANY.name;
-}
-
-// ── TASK 2: Auto Follow-ups ───────────────────────────────────
+// ── TASK 2: AI-Powered Follow-up Scheduler ──────────────────────
 function runAutoFollowups() {
+  if (!requireApiKey('Follow-ups')) return;
   setTaskRunning('task2', true);
-  agentLog('Starting auto follow-up generation...', 'info');
+  agentLog('AI analyzing cases for follow-up scheduling...', 'info');
 
   var t = today ? today() : new Date().toISOString().slice(0,10);
-  var added = 0;
-  var scheduled = 0;
-
-  DB.cases.filter(function(c){ return c.st==='active' && c.bal>0; }).forEach(function(c) {
-    var existing = DB.fus.find(function(f){ return f.cid===c.id && f.st==='pending'; });
-    if (!existing) {
-      // Create follow-up
-      var pri = c.bal>=10000?'high':c.bal>=3000?'medium':'low';
-      DB.fus.push({
-        id: DB.nid.fu++, cid: c.id, acct: c.acct, pat: c.pat,
-        lo: c.lo, gr: c.gr, bal: c.bal, act: 'call',
-        subj: 'Outstanding balance: '+fc(c.bal),
-        pri: pri, st: 'pending', due: t, notes: 'Auto-created by AI Agent',
-      });
-      added++;
-      agentLog('Created follow-up: '+c.pat+' ('+fc(c.bal)+')', 'success');
-    } else {
-      scheduled++;
-    }
+  var casesNeedingFU = DB.cases.filter(function(c){
+    return c.st==='active' && c.bal>0 && !DB.fus.find(function(f){return f.cid===c.id&&f.st==='pending';});
   });
 
-  setTimeout(function() {
+  if(!casesNeedingFU.length){
     setTaskRunning('task2', false);
-    agentLog('Follow-up task complete: '+added+' created, '+scheduled+' already scheduled', 'success');
-    document.getElementById('task2-log').innerHTML =
-      '<span style="color:var(--green)">✓ Created '+added+' follow-ups, '+scheduled+' already exist</span>';
-    updFUBadge();
-    rAgent();
-  }, 800);
-}
-
-// ── TASK 3: Collection Risk Analysis ────────────────────────
-function runRiskAnalysis() {
-  setTaskRunning('task3', true);
-  agentLog('Running collection risk analysis...', 'info');
-
-  if (!S.aiKey) {
-    // Demo analysis
-    setTimeout(function() {
-      var highBal = DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
-        .sort(function(a,b){return b.bal-a.bal;}).slice(0,5);
-      var analysis = '<strong>🤖 AI Risk Analysis (Demo)</strong><br><br>'+
-        '<strong>High Priority Cases:</strong><br>'+
-        highBal.map(function(c,i){
-          var risk = c.bal>10000?'🔴 HIGH':c.bal>3000?'🟡 MEDIUM':'🟢 LOW';
-          return (i+1)+'. <strong>'+c.pat+'</strong> — '+fc(c.bal)+' '+risk;
-        }).join('<br>')+
-        '<br><br><strong>Recommendation:</strong> Focus on the top 3 high-balance cases. Consider escalating to collection for accounts over 120 days.'+
-        '<br><br><em>Add API key in Settings for full Claude AI analysis.</em>';
-      document.getElementById('task3-preview').innerHTML = analysis;
-      setTaskRunning('task3', false);
-      agentLog('Risk analysis complete (demo mode)', 'success');
-    }, 1200);
+    agentLog('All active cases already have pending follow-ups', 'success');
+    document.getElementById('task2-log').innerHTML = '<span style="color:var(--green)">✓ No new follow-ups needed</span>';
     return;
   }
 
-  // Real Claude AI analysis
-  var context = DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
-    .map(function(c){return c.pat+': $'+c.bal+' (grade:'+(c.gr||'N/A')+', dol:'+( c.dol||'unknown')+')'})
-    .join('\n');
+  var caseData = casesNeedingFU.map(function(c){
+    var days = typeof getDaysOverdue==='function'?getDaysOverdue(c):0;
+    return c.pat+'|Acct#'+c.acct+'|'+c.lo+'|Balance:'+fc(c.bal)+'|Grade:'+(c.gr||'N/A')+'|DaysOverdue:'+days;
+  }).join('\n');
 
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': S.aiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 600,
-      system: 'You are a medical billing collection expert. Analyze cases and provide concise risk assessment with specific actionable recommendations. Use bullet points. Be direct.',
-      messages: [{role:'user',content:'Analyze these active cases for collection risk and prioritize:\n\n'+context+'\n\nProvide: 1) Top 3 highest risk cases, 2) Recommended immediate actions, 3) Overall collection health score (1-10).'}],
-    })
-  })
-  .then(function(r){return r.json();})
-  .then(function(data){
-    var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-    document.getElementById('task3-preview').innerHTML = '<strong>🤖 AI Risk Analysis</strong><br><br>'+text.replace(/\n/g,'<br>');
-    setTaskRunning('task3', false);
-    agentLog('Risk analysis complete via Claude AI', 'success');
-  })
-  .catch(function(err){
-    setTaskRunning('task3', false);
-    agentLog('Analysis error: '+err.message, 'error');
+  callClaudeAPI([{
+    role:'user',
+    content:'Analyze these cases that need follow-ups and for EACH case provide:\n'+
+      '1. Priority level (high/medium/low)\n'+
+      '2. Recommended action (call/email/letter/escalate)\n'+
+      '3. Brief reason (10 words max)\n\n'+
+      'Cases:\n'+caseData+'\n\n'+
+      'Respond in this EXACT format, one line per case:\n'+
+      'PATIENT_NAME|priority|action|reason\n'+
+      'Example: John Smith|high|call|Large balance overdue 90+ days'
+  }],
+  'You are a medical billing collections expert. Prioritize follow-ups based on balance size, grade, days overdue, and collection probability. Be concise.',
+  800
+  ).then(function(text){
+    var lines = text.trim().split('\n').filter(function(l){return l.indexOf('|')>0;});
+    var added = 0;
+
+    casesNeedingFU.forEach(function(c){
+      // Find AI recommendation for this case
+      var match = lines.find(function(l){return l.toLowerCase().indexOf(c.pat.toLowerCase().split(' ')[0].toLowerCase())>=0;});
+      var pri = 'medium', act = 'call', reason = 'AI-scheduled follow-up';
+
+      if(match){
+        var parts = match.split('|');
+        if(parts[1]) pri = parts[1].trim().toLowerCase();
+        if(['high','medium','low'].indexOf(pri)<0) pri='medium';
+        if(parts[2]) act = parts[2].trim().toLowerCase();
+        if(['call','email','letter','escalate'].indexOf(act)<0) act='call';
+        if(parts[3]) reason = parts[3].trim();
+      }
+
+      DB.fus.push({
+        id: DB.nid.fu++, cid: c.id, acct: c.acct, pat: c.pat,
+        lo: c.lo, gr: c.gr, bal: c.bal, act: act,
+        subj: 'Outstanding balance: '+fc(c.bal),
+        pri: pri, st: 'pending', due: t, notes: 'AI Agent: '+reason,
+      });
+      added++;
+      agentLog('Follow-up created: '+c.pat+' ['+pri+'/'+act+'] — '+reason, 'success');
+    });
+
+    setTaskRunning('task2', false);
+    agentLog('Follow-up task complete: '+added+' created with AI-prioritized actions', 'success');
+    document.getElementById('task2-log').innerHTML =
+      '<span style="color:var(--green)">✓ Created '+added+' AI-prioritized follow-ups</span>';
+    updFUBadge();
+    rAgent();
+  }).catch(function(err){
+    setTaskRunning('task2', false);
+    agentLog('Follow-up error: '+err.message, 'error');
   });
 }
 
-// ── TASK 4: Weekly Report ─────────────────────────────────────
+// ── TASK 3: Collection Risk Analysis (Full Claude AI) ─────────
+function runRiskAnalysis() {
+  if (!requireApiKey('Risk Analysis')) return;
+  setTaskRunning('task3', true);
+  agentLog('Running comprehensive AI risk analysis...', 'ai');
+
+  var activeCases = DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;});
+  var P = DB.pays;
+  var tCh = P.reduce(function(s,p){return s+(p.ch||0);},0);
+  var tPd = P.reduce(function(s,p){return s+(p.paid||0);},0);
+  var rate = tCh>0?(tPd/tCh*100).toFixed(1):'0';
+
+  var caseDetails = activeCases.map(function(c){
+    var days = typeof getDaysOverdue==='function'?getDaysOverdue(c):0;
+    var casePays = P.filter(function(p){return p.acct===c.acct||p.pat===c.pat;});
+    var totalPaid = casePays.reduce(function(s,p){return s+(p.paid||0);},0);
+    var totalCharged = casePays.reduce(function(s,p){return s+(p.ch||0);},0);
+    return c.pat+'|Acct#'+c.acct+'|LawOffice:'+c.lo+'|Balance:$'+c.bal+'|Grade:'+(c.gr||'N/A')+
+      '|DaysOverdue:'+days+'|TotalCharged:$'+totalCharged+'|TotalPaid:$'+totalPaid+
+      '|PaymentCount:'+casePays.length+(c.dol?'|DOL:'+c.dol:'');
+  }).join('\n');
+
+  callClaudeAPI([{
+    role:'user',
+    content:'You are analyzing '+activeCases.length+' active medical billing collection cases for TotalMedix.\n\n'+
+      'PORTFOLIO OVERVIEW:\n'+
+      '- Total Charged: '+fc(tCh)+'\n- Total Collected: '+fc(tPd)+'\n- Collection Rate: '+rate+'%\n- Goal: '+DB.kpi.collectionRate+'%\n\n'+
+      'CASE DATA:\n'+caseDetails+'\n\n'+
+      'Provide a comprehensive analysis in HTML format:\n\n'+
+      '1. <h4>🔴 HIGH RISK CASES</h4> — List cases with collection probability <40%. For each: patient name, balance, estimated collection probability %, key risk factors, and recommended action.\n\n'+
+      '2. <h4>🟡 MEDIUM RISK CASES</h4> — Collection probability 40-70%. Same format.\n\n'+
+      '3. <h4>🟢 LOW RISK CASES</h4> — Collection probability >70%. Same format.\n\n'+
+      '4. <h4>📊 PORTFOLIO HEALTH SCORE</h4> — Overall score 1-10 with explanation.\n\n'+
+      '5. <h4>🎯 ACTION PLAN</h4> — Top 5 specific, prioritized actions to improve collection rate. Be concrete (name specific cases/offices).\n\n'+
+      'Use <strong>, <br>, <ul><li> tags. Be specific with dollar amounts and percentages.'
+  }],
+  'You are a senior medical billing collections analyst with 15+ years experience in pain management and personal injury lien-based billing. '+
+  'Analyze each case considering: balance amount, days overdue, payment history, case grade, law office reputation patterns, and typical collection timelines. '+
+  'Estimate collection probability based on these factors. Be data-driven and specific.',
+  2048
+  ).then(function(text){
+    document.getElementById('task3-preview').innerHTML =
+      '<div style="line-height:1.7;font-size:12px">'+text+'</div>';
+    setTaskRunning('task3', false);
+    agentLog('Risk analysis complete — '+activeCases.length+' cases analyzed by Claude AI', 'success');
+  }).catch(function(err){
+    setTaskRunning('task3', false);
+    agentLog('Risk analysis error: '+err.message, 'error');
+    document.getElementById('task3-preview').innerHTML =
+      '<span style="color:var(--red)">❌ Error: '+err.message+'</span>';
+  });
+}
+
+// ── TASK 4: Weekly Report (Claude AI + Gmail MCP) ────────────────
 function runWeeklyReport() {
   var reportEmail = document.getElementById('agent-report-email').value.trim();
   var from = document.getElementById('agent-gmail-from').value.trim();
   if (!reportEmail) { alert('Please enter the report recipient email.'); return; }
+  if (!requireApiKey('Weekly Report')) return;
 
   setTaskRunning('task4', true);
-  agentLog('Generating weekly report...', 'info');
+  agentLog('Generating AI-powered weekly report...', 'ai');
 
   var P = DB.pays;
   var tCh = P.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd = P.reduce(function(s,p){return s+(p.paid||0);},0);
   var rate = tCh>0?(tPd/tCh*100).toFixed(1):0;
-  var activeCases = DB.cases.filter(function(c){return c.st==='active';}).length;
+  var activeCases = DB.cases.filter(function(c){return c.st==='active';});
   var pendingFU = DB.fus.filter(function(f){return f.st==='pending';}).length;
-  var overdueFU = DB.fus.filter(function(f){return f.st==='pending'&&f.due<(today?today():new Date().toISOString().slice(0,10));}).length;
+  var t = today?today():new Date().toISOString().slice(0,10);
+  var overdueFU = DB.fus.filter(function(f){return f.st==='pending'&&f.due<t;}).length;
+  var topBal = DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
+    .sort(function(a,b){return b.bal-a.bal;}).slice(0,10);
 
-  var reportBody = 'TOTALMEDIX WEEKLY REPORT\n'+
-    new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+
-    '\n\n=== COLLECTION SUMMARY ===\n'+
-    'Total Charged:      '+fc(tCh)+'\n'+
-    'Total Collected:    '+fc(tPd)+'\n'+
-    'Total Outstanding:  '+fc(tCh-tPd)+'\n'+
-    'Collection Rate:    '+rate+'%\n'+
-    '\n=== CASE STATUS ===\n'+
-    'Active Cases:       '+activeCases+'\n'+
-    'Pending Follow-ups: '+pendingFU+'\n'+
-    'Overdue Follow-ups: '+overdueFU+'\n'+
-    '\n=== TOP OUTSTANDING BALANCES ===\n'+
-    DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
-      .sort(function(a,b){return b.bal-a.bal;}).slice(0,5)
-      .map(function(c,i){return (i+1)+'. '+c.pat+' ('+c.lo+') — '+fc(c.bal);})
-      .join('\n')+
-    '\n\nGenerated by TotalMedix AI Agent\n'+COMPANY.email;
+  var rawData = 'TOTALMEDIX WEEKLY PERFORMANCE DATA\n'+
+    'Report Date: '+new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+'\n\n'+
+    'COLLECTION METRICS:\n'+
+    '- Total Charged: '+fc(tCh)+'\n- Total Collected: '+fc(tPd)+'\n- Outstanding: '+fc(tCh-tPd)+'\n'+
+    '- Collection Rate: '+rate+'% (Goal: '+DB.kpi.collectionRate+'%)\n\n'+
+    'CASE STATUS:\n- Total Cases: '+DB.cases.length+'\n- Active: '+activeCases.length+'\n'+
+    '- Pending Follow-ups: '+pendingFU+'\n- Overdue Follow-ups: '+overdueFU+'\n\n'+
+    'TOP OUTSTANDING BALANCES:\n'+
+    topBal.map(function(c,i){
+      return (i+1)+'. '+c.pat+' ('+c.lo+') — '+fc(c.bal)+' [Grade: '+(c.gr||'N/A')+']';
+    }).join('\n')+'\n\n'+
+    'LAW OFFICE BREAKDOWN:\n'+
+    (function(){
+      var offices={};
+      activeCases.forEach(function(c){
+        if(!offices[c.lo]) offices[c.lo]={cases:0,bal:0};
+        offices[c.lo].cases++;offices[c.lo].bal+=c.bal;
+      });
+      return Object.keys(offices).sort(function(a,b){return offices[b].bal-offices[a].bal;})
+        .map(function(o){return '- '+o+': '+offices[o].cases+' cases, '+fc(offices[o].bal)+' outstanding';}).join('\n');
+    })();
 
-  document.getElementById('task4-preview').innerHTML =
-    '<pre style="font-size:11px;white-space:pre-wrap;font-family:monospace">'+reportBody+'</pre>';
+  // Step 1: Claude generates executive summary
+  callClaudeAPI([{
+    role:'user',
+    content:'Based on this weekly data, write a professional executive summary report for management.\n\n'+rawData+'\n\n'+
+      'Format as a professional email-ready report with these sections:\n'+
+      '1. EXECUTIVE SUMMARY (2-3 sentences, key highlights)\n'+
+      '2. KEY METRICS (formatted cleanly)\n'+
+      '3. TOP PRIORITY ACCOUNTS (brief list)\n'+
+      '4. CONCERNS & RISKS (any red flags)\n'+
+      '5. RECOMMENDATIONS (3-5 actionable items for next week)\n\n'+
+      'Keep it concise, professional, and data-driven. Use plain text (no HTML). This will be sent as an email.'
+  }],
+  'You are a medical billing operations manager writing a weekly performance report for executive leadership. Be concise, professional, and highlight actionable insights.',
+  1500
+  ).then(function(reportText){
+    document.getElementById('task4-preview').innerHTML =
+      '<pre style="font-size:11px;white-space:pre-wrap;font-family:monospace;line-height:1.5">'+reportText+'</pre>';
+    agentLog('AI executive summary generated', 'success');
 
-  if (S.aiKey && from) {
-    fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': S.aiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 512,
-        system: 'Send emails via Gmail.',
-        messages: [{role:'user',content:'Send this weekly report email:\nFrom: '+from+'\nTo: '+reportEmail+'\nSubject: TotalMedix Weekly Report — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'\n\n'+reportBody}],
-        mcp_servers: [{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail-mcp'}],
-      })
-    })
-    .then(function(r){return r.json();})
-    .then(function(){
+    // Step 2: Send via Gmail MCP if configured
+    if(from){
+      agentLog('Sending report to '+reportEmail+' via Gmail...', 'info');
+      var subject = 'TotalMedix Weekly Report — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+      callClaudeWithMCP([{
+        role:'user',
+        content:'Send this email via Gmail:\n'+
+          'From: '+from+'\n'+
+          'To: '+reportEmail+'\n'+
+          'Subject: '+subject+'\n\n'+
+          reportText
+      }],
+      'You are an email sending assistant. Use the Gmail MCP tool to send the email exactly as provided. Send it immediately.',
+      [{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail-mcp'}],
+      512
+      ).then(function(){
+        setTaskRunning('task4', false);
+        agentLog('Weekly report emailed to '+reportEmail+' via Gmail', 'gmail');
+        document.getElementById('task4-log').innerHTML =
+          '<span style="color:var(--green)">✓ Report sent to '+reportEmail+'</span>';
+      }).catch(function(err){
+        setTaskRunning('task4', false);
+        agentLog('Gmail send error: '+err.message+' — report is still viewable above', 'error');
+        document.getElementById('task4-log').innerHTML =
+          '<span style="color:var(--amber)">⚠ Report generated but email failed: '+err.message+'</span>';
+      });
+    } else {
       setTaskRunning('task4', false);
-      agentLog('Weekly report sent to '+reportEmail+' via Gmail', 'gmail');
-    })
-    .catch(function(err){
-      setTaskRunning('task4', false);
-      agentLog('Report email error: '+err.message, 'error');
-    });
-  } else {
-    setTimeout(function(){
-      setTaskRunning('task4', false);
-      agentLog('[Demo] Weekly report generated — add API key + Gmail to send', 'success');
-      document.getElementById('task4-log').innerHTML = '<span style="color:var(--green)">✓ Report ready — add API key to send via Gmail</span>';
-    }, 800);
-  }
+      agentLog('Report generated — enter Gmail address to auto-send', 'success');
+      document.getElementById('task4-log').innerHTML =
+        '<span style="color:var(--green)">✓ Report ready — add Gmail to send automatically</span>';
+    }
+  }).catch(function(err){
+    setTaskRunning('task4', false);
+    agentLog('Report generation error: '+err.message, 'error');
+  });
 }
 
 // ── RUN ALL ───────────────────────────────────────────────────
 function runAllTasks() {
-  agentLog('=== Running all pending tasks ===', 'info');
+  if(!requireApiKey('Run All Tasks')) return;
+  agentLog('═══ Running all AI agent tasks ═══', 'info');
+
+  // Run sequentially to avoid API rate limits
   runAutoFollowups();
-  setTimeout(function(){ runRiskAnalysis(); }, 1000);
+  setTimeout(function(){ runRiskAnalysis(); }, 3000);
   setTimeout(function(){
     var pending = typeof getOverdueCases==='function'?getOverdueCases().filter(function(x){return !x.sent;}):[];
     if (pending.length > 0 && document.getElementById('agent-gmail-from').value) {
       runNoticeEmails();
     } else {
-      agentLog('Notice emails skipped — enter Gmail address first', 'info');
+      agentLog('Notice emails skipped — no pending or no Gmail configured', 'info');
     }
-  }, 2000);
+  }, 6000);
+  setTimeout(function(){
+    if(document.getElementById('agent-report-email').value.trim()){
+      runWeeklyReport();
+    } else {
+      agentLog('Weekly report skipped — no recipient email configured', 'info');
+    }
+  }, 10000);
 }
 
 // ── UI HELPERS ────────────────────────────────────────────────
 function setTaskRunning(taskId, running) {
-  var btn = document.getElementById('btn-run-'+taskId.replace('task','').replace('1','notices').replace('2','followups').replace('3','risk').replace('4','report'));
+  var btnMap = {task1:'notices',task2:'followups',task3:'risk',task4:'report'};
+  var labelMap = {
+    task1:'▶ Send Pending Notices via Gmail',
+    task2:'▶ Generate All Follow-ups',
+    task3:'▶ Analyze Collection Risks',
+    task4:'▶ Generate &amp; Email Weekly Report'
+  };
+  var btn = document.getElementById('btn-run-'+btnMap[taskId]);
   if (btn) {
     btn.disabled = running;
-    btn.innerHTML = running ? '<span class="agent-spinner"></span>Running...' :
-      taskId==='task1'?'▶ Send Pending Notices via Gmail':
-      taskId==='task2'?'▶ Generate All Follow-ups':
-      taskId==='task3'?'▶ Analyze Collection Risks':
-      '▶ Generate &amp; Email Weekly Report';
+    btn.innerHTML = running ? '<span class="agent-spinner"></span>Running...' : labelMap[taskId];
   }
 }
 
@@ -3415,7 +3697,6 @@ function bindAgentEvents() {
 }
 
 function goAgent() {
-  // go() wrapper for agent page
   PAGES.forEach(function(p){
     var el = document.getElementById('pg-'+p);
     if (el) el.className = 'pg';
@@ -3479,27 +3760,50 @@ var SCHEDULE = {
 };
 
 // ── Clinic info (mirrors COMPANY) ─────────────────────────────
-function loadClinicFields() {
-  var f = {
-    'clinic-name': COMPANY.name,
-    'clinic-address': COMPANY.address,
-    'clinic-phone': COMPANY.phone,
-    'clinic-fax': COMPANY.fax,
-    'clinic-email': COMPANY.email,
-  };
-  Object.keys(f).forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.value = f[id];
+function switchClinicTab(type, el) {
+  document.querySelectorAll('.clinic-tab').forEach(function(t){
+    t.classList.remove('on');
+    t.style.color='var(--g400)';
+    t.style.borderBottomColor='transparent';
   });
+  el.classList.add('on');
+  el.style.color='var(--accent)';
+  el.style.borderBottomColor='var(--accent)';
+  document.querySelectorAll('.clinic-fields').forEach(function(f){f.style.display='none';});
+  var fields = document.getElementById('clinic-fields-'+type);
+  if (fields) fields.style.display='block';
+}
+
+function loadClinicFields() {
+  ['MRI','Chiro','Pain'].forEach(function(ct){
+    var cl = CLINICS[ct];
+    var fields = {name:cl.name, address:cl.address, phone:cl.phone, fax:cl.fax,
+      npi:cl.npi, ein:cl.ein, provider:cl.provider, email:cl.email, signature:cl.signature};
+    Object.keys(fields).forEach(function(k){
+      var el = document.getElementById('cl-'+ct+'-'+k);
+      if (el) el.value = fields[k] || '';
+    });
+  });
+  // Activate first tab
+  var firstTab = document.querySelector('.clinic-tab[data-clinic="MRI"]');
+  if (firstTab) switchClinicTab('MRI', firstTab);
 }
 
 function saveClinicInfo() {
-  COMPANY.name    = document.getElementById('clinic-name').value;
-  COMPANY.address = document.getElementById('clinic-address').value;
-  COMPANY.phone   = document.getElementById('clinic-phone').value;
-  COMPANY.fax     = document.getElementById('clinic-fax').value;
-  COMPANY.email   = document.getElementById('clinic-email').value;
-  toast('Clinic info saved', '🏥');
+  ['MRI','Chiro','Pain'].forEach(function(ct){
+    var fields = ['name','address','phone','fax','npi','ein','provider','email','signature'];
+    fields.forEach(function(k){
+      var el = document.getElementById('cl-'+ct+'-'+k);
+      if (el) CLINICS[ct][k] = el.value.trim();
+    });
+  });
+  // Also sync COMPANY with default (MRI) for backward compatibility
+  COMPANY.name    = CLINICS.MRI.name || COMPANY.name;
+  COMPANY.address = CLINICS.MRI.address || COMPANY.address;
+  COMPANY.phone   = CLINICS.MRI.phone || COMPANY.phone;
+  COMPANY.fax     = CLINICS.MRI.fax || COMPANY.fax;
+  COMPANY.email   = CLINICS.MRI.email || COMPANY.email;
+  toast('All clinic info saved', '🏥');
 }
 
 // ── Template editor ───────────────────────────────────────────
@@ -3765,12 +4069,30 @@ function bindSettingsEvents() {
   var btnSaveAI = document.getElementById('btn-save-ai');
   if (btnSaveAI) btnSaveAI.addEventListener('click', function(){
     var k = document.getElementById('ai-key-input').value.trim();
-    if (k) {
-      S.aiKey = k;
-      var statusEl = document.getElementById('ai-key-status');
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ API key saved</span>';
+    if (!k) { toast('Enter a valid API key','⚠️'); return; }
+    var statusEl = document.getElementById('ai-key-status');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--amber)">⏳ Validating key...</span>';
+    // Test the key with a minimal API call
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:10,messages:[{role:'user',content:'Reply with OK'}]})
+    }).then(function(r){return r.json();}).then(function(data){
+      if(data.error){
+        if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">❌ Invalid key: '+data.error.message+'</span>';
+        toast('API key validation failed','❌');
+      } else {
+        S.aiKey=k;
+        if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✅ Key validated & saved — Claude AI is active</span>';
+        toast('API key validated and saved','🤖');
+        AI_CHAT_HISTORY=[];
+      }
+    }).catch(function(err){
+      // Save anyway if network error (might be CORS in dev)
+      S.aiKey=k;
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--amber)">⚠️ Key saved (could not validate: '+err.message+')</span>';
       toast('API key saved','🤖');
-    }
+    });
   });
 
   var btnSaveSupa = document.getElementById('btn-save-supa');
