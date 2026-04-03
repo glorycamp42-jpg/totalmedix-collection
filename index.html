@@ -4722,37 +4722,21 @@ function bindSettingsEvents() {
     var k = document.getElementById('ai-key-input').value.trim();
     if (!k) { toast('Enter a valid API key','⚠️'); return; }
     var statusEl = document.getElementById('ai-key-status');
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--amber)">⏳ Validating key...</span>';
-    // Test the key with a minimal API call
-    fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:10,messages:[{role:'user',content:'Reply with OK'}]})
-    }).then(function(r){return r.json();}).then(function(data){
-      if(data.error){
-        if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">❌ Invalid key: '+data.error.message+'</span>';
-        toast('API key validation failed','❌');
-      } else {
-        S.aiKey=k;
-        // Persist to kpi_settings in Supabase
-        SB.get('kpi_settings','limit=1').then(function(rows){
-          if(rows&&rows.length) return SB.update('kpi_settings',rows[0].id,{ai_api_key:k});
-          return SB.insert('kpi_settings',{ai_api_key:k});
-        }).catch(function(){});
-        if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✅ Key validated & saved — Claude AI is active</span>';
-        toast('API key validated and saved','🤖');
-        AI_CHAT_HISTORY=[];
-      }
-    }).catch(function(err){
-      // Save anyway if network error (might be CORS in dev)
-      S.aiKey=k;
-      SB.get('kpi_settings','limit=1').then(function(rows){
-        if(rows&&rows.length) return SB.update('kpi_settings',rows[0].id,{ai_api_key:k});
-        return SB.insert('kpi_settings',{ai_api_key:k});
-      }).catch(function(){});
-      if(statusEl) statusEl.innerHTML='<span style="color:var(--amber)">⚠️ Key saved (could not validate: '+err.message+')</span>';
-      toast('API key saved','🤖');
-    });
+    // Format check: must start with sk-ant
+    if (k.indexOf('sk-ant') !== 0) {
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">❌ Key must start with sk-ant-</span>';
+      toast('Invalid key format','❌');
+      return;
+    }
+    // Save immediately — no API call validation (CORS/browser issues)
+    S.aiKey=k;
+    SB.get('kpi_settings','limit=1').then(function(rows){
+      if(rows&&rows.length) return SB.update('kpi_settings',rows[0].id,{ai_api_key:k});
+      return SB.insert('kpi_settings',{ai_api_key:k});
+    }).catch(function(){});
+    if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✅ Key saved — Claude AI is active</span>';
+    toast('API key saved','🤖');
+    AI_CHAT_HISTORY=[];
   });
 
   var btnSaveSupa = document.getElementById('btn-save-supa');
