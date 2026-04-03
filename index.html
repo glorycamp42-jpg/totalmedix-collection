@@ -1481,6 +1481,8 @@ function loadFromSupabase() {
         avgDays:        parseInt(dbKPI[0].avg_days_to_collect)||60,
         resolutionRate: parseFloat(dbKPI[0].resolution_rate)||70,
       };
+      // Restore API key
+      if(dbKPI[0].ai_api_key) S.aiKey=dbKPI[0].ai_api_key;
     }
     // Update nid counters
     var maxCase = DB.cases.reduce(function(m,c){return Math.max(m,c.id);},0);
@@ -4652,6 +4654,12 @@ function switchSettingsTab(tab) {
   if (tab==='clinic')    loadClinicFields();
   if (tab==='templates') loadTemplate(document.getElementById('template-select')?.value||'60');
   if (tab==='billing')   rBillingCodes();
+  if (tab==='api'){
+    var aiInput=document.getElementById('ai-key-input');
+    if(aiInput&&S.aiKey) aiInput.value=S.aiKey;
+    var statusEl=document.getElementById('ai-key-status');
+    if(statusEl&&S.aiKey) statusEl.innerHTML='<span style="color:var(--green)">✅ Key loaded from database</span>';
+  }
   if (tab==='schedule')  loadScheduleFields();
   if (tab==='kpi')       rSettings();
 }
@@ -4726,6 +4734,11 @@ function bindSettingsEvents() {
         toast('API key validation failed','❌');
       } else {
         S.aiKey=k;
+        // Persist to kpi_settings in Supabase
+        SB.get('kpi_settings','limit=1').then(function(rows){
+          if(rows&&rows.length) return SB.update('kpi_settings',rows[0].id,{ai_api_key:k});
+          return SB.insert('kpi_settings',{ai_api_key:k});
+        }).catch(function(){});
         if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✅ Key validated & saved — Claude AI is active</span>';
         toast('API key validated and saved','🤖');
         AI_CHAT_HISTORY=[];
@@ -4733,6 +4746,10 @@ function bindSettingsEvents() {
     }).catch(function(err){
       // Save anyway if network error (might be CORS in dev)
       S.aiKey=k;
+      SB.get('kpi_settings','limit=1').then(function(rows){
+        if(rows&&rows.length) return SB.update('kpi_settings',rows[0].id,{ai_api_key:k});
+        return SB.insert('kpi_settings',{ai_api_key:k});
+      }).catch(function(){});
       if(statusEl) statusEl.innerHTML='<span style="color:var(--amber)">⚠️ Key saved (could not validate: '+err.message+')</span>';
       toast('API key saved','🤖');
     });
