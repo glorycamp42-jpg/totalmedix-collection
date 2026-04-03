@@ -2003,7 +2003,7 @@ function bindFUEvents(){
   document.querySelectorAll('[data-edit-fu]').forEach(function(el){el.addEventListener('click',function(){openModal('fu',parseInt(el.dataset.editFu));});});
   document.querySelectorAll('[data-del-fu]').forEach(function(el){el.addEventListener('click',function(){delFU(parseInt(el.dataset.delFu));});});
 }
-function completeFU(id){var f=DB.fus.find(function(x){return x.id===id;});if(f){f.st='completed';}rFU();toast('Marked complete','✅');}
+function completeFU(id){var f=DB.fus.find(function(x){return x.id===id;});if(f){f.st='completed';SB.update('follow_ups',id,{status:'completed'}).catch(function(){});}rFU();toast('Marked complete','✅');}
 function delFU(id){if(!confirm('Delete?'))return;SB.delete('follow_ups',id).catch(function(){});DB.fus=DB.fus.filter(function(f){return f.id!==id;});rFU();toast('Deleted','🗑️');}
 function genFU(){
   var t=today(),added=0;
@@ -2380,7 +2380,7 @@ function rUsers(){
   }).join('');
   document.querySelectorAll('[data-del-user]').forEach(function(el){el.addEventListener('click',function(){delUser(parseInt(el.dataset.delUser));});});
 }
-function delUser(id){if(!confirm('Remove?'))return;DB.users=DB.users.filter(function(u){return u.id!==id;});rUsers();toast('Removed','🗑️');}
+function delUser(id){if(!confirm('Remove?'))return;SB.delete('app_users',id).catch(function(){});DB.users=DB.users.filter(function(u){return u.id!==id;});rUsers();toast('Removed','🗑️');}
 
 // ── SETTINGS ─────────────────────────────────────────────────
 function rSettings(){
@@ -2686,7 +2686,9 @@ function delCase(id){if(!can('delete_case')){toast('Permission denied','⚠️')
 
 function saveFU(){
   var id=S.eid.fu;
-  var o={acct:document.getElementById('ff-acct').value,pat:document.getElementById('ff-pat').value,lo:document.getElementById('ff-law').value,bal:parseFloat(document.getElementById('ff-bal').value)||0,due:document.getElementById('ff-due').value||null,act:document.getElementById('ff-act').value,pri:document.getElementById('ff-pri').value,st:document.getElementById('ff-st').value,subj:document.getElementById('ff-subj').value,notes:document.getElementById('ff-notes').value,cid:null,gr:null};
+  var acctVal=document.getElementById('ff-acct').value;
+  var matchCase=acctVal?DB.cases.find(function(c){return c.acct===acctVal;}):null;
+  var o={acct:acctVal,pat:document.getElementById('ff-pat').value,lo:document.getElementById('ff-law').value,bal:parseFloat(document.getElementById('ff-bal').value)||0,due:document.getElementById('ff-due').value||null,act:document.getElementById('ff-act').value,pri:document.getElementById('ff-pri').value,st:document.getElementById('ff-st').value,subj:document.getElementById('ff-subj').value,notes:document.getElementById('ff-notes').value,cid:matchCase?matchCase.id:(S.curCase||null),gr:matchCase?matchCase.gr:null};
   closeModal('m-fu');
   sbSaveFU(o, id).then(function(r){
     if(id){Object.assign(DB.fus.find(function(f){return f.id===id;}),o);}
@@ -2749,22 +2751,6 @@ function exportCSV(type){
 var IMPORT_STATE = {type:null, rows:[], headers:[]};
 
 function parseCSV(text){
-  var lines=[];var cur='';var inQ=false;
-  for(var i=0;i<text.length;i++){
-    var ch=text[i];
-    if(ch==='"'){
-      if(inQ&&text[i+1]==='"'){cur+='"';i++;}
-      else inQ=!inQ;
-    } else if(ch===','&&!inQ){
-      lines.push===undefined;// handled below
-    } else if((ch==='\n'||(ch==='\r'&&text[i+1]==='\n'))&&!inQ){
-      if(ch==='\r')i++;
-      // end of line — but we need to split by commas too
-    } else {
-      cur+=ch;
-    }
-  }
-  // Better approach: split by lines then parse each
   var rawLines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(function(l){return l.trim();});
   return rawLines.map(function(line){
     var fields=[];var field='';var inQuote=false;
