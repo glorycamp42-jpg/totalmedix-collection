@@ -1330,7 +1330,7 @@ function getSession(){
 var SB = {
   // GET all with optional query string e.g. 'cases?status=eq.active&order=created_at.desc'
   get: function(table, query) {
-    return supaFetch(table + (query ? '?' + query : '') + (query ? '&' : '?') + 'order=id.asc');
+    return supaFetch(table + (query ? '?' + query : '') + (query ? '&' : '?') + 'order=id.desc');
   },
   // INSERT - always assigns explicit id (max+1) to avoid sequence conflicts
   insert: function(table, data) {
@@ -1420,9 +1420,9 @@ function loadFromSupabase(quiet) {
     });
   }
   Promise.all([
-    safeGet('cases', 'order=id.asc'),
-    safeGet('payments', 'order=id.asc'),
-    safeGet('follow_ups', 'order=id.asc'),
+    safeGet('cases', 'order=id.desc'),
+    safeGet('payments', 'order=id.desc'),
+    safeGet('follow_ups', 'order=id.desc'),
     safeGet('activities', 'order=id.asc'),
     safeGet('notices', 'order=id.asc'),
     safeGet('files', 'order=id.asc'),
