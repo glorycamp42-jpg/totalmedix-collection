@@ -1332,9 +1332,20 @@ var SB = {
   get: function(table, query) {
     return supaFetch(table + (query ? '?' + query : '') + (query ? '&' : '?') + 'order=id.asc');
   },
-  // INSERT - returns inserted row
+  // INSERT - returns inserted row (auto-retries on sequence conflict)
   insert: function(table, data) {
-    return supaFetch(table, { method: 'POST', body: data });
+    return supaFetch(table, { method: 'POST', body: data }).catch(function(err) {
+      // Handle sequence out-of-sync: "duplicate key value violates unique constraint"
+      if (err.message && err.message.indexOf('23505') >= 0) {
+        // Get max id, then retry with explicit id
+        return supaFetch(table + '?select=id&order=id.desc&limit=1').then(function(rows) {
+          var nextId = (rows && rows[0] ? rows[0].id : 0) + 1;
+          data.id = nextId;
+          return supaFetch(table, { method: 'POST', body: data });
+        });
+      }
+      throw err;
+    });
   },
   // UPDATE by id
   update: function(table, id, data) {
