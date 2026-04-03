@@ -1412,15 +1412,22 @@ var DB_READY = false;
 // Load all data from Supabase on startup
 function loadFromSupabase() {
   showGlobalLoader(true);
+  // Each table loads independently — one failure won't block others
+  function safeGet(table, query) {
+    return SB.get(table, query).catch(function(err) {
+      console.warn('Failed to load ' + table + ':', err.message);
+      return []; // return empty so other tables still load
+    });
+  }
   Promise.all([
-    SB.get('cases', 'order=id.asc'),
-    SB.get('payments', 'order=id.asc'),
-    SB.get('follow_ups', 'order=id.asc'),
-    SB.get('activities', 'order=id.asc'),
-    SB.get('notices', 'order=id.asc'),
-    SB.get('files', 'order=id.asc'),
-    SB.get('app_users', 'order=id.asc'),
-    SB.get('kpi_settings', 'limit=1'),
+    safeGet('cases', 'order=id.asc'),
+    safeGet('payments', 'order=id.asc'),
+    safeGet('follow_ups', 'order=id.asc'),
+    safeGet('activities', 'order=id.asc'),
+    safeGet('notices', 'order=id.asc'),
+    safeGet('files', 'order=id.asc'),
+    safeGet('app_users', 'order=id.asc'),
+    safeGet('kpi_settings', 'limit=1'),
   ]).then(function(results) {
     var dbCases    = results[0] || [];
     var dbPays     = results[1] || [];
@@ -1431,6 +1438,7 @@ function loadFromSupabase() {
     var dbUsers    = results[6] || [];
     var dbKPI      = results[7] || [];
 
+    console.log('[Supabase] Loaded: cases='+dbCases.length+', payments='+dbPays.length+', follow_ups='+dbFUs.length+', activities='+dbActs.length+', users='+dbUsers.length);
     // Map Supabase rows → app format (keep demo data if Supabase table is empty)
     if (dbCases.length) {
       DB.cases = dbCases.map(function(r) {
