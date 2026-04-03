@@ -1499,11 +1499,23 @@ function loadFromSupabase() {
     DB_READY = true;
     showGlobalLoader(false);
     toast('Connected to Supabase ✓', '🟢');
+    // Re-render whichever page is currently active
     rDash();
     updFUBadge();
-    // Re-render Users page if currently active
-    var pgUsers = document.getElementById('pg-users');
-    if (pgUsers && pgUsers.classList.contains('on')) rUsers();
+    var activePages = [
+      {id:'pg-payments', fn:function(){rPay();}},
+      {id:'pg-cases', fn:function(){rCase();}},
+      {id:'pg-followups', fn:function(){rFU();}},
+      {id:'pg-patients', fn:function(){rPatients();}},
+      {id:'pg-reports', fn:function(){rReport('all');}},
+      {id:'pg-notices', fn:function(){if(typeof rNotices==='function')rNotices();}},
+      {id:'pg-users', fn:function(){rUsers();}},
+      {id:'pg-files', fn:function(){rFile();}},
+    ];
+    activePages.forEach(function(p){
+      var el=document.getElementById(p.id);
+      if(el&&el.classList.contains('on')) p.fn();
+    });
     var pgSettings = document.getElementById('pg-settings');
     if (pgSettings && pgSettings.classList.contains('on')) rSettingsUsers();
   }).catch(function(err) {
@@ -2512,7 +2524,16 @@ function savePay(){
     var payId=o.id||id;
     // Auto-upsert case by account_num
     upsertCaseFromPay(o);
-    uploadCheckImages(payId).then(function(){toast(id?'Payment updated':'Payment saved','✅');rPay();}).catch(function(){toast(id?'Payment updated (image upload failed)':'Payment saved (image upload failed)','⚠️');rPay();});
+    uploadCheckImages(payId).then(function(){
+      toast(id?'Payment updated':'Payment saved','✅');
+      rPay();
+      // Full reload from Supabase to ensure all pages in sync
+      setTimeout(function(){loadFromSupabase();},500);
+    }).catch(function(){
+      toast(id?'Payment updated (image upload failed)':'Payment saved (image upload failed)','⚠️');
+      rPay();
+      setTimeout(function(){loadFromSupabase();},500);
+    });
   }).catch(function(e){
     if(id){Object.assign(DB.pays.find(function(p){return p.id===id;}),o);}
     else{o.id=DB.nid.pay++;DB.pays.unshift(o);}
