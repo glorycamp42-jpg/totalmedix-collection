@@ -1409,9 +1409,9 @@ var STORAGE = {
 
 var DB_READY = false;
 
-// Load all data from Supabase on startup
-function loadFromSupabase() {
-  showGlobalLoader(true);
+// Load all data from Supabase
+function loadFromSupabase(quiet) {
+  if(!quiet) showGlobalLoader(true);
   // Each table loads independently — one failure won't block others
   function safeGet(table, query) {
     return SB.get(table, query).catch(function(err) {
@@ -1505,8 +1505,8 @@ function loadFromSupabase() {
     DB.nid.fu   = maxFU + 1;
 
     DB_READY = true;
-    showGlobalLoader(false);
-    toast('Connected to Supabase ✓', '🟢');
+    if(!quiet) showGlobalLoader(false);
+    if(!quiet) toast('Connected to Supabase ✓', '🟢');
     // Re-render whichever page is currently active
     rDash();
     updFUBadge();
@@ -1528,8 +1528,8 @@ function loadFromSupabase() {
     if (pgSettings && pgSettings.classList.contains('on')) rSettingsUsers();
   }).catch(function(err) {
     DB_READY = false;
-    showGlobalLoader(false);
-    toast('Using demo data (DB offline)', '⚠️');
+    if(!quiet) showGlobalLoader(false);
+    if(!quiet) toast('Using demo data (DB offline)', '⚠️');
     console.error('Supabase load error:', err);
     // Fall back to demo data - render everything
     rDash();
@@ -2534,13 +2534,10 @@ function savePay(){
     upsertCaseFromPay(o);
     uploadCheckImages(payId).then(function(){
       toast(id?'Payment updated':'Payment saved','✅');
-      rPay();
-      // Full reload from Supabase to ensure all pages in sync
-      setTimeout(function(){loadFromSupabase();},500);
+      rPay();rDash();
     }).catch(function(){
       toast(id?'Payment updated (image upload failed)':'Payment saved (image upload failed)','⚠️');
-      rPay();
-      setTimeout(function(){loadFromSupabase();},500);
+      rPay();rDash();
     });
   }).catch(function(e){
     if(id){Object.assign(DB.pays.find(function(p){return p.id===id;}),o);}
