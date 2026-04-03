@@ -1420,13 +1420,13 @@ function loadFromSupabase(quiet) {
     });
   }
   Promise.all([
-    safeGet('cases', 'order=id.desc'),
-    safeGet('payments', 'order=id.desc'),
-    safeGet('follow_ups', 'order=id.desc'),
-    safeGet('activities', 'order=id.asc'),
-    safeGet('notices', 'order=id.asc'),
-    safeGet('files', 'order=id.asc'),
-    safeGet('app_users', 'order=id.asc'),
+    safeGet('cases'),
+    safeGet('payments'),
+    safeGet('follow_ups'),
+    safeGet('activities'),
+    safeGet('notices'),
+    safeGet('files'),
+    safeGet('app_users'),
     safeGet('kpi_settings', 'limit=1'),
   ]).then(function(results) {
     var dbCases    = results[0] || [];
@@ -1802,7 +1802,8 @@ function rPay(){
   document.getElementById('pay-rc').textContent=data.length+' records';
   document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
     var hasChk=p.chkFrontPath||p.chkBackPath;
-    return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td><span class="mn">'+(p.acct||'—')+'</span></td><td>'+(p.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+(hasChk?' <span title="Check images attached" style="cursor:pointer" data-view-chk="'+p.id+'">📸</span>':'')+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap">'+(hasChk?'<button class="ib" title="View check" data-view-chk="'+p.id+'">📸</button>':'')+''+(can('edit_pay')?'<button class="ib" data-edit-pay="'+p.id+'">✏️</button>':'')+(can('delete_pay')?'<button class="ib del" data-del-pay="'+p.id+'">🗑️</button>':'')+'</td></tr>';
+    var caseLink=p.acct?DB.cases.find(function(c){return c.acct===p.acct;}):null;
+    return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td>'+(caseLink?'<a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-pay-case="'+caseLink.id+'">'+(p.acct||'—')+' ↗</a>':'<span class="mn">'+(p.acct||'—')+'</span>')+'</td><td>'+(p.pat?'<a style="color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none" data-pay-pat="'+encodeURIComponent(p.pat)+'">'+p.pat+'</a>':'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+(hasChk?' <span title="Check images attached" style="cursor:pointer" data-view-chk="'+p.id+'">📸</span>':'')+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap">'+(hasChk?'<button class="ib" title="View check" data-view-chk="'+p.id+'">📸</button>':'')+''+(can('edit_pay')?'<button class="ib" data-edit-pay="'+p.id+'">✏️</button>':'')+(can('delete_pay')?'<button class="ib del" data-del-pay="'+p.id+'">🗑️</button>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="10"><div class="empty"><div class="ei">📭</div><div class="et">No payments found</div></div></td></tr>';
 }
 
@@ -3349,7 +3350,10 @@ function bindAll(){
   // Pay table (delegated)
   document.getElementById('pay-tb').addEventListener('click',function(e){
     var ep=e.target.closest('[data-edit-pay]');var dp=e.target.closest('[data-del-pay]');var vc=e.target.closest('[data-view-chk]');
-    if(vc)viewCheckImages(parseInt(vc.dataset.viewChk));
+    var pc=e.target.closest('[data-pay-case]');var pp=e.target.closest('[data-pay-pat]');
+    if(pc)openCD(parseInt(pc.dataset.payCase));
+    else if(pp)openPatProfile(decodeURIComponent(pp.dataset.payPat));
+    else if(vc)viewCheckImages(parseInt(vc.dataset.viewChk));
     else if(ep)openModal('pay',parseInt(ep.dataset.editPay));
     else if(dp)delPay(parseInt(dp.dataset.delPay));
   });
