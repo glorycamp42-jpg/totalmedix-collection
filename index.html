@@ -2550,70 +2550,72 @@ function savePay(){
   });
 }
 
-function upsertCaseFromPay(pay){
-  if(!pay.acct) return;
-  // Calculate total charged and paid for this account across all payments
-  var acctPays=DB.pays.filter(function(p){return p.acct===pay.acct;});
+// Recalculate case billed/balance from all payments for an account
+function recalcCaseTotals(acct){
+  if(!acct) return;
+  var acctPays=DB.pays.filter(function(p){return p.acct===acct;});
   var totalCharged=acctPays.reduce(function(s,p){return s+(p.ch||0);},0);
   var totalPaid=acctPays.reduce(function(s,p){return s+(p.paid||0);},0);
   var balance=totalCharged-totalPaid;if(balance<0)balance=0;
 
-  var caseRow={
-    law_office:pay.lo||null,account_num:pay.acct,patient_name:pay.pat||null,
-    provider:pay.prov||null,date_of_loss:pay.dol||null,clinic_type:pay.ct||null,
-    billed:totalCharged,balance:balance,status:'active',
-  };
+  // Update local
+  var local=DB.cases.find(function(c){return c.acct===acct;});
+  if(local){local.bi=totalCharged;local.bal=balance;}
 
-  // Check if case exists in Supabase
-  supaFetch('cases?account_num=eq.'+encodeURIComponent(pay.acct)+'&limit=1').then(function(rows){
+  // Update Supabase
+  supaFetch('cases?account_num=eq.'+encodeURIComponent(acct)+'&limit=1').then(function(rows){
     if(rows&&rows.length){
-      // Update existing — keep grade/notes/status if already set
-      var existing=rows[0];
-      var update={billed:totalCharged,balance:balance};
-      if(pay.lo) update.law_office=pay.lo;
-      if(pay.pat) update.patient_name=pay.pat;
-      if(pay.prov) update.provider=pay.prov;
-      if(pay.dol) update.date_of_loss=pay.dol;
-      if(pay.ct) update.clinic_type=pay.ct;
-      SB.update('cases',existing.id,update).catch(function(){});
-      // Update local DB.cases too
-      var local=DB.cases.find(function(c){return c.acct===pay.acct;});
-      if(local){
-        local.bi=totalCharged;local.bal=balance;
-        if(pay.lo)local.lo=pay.lo;if(pay.pat)local.pat=pay.pat;
-        if(pay.prov)local.prov=pay.prov;if(pay.dol)local.dol=pay.dol;
-        if(pay.ct)local.ct=pay.ct;
+      SB.update('cases',rows[0].id,{billed:totalCharged,balance:balance}).catch(function(){});
+    }
+  }).catch(function(){});
+
+  return {charged:totalCharged,paid:totalPaid,balance:balance};
+}
+
+function upsertCaseFromPay(pay){
+  if(!pay.acct) return;
+  var totals=recalcCaseTotals(pay.acct);
+  var totalCharged=totals.charged,balance=totals.balance;
+
+  // Check if case exists locally — if not, create in Supabase
+  var localCase=DB.cases.find(function(c){return c.acct===pay.acct;});
+  if(localCase){
+    // Already updated by recalcCaseTotals; just update metadata
+    if(pay.lo)localCase.lo=pay.lo;if(pay.pat)localCase.pat=pay.pat;
+    if(pay.prov)localCase.prov=pay.prov;if(pay.dol)localCase.dol=pay.dol;
+    if(pay.ct)localCase.ct=pay.ct;
+    supaFetch('cases?account_num=eq.'+encodeURIComponent(pay.acct)+'&limit=1').then(function(rows){
+      if(rows&&rows.length){
+        var update={billed:totalCharged,balance:balance};
+        if(pay.lo)update.law_office=pay.lo;if(pay.pat)update.patient_name=pay.pat;
+        if(pay.prov)update.provider=pay.prov;if(pay.dol)update.date_of_loss=pay.dol;
+        if(pay.ct)update.clinic_type=pay.ct;
+        SB.update('cases',rows[0].id,update).catch(function(){});
       }
-      // Auto-create follow-up if balance > 0 and none pending for this case
-      if(balance>0) autoCreateFollowUp(existing.id, pay, balance);
-    } else {
-      // Insert new case
-      SB.insert('cases',caseRow).then(function(r){
-        var cid=r&&r[0]?r[0].id:DB.nid.case++;
-        var newCase={id:cid,lo:pay.lo,acct:pay.acct,pat:pay.pat,
-          prov:pay.prov,dol:pay.dol,ccn:null,st:'active',ct:pay.ct,bi:totalCharged,bal:balance,
-          gr:null,notes:''};
-        DB.cases.unshift(newCase);
-        // Auto-create follow-up for new case
-        if(balance>0) autoCreateFollowUp(cid, pay, balance);
-      }).catch(function(){
-        var cid=DB.nid.case++;
-        DB.cases.unshift({id:cid,lo:pay.lo,acct:pay.acct,pat:pay.pat,
-          prov:pay.prov,dol:pay.dol,ccn:null,st:'active',ct:pay.ct,bi:totalCharged,bal:balance,
-          gr:null,notes:''});
-        if(balance>0) autoCreateFollowUp(cid, pay, balance);
-      });
-    }
-  }).catch(function(){
-    // Offline fallback — update local only
-    var local=DB.cases.find(function(c){return c.acct===pay.acct;});
-    if(local){local.bi=totalCharged;local.bal=balance;}
-    else{
-      var cid=DB.nid.case++;
-      DB.cases.unshift({id:cid,lo:pay.lo,acct:pay.acct,pat:pay.pat,prov:pay.prov,dol:pay.dol,ccn:null,st:'active',ct:pay.ct,bi:totalCharged,bal:balance,gr:null,notes:''});
+      if(balance>0) autoCreateFollowUp(localCase.id, pay, balance);
+    }).catch(function(){});
+  } else {
+    // New case
+    var caseRow={
+      law_office:pay.lo||null,account_num:pay.acct,patient_name:pay.pat||null,
+      provider:pay.prov||null,date_of_loss:pay.dol||null,clinic_type:pay.ct||null,
+      billed:totalCharged,balance:balance,status:'active',
+    };
+    SB.insert('cases',caseRow).then(function(r){
+      var cid=r&&r[0]?r[0].id:DB.nid.case++;
+      var newCase={id:cid,lo:pay.lo,acct:pay.acct,pat:pay.pat,
+        prov:pay.prov,dol:pay.dol,ccn:null,st:'active',ct:pay.ct,bi:totalCharged,bal:balance,
+        gr:null,notes:''};
+      DB.cases.unshift(newCase);
       if(balance>0) autoCreateFollowUp(cid, pay, balance);
-    }
-  });
+    }).catch(function(){
+      var cid=DB.nid.case++;
+      DB.cases.unshift({id:cid,lo:pay.lo,acct:pay.acct,pat:pay.pat,
+        prov:pay.prov,dol:pay.dol,ccn:null,st:'active',ct:pay.ct,bi:totalCharged,bal:balance,
+        gr:null,notes:''});
+      if(balance>0) autoCreateFollowUp(cid, pay, balance);
+    });
+  }
 }
 
 function autoCreateFollowUp(caseId, pay, balance){
@@ -2644,7 +2646,7 @@ function autoCreateFollowUp(caseId, pay, balance){
     updFUBadge();
   });
 }
-function delPay(id){if(!can('delete_pay')){toast('Permission denied','⚠️');return;}if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');}
+function delPay(id){if(!can('delete_pay')){toast('Permission denied','⚠️');return;}if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});var acct=p?p.acct:null;if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});if(acct)recalcCaseTotals(acct);rPay();toast('Deleted','🗑️');}
 
 function viewCheckImages(payId){
   var p=DB.pays.find(function(x){return x.id===payId;});
