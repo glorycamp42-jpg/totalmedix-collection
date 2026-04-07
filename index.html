@@ -2366,7 +2366,7 @@ function bindAll(){
     document.getElementById('sb-urole').className='sb-urole role-'+S.role;
     document.getElementById('sb-av').textContent=ini(name);
     // Show/hide nav items based on role
-    var allNavIds=['ni-users','ni-patients','ni-followups','ni-files','ni-reports','ni-notices','ni-agent'];
+    var allNavIds=['ni-users','ni-patients','ni-followups','ni-files','ni-reports','ni-notices','ni-agent','ni-settings'];
     var filterIds=['dash-ct-filter','pay-ct-filter','case-ct-filter'];
     if(S.role==='admin'){
       allNavIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
