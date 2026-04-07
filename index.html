@@ -152,6 +152,7 @@ select.fl{padding:9px 10px;border:1.5px solid var(--g200);border-radius:10px;fon
 .fd input,.fd select,.fd textarea{padding:9px 11px;border:1.5px solid var(--g200);border-radius:10px;font-size:13px;outline:none;background:#fff;color:var(--g900);font-family:inherit}
 .fd input:focus,.fd select:focus,.fd textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,91,219,.08)}
 .fd textarea{resize:vertical;min-height:70px}
+.fd input:disabled,.fd select:disabled,.fd textarea:disabled{background:#f5f5f5;color:var(--g500);cursor:not-allowed;opacity:.7}
 
 /* OVERDUE */
 tr.ov td{background:#fff9f9}
@@ -307,10 +308,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <p>Medical Collection Management</p>
     </div>
     <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Sign in as</div>
-    <div class="role-row">
-      <button class="rbtn on" id="r-admin">👑 Admin</button>
-      <button class="rbtn" id="r-staff">👤 Staff</button>
-    </div>
+    <div class="lf"><label>Role & Clinic</label><select id="login-role-type" style="padding:10px 13px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;outline:none;font-family:inherit;color:var(--g800);width:100%"><option value="admin">👑 Admin (Full Access)</option><option value="pain-staff">🟡 Pain Clinic Staff</option><option value="chiro-staff">🟢 Chiropractic Clinic Staff</option><option value="mri-staff">🔵 MRI Center Staff</option></select></div>
     <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@totalmedix.com"></div>
     <div class="lf"><label>Password</label><input type="password" id="l-pw" placeholder="••••••••"></div>
     <button class="lbtn" id="login-btn">Sign in</button>
@@ -1395,7 +1393,7 @@ var DB = {
 
 // ── STATE ────────────────────────────────────────────────────
 var S = {
-  role:'admin', user:null,
+  role:'admin', user:null, clinicType:null,
   fuTab:'pending', fuPri:'',
   payQ:'', paySt:'',
   caseQ:'', caseSt:'',
@@ -1471,7 +1469,7 @@ function go(pg){
 // ── DASHBOARD ────────────────────────────────────────────────
 function rDash(){
   var _dn=new Date();var _days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];var _months=['January','February','March','April','May','June','July','August','September','October','November','December'];document.getElementById('d-date').textContent=_days[_dn.getDay()]+', '+_months[_dn.getMonth()]+' '+_dn.getDate()+', '+_dn.getFullYear();
-  var P=S.ct?DB.pays.filter(function(p){return p.ct===S.ct;}):DB.pays;
+  var P=DB.pays.filter(function(p){var cMatch=S.clinicType?p.ct===S.clinicType:!S.ct||p.ct===S.ct;return cMatch;});
   var tCh=P.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd=P.reduce(function(s,p){return s+(p.paid||0);},0);
   var rate=tCh>0?(tPd/tCh*100):0;
@@ -1555,7 +1553,8 @@ function rPay(){
   var data=DB.pays.filter(function(p){
     var q=S.payQ.toLowerCase();
     var m=!q||[p.lo,p.acct,p.pat,p.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});
-    return m&&(!S.paySt||p.cs===S.paySt)&&(!S.ct||p.ct===S.ct);
+    var cMatch=S.clinicType?p.ct===S.clinicType:!S.ct||p.ct===S.ct;
+    return m&&(!S.paySt||p.cs===S.paySt)&&cMatch;
   });
   document.getElementById('pay-rc').textContent=data.length+' records';
   document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
@@ -1569,7 +1568,8 @@ function rCase(){
   var data=DB.cases.filter(function(c){
     var q=S.caseQ.toLowerCase();
     var m=!q||[c.lo,c.acct,c.pat,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});
-    return m&&(!S.caseSt||c.st===S.caseSt)&&(!S.ct||c.ct===S.ct);
+    var cMatch=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;
+    return m&&(!S.caseSt||c.st===S.caseSt)&&cMatch;
   });
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
@@ -1775,9 +1775,10 @@ function rPatients(){
   DB.cases.forEach(function(c){
     if(!c.pat)return;
     if(q&&c.pat.toLowerCase().indexOf(q)<0)return;
+    if(S.clinicType&&c.ct!==S.clinicType)return;
     if(!seen[c.pat]){
       seen[c.pat]=true;
-      var cs=DB.cases.filter(function(x){return x.pat===c.pat;});
+      var cs=DB.cases.filter(function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType);});
       pats.push({name:c.pat,cases:cs.length,bi:cs.reduce(function(s,x){return s+(x.bi||0);},0),bal:cs.reduce(function(s,x){return s+(x.bal||0);},0),lo:c.lo});
     }
   });
@@ -2072,7 +2073,10 @@ function openModal(type,id){
     var p=id?DB.pays.find(function(x){return x.id===id;}):null;
     document.getElementById('m-pay-title').textContent=id?'Edit Payment':'Add Payment';
     if(p){document.getElementById('pf-law').value=p.lo||'';document.getElementById('pf-acct').value=p.acct||'';document.getElementById('pf-pat').value=p.pat||'';document.getElementById('pf-prov').value=p.prov||'';document.getElementById('pf-dol').value=p.dol||'';document.getElementById('pf-pd').value=p.pd||'';document.getElementById('pf-st').value=p.cs||'';document.getElementById('pf-ch').value=p.ch||'';document.getElementById('pf-pd2').value=p.paid||'';document.getElementById('pf-ct').value=p.ct||'';}
-    else{['pf-law','pf-acct','pf-pat','pf-prov','pf-dol','pf-pd','pf-ch','pf-pd2'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('pf-st').value='';}
+    else{['pf-law','pf-acct','pf-pat','pf-prov','pf-dol','pf-pd','pf-ch','pf-pd2'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('pf-st').value='';if(S.clinicType){document.getElementById('pf-ct').value=S.clinicType;}else{document.getElementById('pf-ct').value='';}}
+    // Disable clinic_type for staff
+    var pfCtEl=document.getElementById('pf-ct');
+    if(S.clinicType){pfCtEl.disabled=true;}else{pfCtEl.disabled=false;}
     if(!chkFrontZone)initCheckZones();
     loadCheckImages(p);
     document.getElementById('m-pay').classList.add('open');
@@ -2080,7 +2084,10 @@ function openModal(type,id){
     var c=id?DB.cases.find(function(x){return x.id===id;}):null;
     document.getElementById('m-case-title').textContent=id?'Edit Case':'Add Case';
     if(c){document.getElementById('cf-law').value=c.lo||'';document.getElementById('cf-acct').value=c.acct||'';document.getElementById('cf-pat').value=c.pat||'';document.getElementById('cf-prov').value=c.prov||'';document.getElementById('cf-dol').value=c.dol||'';document.getElementById('cf-st').value=c.st||'active';document.getElementById('cf-bi').value=c.bi||'';document.getElementById('cf-bal').value=c.bal||'';document.getElementById('cf-gr').value=c.gr||'';document.getElementById('cf-ct').value=c.ct||'';document.getElementById('cf-notes').value=c.notes||'';}
-    else{['cf-law','cf-acct','cf-pat','cf-prov','cf-dol','cf-bi','cf-bal','cf-notes'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('cf-st').value='active';document.getElementById('cf-gr').value='';}
+    else{['cf-law','cf-acct','cf-pat','cf-prov','cf-dol','cf-bi','cf-bal','cf-notes'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('cf-st').value='active';document.getElementById('cf-gr').value='';if(S.clinicType){document.getElementById('cf-ct').value=S.clinicType;}else{document.getElementById('cf-ct').value='';}}
+    // Disable clinic_type for staff
+    var cfCtEl=document.getElementById('cf-ct');
+    if(S.clinicType){cfCtEl.disabled=true;}else{cfCtEl.disabled=false;}
     document.getElementById('m-case').classList.add('open');
   } else if(type==='fu'){
     var f=id?DB.fus.find(function(x){return x.id===id;}):null;
@@ -2343,18 +2350,43 @@ function aiAnalyzeCase(id){
 // ── BIND ALL EVENTS ──────────────────────────────────────────
 function bindAll(){
   // Login
-  document.getElementById('r-admin').addEventListener('click',function(){S.role='admin';document.getElementById('r-admin').classList.add('on');document.getElementById('r-staff').classList.remove('on');});
-  document.getElementById('r-staff').addEventListener('click',function(){S.role='staff';document.getElementById('r-staff').classList.add('on');document.getElementById('r-admin').classList.remove('on');});
   document.getElementById('login-btn').addEventListener('click',function(){
-    var name=S.role==='admin'?'Eugene Yu':'Sarah Kim';
-    S.user={name:name,role:S.role};
+    var roleType=document.getElementById('login-role-type').value;
+    var roleMap={admin:'admin','pain-staff':'staff','chiro-staff':'staff','mri-staff':'staff'};
+    var clinicMap={admin:null,'pain-staff':'Pain','chiro-staff':'Chiro','mri-staff':'MRI'};
+    var nameMap={admin:'Eugene Yu','pain-staff':'Sarah Kim','chiro-staff':'Alex Chen','mri-staff':'Jordan Lee'};
+    S.role=roleMap[roleType];
+    S.clinicType=clinicMap[roleType];
+    var name=nameMap[roleType];
+    S.user={name:name,role:S.role,clinicType:S.clinicType};
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     document.getElementById('sb-uname').textContent=name;
     document.getElementById('sb-urole').textContent=S.role;
     document.getElementById('sb-urole').className='sb-urole role-'+S.role;
     document.getElementById('sb-av').textContent=ini(name);
-    if(S.role!=='admin')document.getElementById('ni-users').style.display='none';
+    // Hide staff-only items for non-admin
+    if(S.role!=='admin'){
+      document.getElementById('ni-users').style.display='none';
+      document.getElementById('ni-patients').style.display='none';
+      document.getElementById('ni-followups').style.display='none';
+      document.getElementById('ni-files').style.display='none';
+      document.getElementById('ni-reports').style.display='none';
+      document.getElementById('ni-notices').style.display='none';
+      document.getElementById('ni-agent').style.display='none';
+      // Hide clinic type filter dropdowns for staff
+      var dashCtFilter=document.getElementById('dash-ct-filter');
+      if(dashCtFilter)dashCtFilter.style.display='none';
+      var payCtFilter=document.getElementById('pay-ct-filter');
+      if(payCtFilter)payCtFilter.style.display='none';
+      var caseCtFilter=document.getElementById('case-ct-filter');
+      if(caseCtFilter)caseCtFilter.style.display='none';
+    }
+    // Update sidebar brand to show clinic name for staff
+    if(S.clinicType){
+      var clinicNames={Pain:'Pain Clinic',Chiro:'Chiropractic Clinic',MRI:'MRI Center'};
+      document.querySelector('.sb-sub').textContent=clinicNames[S.clinicType]+' Portal';
+    }
     updFUBadge();go('dashboard');
     loadFromSupabase();
   });
