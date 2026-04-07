@@ -1090,24 +1090,27 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 var SUPA_URL = 'https://pnnxkvqxfrebktxaloiw.supabase.co';
 var SUPA_KEY = 'sb_publishable_UBlSo4cvTc56SrBviNJHqw_IrIeN6g_';
 
-function supaFetch(path, opts) {
+function supaFetch(path, opts, _retry) {
   var url = SUPA_URL + '/rest/v1/' + path;
   var headers = {
     'apikey': SUPA_KEY,
     'Authorization': 'Bearer ' + SUPA_KEY,
     'Content-Type': 'application/json',
     'Prefer': opts && opts.prefer ? opts.prefer : 'return=representation',
-    'Access-Control-Allow-Origin': '*',
   };
+  var bodyStr = opts && opts.body ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)) : undefined;
   return fetch(url, {
     method: opts && opts.method ? opts.method : 'GET',
     headers: headers,
     mode: 'cors',
-    body: opts && opts.body ? JSON.stringify(opts.body) : undefined,
+    body: bodyStr,
   }).then(function(r) {
     if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
     if (r.status === 204) return null;
     return r.json();
+  }).catch(function(err) {
+    if (!_retry) { return new Promise(function(res){ setTimeout(res, 1500); }).then(function(){ return supaFetch(path, opts, true); }); }
+    throw err;
   });
 }
 
@@ -2288,11 +2291,11 @@ function saveUser(){
   if(!o.name||!o.email||!pw){toast('Name, email and password are required','⚠️');return;}
   var sbData={name:o.name,email:o.email,password:o.password,role:o.role,clinic_type:o.clinic_type,status:o.st};
   if(id){
-    supaFetch('app_users?id=eq.'+id,{method:'PATCH',body:JSON.stringify(sbData)}).then(function(){
+    supaFetch('app_users?id=eq.'+id,{method:'PATCH',body:sbData}).then(function(){
       Object.assign(DB.users.find(function(u){return u.id===id;}),o);toast('Updated','✅');closeModal('m-user');rUsers();
     }).catch(function(){toast('Save failed','❌');});
   }else{
-    supaFetch('app_users',{method:'POST',body:JSON.stringify(sbData),headers:{'Prefer':'return=representation'}}).then(function(r){
+    supaFetch('app_users',{method:'POST',body:sbData,prefer:'return=representation'}).then(function(r){
       if(r&&r[0])o.id=r[0].id; else o.id=DB.nid.user++;
       DB.users.push(o);toast('Added','✅');closeModal('m-user');rUsers();
     }).catch(function(){toast('Save failed','❌');});
