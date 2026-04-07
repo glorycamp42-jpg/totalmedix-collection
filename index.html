@@ -306,12 +306,11 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div class="lbrand-inner"><span class="brand-dot"></span>TotalMedix</div>
       <p>Medical Collection Management</p>
     </div>
-    <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Sign in as</div>
-    <div class="lf"><label>Role & Clinic</label><select id="login-role-type" style="padding:10px 13px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;outline:none;font-family:inherit;color:var(--g800);width:100%"><option value="admin">👑 Admin (Full Access)</option><option value="pain-staff">🟡 Pain Clinic Staff</option><option value="chiro-staff">🟢 Chiropractic Clinic Staff</option><option value="mri-staff">🔵 MRI Center Staff</option></select></div>
     <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@totalmedix.com"></div>
     <div class="lf"><label>Password</label><input type="password" id="l-pw" placeholder="••••••••"></div>
+    <div id="login-error" style="display:none;color:var(--red);font-size:13px;font-weight:600;margin-bottom:10px;text-align:center"></div>
     <button class="lbtn" id="login-btn">Sign in</button>
-    <p class="lhint">Demo — any credentials work</p>
+    <p class="lhint">Sign in with your TotalMedix account</p>
   </div>
 </div>
 
@@ -1036,7 +1035,9 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     <div class="mbd"><div class="fg">
       <div class="fd"><label>Full Name</label><input id="uf-name"></div>
       <div class="fd"><label>Email</label><input type="email" id="uf-email"></div>
+      <div class="fd"><label>Password</label><input type="password" id="uf-pw" placeholder="Set password"></div>
       <div class="fd"><label>Role</label><select id="uf-role"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+      <div class="fd"><label>Clinic Type</label><select id="uf-ct"><option value="">None (General)</option><option value="Pain">Pain Clinic</option><option value="Chiro">Chiropractic</option><option value="MRI">MRI Center</option></select></div>
       <div class="fd"><label>Status</label><select id="uf-st"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
     </div></div>
     <div class="mft"><button class="btn bs" id="mx2-user">Cancel</button><button class="btn bp" id="save-user">Save</button></div>
@@ -2095,8 +2096,8 @@ function openModal(type,id){
   } else if(type==='user'){
     var u=id?DB.users.find(function(x){return x.id===id;}):null;
     document.getElementById('m-user-title').textContent=id?'Edit User':'Add User';
-    if(u){document.getElementById('uf-name').value=u.name||'';document.getElementById('uf-email').value=u.email||'';document.getElementById('uf-role').value=u.role||'staff';document.getElementById('uf-st').value=u.st||'active';}
-    else{['uf-name','uf-email'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('uf-role').value='staff';document.getElementById('uf-st').value='active';}
+    if(u){document.getElementById('uf-name').value=u.name||'';document.getElementById('uf-email').value=u.email||'';document.getElementById('uf-pw').value=u.password||'';document.getElementById('uf-role').value=u.role||'staff';document.getElementById('uf-ct').value=u.clinic_type||'';document.getElementById('uf-st').value=u.st||'active';}
+    else{['uf-name','uf-email','uf-pw'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('uf-role').value='staff';document.getElementById('uf-ct').value='';document.getElementById('uf-st').value='active';}
     document.getElementById('m-user').classList.add('open');
   } else if(type==='kpi'){
     var kpis=[{k:'collectionRate',l:'Collection Rate Goal (%)'},{k:'monthlyTarget',l:'Monthly Target ($)'},{k:'avgDays',l:'Avg Days Goal'},{k:'resolutionRate',l:'Resolution Rate (%)'}];
@@ -2281,10 +2282,21 @@ function saveMemo(){
 }
 function saveUser(){
   var id=S.eid.user;
-  var o={name:document.getElementById('uf-name').value,email:document.getElementById('uf-email').value,role:document.getElementById('uf-role').value,st:document.getElementById('uf-st').value,color:clr(document.getElementById('uf-name').value)};
-  if(id){Object.assign(DB.users.find(function(u){return u.id===id;}),o);toast('Updated','✅');}
-  else{o.id=DB.nid.user++;DB.users.push(o);toast('Added','✅');}
-  closeModal('m-user');rUsers();
+  var pw=document.getElementById('uf-pw').value;
+  var ct=document.getElementById('uf-ct').value||null;
+  var o={name:document.getElementById('uf-name').value,email:document.getElementById('uf-email').value,password:pw,role:document.getElementById('uf-role').value,clinic_type:ct,st:document.getElementById('uf-st').value,color:clr(document.getElementById('uf-name').value)};
+  if(!o.name||!o.email||!pw){toast('Name, email and password are required','⚠️');return;}
+  var sbData={name:o.name,email:o.email,password:o.password,role:o.role,clinic_type:o.clinic_type,status:o.st};
+  if(id){
+    supaFetch('app_users?id=eq.'+id,{method:'PATCH',body:JSON.stringify(sbData)}).then(function(){
+      Object.assign(DB.users.find(function(u){return u.id===id;}),o);toast('Updated','✅');closeModal('m-user');rUsers();
+    }).catch(function(){toast('Save failed','❌');});
+  }else{
+    supaFetch('app_users',{method:'POST',body:JSON.stringify(sbData),headers:{'Prefer':'return=representation'}}).then(function(r){
+      if(r&&r[0])o.id=r[0].id; else o.id=DB.nid.user++;
+      DB.users.push(o);toast('Added','✅');closeModal('m-user');rUsers();
+    }).catch(function(){toast('Save failed','❌');});
+  }
 }
 function saveKPI(){
   ['collectionRate','monthlyTarget','avgDays','resolutionRate'].forEach(function(k){
@@ -2348,35 +2360,50 @@ function aiAnalyzeCase(id){
 function bindAll(){
   // Login
   document.getElementById('login-btn').addEventListener('click',function(){
-    var roleType=document.getElementById('login-role-type').value;
-    var roleMap={'admin':'admin','pain-staff':'staff','chiro-staff':'staff','mri-staff':'staff'};
-    var clinicMap={'admin':null,'pain-staff':'Pain','chiro-staff':'Chiro','mri-staff':'MRI'};
-    var nameMap={'admin':'Eugene Yu','pain-staff':'Pain Clinic','chiro-staff':'Chiro Clinic','mri-staff':'MRI Center'};
-    S.role=roleMap[roleType];
-    S.clinicType=clinicMap[roleType];
-    var name=nameMap[roleType];
-    S.user={name:name,role:S.role,clinicType:S.clinicType};
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('sb-uname').textContent=name;
-    document.getElementById('sb-urole').textContent=S.role;
-    document.getElementById('sb-urole').className='sb-urole role-'+S.role;
-    document.getElementById('sb-av').textContent=ini(name);
-    // Show/hide nav items based on role
-    var allNavIds=['ni-users','ni-patients','ni-followups','ni-files','ni-reports','ni-notices','ni-agent','ni-settings'];
-    var filterIds=['dash-ct-filter','pay-ct-filter','case-ct-filter'];
-    if(S.role==='admin'){
-      allNavIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
-      filterIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='';});
-      document.querySelector('.sb-sub').textContent='Medical Collection Management';
-    }else{
-      allNavIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
-      filterIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
-      var clinicNames={Pain:'Pain Clinic',Chiro:'Chiropractic Clinic',MRI:'MRI Center'};
-      document.querySelector('.sb-sub').textContent=clinicNames[S.clinicType]+' Portal';
-    }
-    updFUBadge();go('dashboard');
-    loadFromSupabase();
+    var email=document.getElementById('l-email').value.trim();
+    var pw=document.getElementById('l-pw').value;
+    var errEl=document.getElementById('login-error');
+    errEl.style.display='none';
+    if(!email||!pw){errEl.textContent='Email and password are required.';errEl.style.display='block';return;}
+    // Query app_users from Supabase
+    var btn=document.getElementById('login-btn');
+    btn.disabled=true;btn.textContent='Signing in...';
+    supaFetch('app_users?email=eq.'+encodeURIComponent(email)+'&status=eq.active&select=*',{method:'GET'})
+    .then(function(users){
+      btn.disabled=false;btn.textContent='Sign in';
+      if(!users||!users.length){errEl.textContent='Account not found or inactive.';errEl.style.display='block';return;}
+      var u=users[0];
+      if(u.password!==pw){errEl.textContent='Incorrect password.';errEl.style.display='block';return;}
+      // Auth success
+      S.role=u.role;
+      S.clinicType=u.clinic_type||null;
+      var name=u.name;
+      S.user={id:u.id,name:name,email:u.email,role:S.role,clinicType:S.clinicType};
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app').style.display='block';
+      document.getElementById('sb-uname').textContent=name;
+      document.getElementById('sb-urole').textContent=S.role;
+      document.getElementById('sb-urole').className='sb-urole role-'+S.role;
+      document.getElementById('sb-av').textContent=ini(name);
+      // Show/hide nav items based on role
+      var allNavIds=['ni-users','ni-patients','ni-followups','ni-files','ni-reports','ni-notices','ni-agent','ni-settings'];
+      var filterIds=['dash-ct-filter','pay-ct-filter','case-ct-filter'];
+      if(S.role==='admin'){
+        allNavIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
+        filterIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='';});
+        document.querySelector('.sb-sub').textContent='Medical Collection Management';
+      }else{
+        allNavIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+        filterIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+        var clinicNames={Pain:'Pain Clinic',Chiro:'Chiropractic Clinic',MRI:'MRI Center'};
+        document.querySelector('.sb-sub').textContent=(S.clinicType&&clinicNames[S.clinicType]?clinicNames[S.clinicType]:'Staff')+' Portal';
+      }
+      updFUBadge();go('dashboard');
+      loadFromSupabase();
+    }).catch(function(e){
+      btn.disabled=false;btn.textContent='Sign in';
+      errEl.textContent='Connection error. Please try again.';errEl.style.display='block';
+    });
   });
   document.getElementById('l-pw').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('login-btn').click();});
 
