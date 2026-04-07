@@ -1256,7 +1256,7 @@ function loadFromSupabase() {
     }
     if (dbUsers.length) {
       DB.users = dbUsers.map(function(r) {
-        return {id:r.id,name:r.name,email:r.email,role:r.role,st:r.status,color:r.color||'#3b5bdb'};
+        return {id:r.id,name:r.name,email:r.email,password:r.password||'',role:r.role,clinic_type:r.clinic_type||null,st:r.status,color:r.color||'#3b5bdb'};
       });
     }
     if (dbKPI.length) {
