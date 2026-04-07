@@ -567,7 +567,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div id="settings-users" class="stab-content">
           <div class="g2">
             <div class="card">
-              <div class="ch"><span class="ct">👥 Team Members</span><button class="btn bp bsm" id="btn-invite-user">+ Invite User</button></div>
+              <div class="ch"><span class="ct">👥 Team Members</span><button class="btn bp bsm" id="btn-invite-user">+ Add User</button></div>
               <div id="settings-users-list"></div>
             </div>
             <div class="card">
@@ -3668,7 +3668,7 @@ function bindSettingsEvents() {
 
   // Users
   var btnInvite = document.getElementById('btn-invite-user');
-  if (btnInvite) btnInvite.addEventListener('click', inviteUser);
+  if (btnInvite) btnInvite.addEventListener('click', function(){ openModal('user', null); });
 
   // Clinic
   var btnClinic = document.getElementById('btn-save-clinic');
