@@ -152,7 +152,6 @@ select.fl{padding:9px 10px;border:1.5px solid var(--g200);border-radius:10px;fon
 .fd input,.fd select,.fd textarea{padding:9px 11px;border:1.5px solid var(--g200);border-radius:10px;font-size:13px;outline:none;background:#fff;color:var(--g900);font-family:inherit}
 .fd input:focus,.fd select:focus,.fd textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,91,219,.08)}
 .fd textarea{resize:vertical;min-height:70px}
-.fd input:disabled,.fd select:disabled,.fd textarea:disabled{background:#f5f5f5;color:var(--g500);cursor:not-allowed;opacity:.7}
 
 /* OVERDUE */
 tr.ov td{background:#fff9f9}
@@ -1393,7 +1392,7 @@ var DB = {
 
 // ── STATE ────────────────────────────────────────────────────
 var S = {
-  role:'admin', user:null, clinicType:null,
+  role:'admin', clinicType:null, user:null,
   fuTab:'pending', fuPri:'',
   payQ:'', paySt:'',
   caseQ:'', caseSt:'',
@@ -1774,8 +1773,8 @@ function rPatients(){
   var seen={},pats=[];
   DB.cases.forEach(function(c){
     if(!c.pat)return;
-    if(q&&c.pat.toLowerCase().indexOf(q)<0)return;
     if(S.clinicType&&c.ct!==S.clinicType)return;
+    if(q&&c.pat.toLowerCase().indexOf(q)<0)return;
     if(!seen[c.pat]){
       seen[c.pat]=true;
       var cs=DB.cases.filter(function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType);});
@@ -2074,7 +2073,6 @@ function openModal(type,id){
     document.getElementById('m-pay-title').textContent=id?'Edit Payment':'Add Payment';
     if(p){document.getElementById('pf-law').value=p.lo||'';document.getElementById('pf-acct').value=p.acct||'';document.getElementById('pf-pat').value=p.pat||'';document.getElementById('pf-prov').value=p.prov||'';document.getElementById('pf-dol').value=p.dol||'';document.getElementById('pf-pd').value=p.pd||'';document.getElementById('pf-st').value=p.cs||'';document.getElementById('pf-ch').value=p.ch||'';document.getElementById('pf-pd2').value=p.paid||'';document.getElementById('pf-ct').value=p.ct||'';}
     else{['pf-law','pf-acct','pf-pat','pf-prov','pf-dol','pf-pd','pf-ch','pf-pd2'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('pf-st').value='';if(S.clinicType){document.getElementById('pf-ct').value=S.clinicType;}else{document.getElementById('pf-ct').value='';}}
-    // Disable clinic_type for staff
     var pfCtEl=document.getElementById('pf-ct');
     if(S.clinicType){pfCtEl.disabled=true;}else{pfCtEl.disabled=false;}
     if(!chkFrontZone)initCheckZones();
@@ -2085,7 +2083,6 @@ function openModal(type,id){
     document.getElementById('m-case-title').textContent=id?'Edit Case':'Add Case';
     if(c){document.getElementById('cf-law').value=c.lo||'';document.getElementById('cf-acct').value=c.acct||'';document.getElementById('cf-pat').value=c.pat||'';document.getElementById('cf-prov').value=c.prov||'';document.getElementById('cf-dol').value=c.dol||'';document.getElementById('cf-st').value=c.st||'active';document.getElementById('cf-bi').value=c.bi||'';document.getElementById('cf-bal').value=c.bal||'';document.getElementById('cf-gr').value=c.gr||'';document.getElementById('cf-ct').value=c.ct||'';document.getElementById('cf-notes').value=c.notes||'';}
     else{['cf-law','cf-acct','cf-pat','cf-prov','cf-dol','cf-bi','cf-bal','cf-notes'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('cf-st').value='active';document.getElementById('cf-gr').value='';if(S.clinicType){document.getElementById('cf-ct').value=S.clinicType;}else{document.getElementById('cf-ct').value='';}}
-    // Disable clinic_type for staff
     var cfCtEl=document.getElementById('cf-ct');
     if(S.clinicType){cfCtEl.disabled=true;}else{cfCtEl.disabled=false;}
     document.getElementById('m-case').classList.add('open');
@@ -2352,9 +2349,9 @@ function bindAll(){
   // Login
   document.getElementById('login-btn').addEventListener('click',function(){
     var roleType=document.getElementById('login-role-type').value;
-    var roleMap={admin:'admin','pain-staff':'staff','chiro-staff':'staff','mri-staff':'staff'};
-    var clinicMap={admin:null,'pain-staff':'Pain','chiro-staff':'Chiro','mri-staff':'MRI'};
-    var nameMap={admin:'Eugene Yu','pain-staff':'Sarah Kim','chiro-staff':'Alex Chen','mri-staff':'Jordan Lee'};
+    var roleMap={'admin':'admin','pain-staff':'staff','chiro-staff':'staff','mri-staff':'staff'};
+    var clinicMap={'admin':null,'pain-staff':'Pain','chiro-staff':'Chiro','mri-staff':'MRI'};
+    var nameMap={'admin':'Eugene Yu','pain-staff':'Pain Clinic','chiro-staff':'Chiro Clinic','mri-staff':'MRI Center'};
     S.role=roleMap[roleType];
     S.clinicType=clinicMap[roleType];
     var name=nameMap[roleType];
@@ -4224,4 +4221,65 @@ function openLODetail(nameEnc) {
           '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Total Charged</div>'+
           '<div style="font-size:16px;font-weight:800;color:#fff">'+fc(lo.charged)+'</div>'+
         '</div>'+
-        '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255
+        '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px">'+
+          '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Collected</div>'+
+          '<div style="font-size:16px;font-weight:800;color:#6ee7b7">'+fc(lo.paid)+'</div>'+
+        '</div>'+
+        '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px">'+
+          '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Outstanding</div>'+
+          '<div style="font-size:16px;font-weight:800;color:#fca5a5">'+fc(lo.balance)+'</div>'+
+        '</div>'+
+        '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px">'+
+          '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Collection Rate</div>'+
+          '<div style="font-size:16px;font-weight:800;color:'+(lo.rate>=40?'#6ee7b7':'#fca5a5')+'">'+lo.rate.toFixed(1)+'%</div>'+
+          '<div style="margin-top:5px;background:rgba(255,255,255,.1);border-radius:3px;height:3px"><div style="height:3px;border-radius:3px;background:'+(lo.rate>=40?'#6ee7b7':'#fca5a5')+';width:'+Math.min(lo.rate,100)+'%"></div></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="g2">'+
+      // Monthly chart
+      '<div class="card">'+
+        '<div class="ch"><span class="ct">📈 Monthly Collections</span></div>'+
+        '<div class="cb">'+monthlyChart+'</div>'+
+      '</div>'+
+      // Grade distribution
+      '<div class="card">'+
+        '<div class="ch"><span class="ct">🎯 Case Grade Distribution</span></div>'+
+        '<div class="cb">'+
+          (gradeBar || '<div class="empty" style="padding:20px"><div class="et">No cases</div></div>')+
+          (lo.avgDays!==null?'<div style="margin-top:14px;background:var(--g50);border-radius:8px;padding:10px 12px;font-size:13px">⏱️ Average pay time: <strong>'+lo.avgDays+' days</strong></div>':'')+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+
+    // Cases table
+    '<div class="card">'+
+      '<div class="ch"><span class="ct">📋 Cases ('+lo.cases.length+')</span></div>'+
+      '<div class="tw"><table><thead><tr><th>Account #</th><th>Patient</th><th>Status</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
+      (lo.cases.length ? lo.cases.map(function(c){
+        return '<tr><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" onclick="openCD('+c.id+')">'+( c.acct||'—')+' ↗</a></td>'+
+          '<td style="font-weight:500">'+(c.pat||'—')+'</td><td>'+sb(c.st)+'</td><td>'+gb(c.gr)+'</td>'+
+          '<td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td></tr>';
+      }).join('') : '<tr><td colspan="6"><div class="empty" style="padding:20px"><div class="et">No cases</div></div></td></tr>')+
+      '</tbody></table></div>'+
+    '</div>'+
+
+    // Payments table
+    '<div class="card">'+
+      '<div class="ch"><span class="ct">💳 Payment History ('+lo.pays.length+')</span></div>'+
+      '<div class="tw"><table><thead><tr><th>Pay Date</th><th>Patient</th><th>Status</th><th>Charged</th><th>Paid</th><th>Outstanding</th></tr></thead><tbody>'+
+      (lo.pays.length ? lo.pays.slice().sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');}).map(function(p){
+        return '<tr><td style="font-size:12px">'+fd(p.pd)+'</td><td style="font-weight:500">'+(p.pat||'—')+'</td><td>'+cb(p.cs)+'</td>'+
+          '<td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td>'+
+          '<td style="font-weight:700;color:var(--red)">'+fc((p.ch||0)-(p.paid||0))+'</td></tr>';
+      }).join('') : '<tr><td colspan="6"><div class="empty" style="padding:20px"><div class="et">No payments</div></div></td></tr>')+
+      '</tbody></table></div>'+
+    '</div>';
+}
+
+// Init on page load
+document.addEventListener('DOMContentLoaded', function(){
+  // Tab click handlers already set via onclick in HTML
+});
+</script>
