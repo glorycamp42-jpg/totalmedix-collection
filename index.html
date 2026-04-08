@@ -1113,13 +1113,15 @@ function supaFetch(path, opts, _retry) {
     'Prefer': opts && opts.prefer ? opts.prefer : 'return=representation',
   };
   var bodyStr = opts && opts.body ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)) : undefined;
+  var method = opts && opts.method ? opts.method : 'GET';
+  if(method!=='GET') console.log('Supabase REQ:', method, path, bodyStr);
   return fetch(url, {
-    method: opts && opts.method ? opts.method : 'GET',
+    method: method,
     headers: headers,
     mode: 'cors',
     body: bodyStr,
   }).then(function(r) {
-    if (!r.ok) return r.text().then(function(t){ console.error('Supabase ERR:', r.status, path, t); throw new Error(t); });
+    if (!r.ok) return r.text().then(function(t){ console.error('Supabase ERR:', r.status, path, t, bodyStr); throw new Error(t); });
     if (r.status === 204) return null;
     return r.json();
   }).catch(function(err) {
