@@ -1091,6 +1091,19 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 var SUPA_URL = 'https://pnnxkvqxfrebktxaloiw.supabase.co';
 var SUPA_KEY = 'sb_publishable_UBlSo4cvTc56SrBviNJHqw_IrIeN6g_';
 
+// Normalize clinic_type from Supabase to app short codes (global)
+function mapCT(v) {
+  if (!v) return '';
+  var m = {'Pain Management':'Pain','Chiropractic':'Chiro','MRI':'MRI'};
+  return m[v] || v;
+}
+// Reverse map: app short code → Supabase clinic_type for saving
+function unmapCT(v) {
+  if (!v) return null;
+  var m = {'Pain':'Pain Management','Chiro':'Chiropractic','MRI':'MRI'};
+  return m[v] || v;
+}
+
 function supaFetch(path, opts, _retry) {
   var url = SUPA_URL + '/rest/v1/' + path;
   var headers = {
@@ -1229,13 +1242,6 @@ function loadFromSupabase() {
     var dbUsers    = results[6] || [];
     var dbKPI      = results[7] || [];
 
-    // Normalize clinic_type from Supabase to app short codes
-    function mapCT(v) {
-      if (!v) return '';
-      var m = {'Pain Management':'Pain','Chiropractic':'Chiro','MRI':'MRI'};
-      return m[v] || v;
-    }
-
     // Map Supabase rows → app format (keep demo data if Supabase table is empty)
     if (dbCases.length) {
       DB.cases = dbCases.map(function(r) {
@@ -1329,7 +1335,7 @@ function showGlobalLoader(show) {
 // ── SUPABASE SAVE FUNCTIONS ──────────────────────────────────
 function sbSaveCase(o, id) {
   var row = {law_office:o.lo,account_num:o.acct,patient_name:o.pat,provider:o.prov,
-             date_of_loss:o.dol||null,status:o.st,clinic_type:o.ct||null,
+             date_of_loss:o.dol||null,status:o.st,clinic_type:unmapCT(o.ct),
              billed:o.bi,balance:o.bal,grade:o.gr||null,notes:o.notes||''};
   if (id) return SB.update('cases', id, row);
   return SB.insert('cases', row).then(function(r){return r&&r[0]?r[0]:r;});
@@ -1338,7 +1344,7 @@ function sbSaveCase(o, id) {
 function sbSavePay(o, id) {
   var row = {law_office:o.lo,account_num:o.acct,patient_name:o.pat,provider:o.prov,
              date_of_loss:o.dol||null,pay_date:o.pd||null,check_status:o.cs||null,
-             clinic_type:o.ct||null,charged:o.ch,paid:o.paid};
+             clinic_type:unmapCT(o.ct),charged:o.ch,paid:o.paid};
   if(o.chkFrontPath)row.check_front_path=o.chkFrontPath;
   if(o.chkBackPath)row.check_back_path=o.chkBackPath;
   if (id) return SB.update('payments', id, row);
@@ -1805,7 +1811,7 @@ function rPatients(){
   DB.cases.forEach(function(c){
     if(!c.pat)return;
     if(S.clinicType&&c.ct!==S.clinicType)return;
-    if(q&&c.pat.toLowerCase().indexOf(q)<0)return;
+    if(q&&![c.pat,c.lo,c.acct,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return;
     if(!seen[c.pat]){
       seen[c.pat]=true;
       var cs=DB.cases.filter(function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType);});
@@ -2406,7 +2412,7 @@ function bindAll(){
       if(u.password!==pw){errEl.textContent='Incorrect password.';errEl.style.display='block';return;}
       // Auth success
       S.role=u.role;
-      S.clinicType=u.clinic_type||null;
+      S.clinicType=u.clinic_type?mapCT(u.clinic_type):null;
       var name=u.name;
       S.user={id:u.id,name:name,email:u.email,role:S.role,clinicType:S.clinicType};
       document.getElementById('login-screen').style.display='none';
