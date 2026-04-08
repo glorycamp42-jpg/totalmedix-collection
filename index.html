@@ -1337,7 +1337,7 @@ function showGlobalLoader(show) {
 // ── SUPABASE SAVE FUNCTIONS ──────────────────────────────────
 function sbSaveCase(o, id) {
   var row = {law_office:o.lo,account_num:o.acct,patient_name:o.pat,provider:o.prov,
-             date_of_loss:o.dol||null,status:o.st,clinic_type:unmapCT(o.ct),
+             date_of_loss:o.dol||null,status:o.st,clinic_type:o.ct||null,
              billed:o.bi,balance:o.bal,grade:o.gr||null,notes:o.notes||''};
   if (id) return SB.update('cases', id, row);
   return SB.insert('cases', row).then(function(r){return r&&r[0]?r[0]:r;});
@@ -1346,7 +1346,7 @@ function sbSaveCase(o, id) {
 function sbSavePay(o, id) {
   var row = {law_office:o.lo,account_num:o.acct,patient_name:o.pat,provider:o.prov,
              date_of_loss:o.dol||null,pay_date:o.pd||null,check_status:o.cs||null,
-             clinic_type:unmapCT(o.ct),charged:o.ch,paid:o.paid};
+             clinic_type:o.ct||null,charged:o.ch,paid:o.paid};
   if(o.chkFrontPath)row.check_front_path=o.chkFrontPath;
   if(o.chkBackPath)row.check_back_path=o.chkBackPath;
   if (id) return SB.update('payments', id, row);
