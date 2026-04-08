@@ -1120,6 +1120,19 @@ var SB = {
   get: function(table, query) {
     return supaFetch(table + (query ? '?' + query : '') + (query ? '&' : '?') + 'order=id.asc');
   },
+  // GET all rows with pagination (for tables > 1000 rows)
+  getAll: function(table, query) {
+    var all = [];
+    var sz = 1000;
+    function page(off) {
+      var qs = (query ? query + "&" : "") + "limit=" + sz + "&offset=" + off;
+      return supaFetch(table + "?" + qs).then(function(rows) {
+        all = all.concat(rows);
+        return rows.length === sz ? page(off + sz) : all;
+      });
+    }
+    return page(0);
+  },
   // INSERT - returns inserted row
   insert: function(table, data) {
     return supaFetch(table, { method: 'POST', body: data });
@@ -1197,7 +1210,7 @@ var DB_READY = false;
 function loadFromSupabase() {
   showGlobalLoader(true);
   Promise.all([
-    SB.get('cases', 'order=id.asc'),
+    SB.getAll('cases', 'order=id.asc'),
     SB.get('payments', 'order=id.asc'),
     SB.get('follow_ups', 'order=id.asc'),
     SB.get('activities', 'order=id.asc'),
