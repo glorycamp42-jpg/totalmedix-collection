@@ -420,8 +420,12 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div id="pg-patients" class="pg">
         <div class="ph">
           <div><div class="pt">Patients</div><div class="ps">Patient profiles</div></div>
-          <div class="ha"><div class="sw" style="min-width:240px"><span class="si">🔍</span><input id="pat-q" placeholder="Search patients..."></div></div>
+          <div class="ha"><div class="sw" style="min-width:240px"><span class="si">🔍</span><input id="pat-q" placeholder="Search patient, account #, law office..."></div>
+          <select class="fl" id="pat-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
+          <select class="fl" id="pat-sort"><option value="">Default</option><option value="name-asc">Name A-Z</option><option value="name-desc">Name Z-A</option><option value="bal-desc">Balance High→Low</option><option value="bal-asc">Balance Low→High</option><option value="cases-desc">Most Cases</option><option value="bi-desc">Most Billed</option></select>
+          </div>
         </div>
+        <div id="pat-rc" style="text-align:right;padding:4px 12px;font-size:12px;color:var(--g500)"></div>
         <div id="pat-grid"></div>
       </div>
 
@@ -1428,7 +1432,7 @@ var S = {
   role:'admin', clinicType:null, user:null,
   fuTab:'pending', fuPri:'',
   payQ:'', paySt:'',
-  caseQ:'', caseSt:'', caseSort:'',
+  caseQ:'', caseSt:'', caseSort:'', patCt:'', patSort:'',
   fileQ:'', fileCat:'',
   fuQ:'', patQ:'', ct:'',
   rptStart:null, rptEnd:null,
@@ -1809,17 +1813,31 @@ function delFile(id){
 // ── PATIENTS ─────────────────────────────────────────────────
 function rPatients(){
   var q=S.patQ.toLowerCase();
+  var ctF=S.patCt||'';
   var seen={},pats=[];
   DB.cases.forEach(function(c){
     if(!c.pat)return;
     if(S.clinicType&&c.ct!==S.clinicType)return;
+    if(ctF&&c.ct!==ctF)return;
     if(q&&![c.pat,c.lo,c.acct,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return;
     if(!seen[c.pat]){
       seen[c.pat]=true;
-      var cs=DB.cases.filter(function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType);});
-      pats.push({name:c.pat,cases:cs.length,bi:cs.reduce(function(s,x){return s+(x.bi||0);},0),bal:cs.reduce(function(s,x){return s+(x.bal||0);},0),lo:c.lo});
+      var filt=function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType)&&(!ctF||x.ct===ctF);};
+      var cs=DB.cases.filter(filt);
+      var latestDol=cs.reduce(function(m,x){return x.dol&&x.dol>m?x.dol:m;},'');
+      pats.push({name:c.pat,cases:cs.length,bi:cs.reduce(function(s,x){return s+(x.bi||0);},0),bal:cs.reduce(function(s,x){return s+(x.bal||0);},0),lo:c.lo,dol:latestDol});
     }
   });
+  // Sort
+  var sort=S.patSort||'';
+  if(sort==='name-asc') pats.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  else if(sort==='name-desc') pats.sort(function(a,b){return (b.name||'').localeCompare(a.name||'');});
+  else if(sort==='bal-desc') pats.sort(function(a,b){return b.bal-a.bal;});
+  else if(sort==='bal-asc') pats.sort(function(a,b){return a.bal-b.bal;});
+  else if(sort==='cases-desc') pats.sort(function(a,b){return b.cases-a.cases;});
+  else if(sort==='bi-desc') pats.sort(function(a,b){return b.bi-a.bi;});
+  var rc=document.getElementById('pat-rc');
+  if(rc)rc.textContent=pats.length+' patients';
   document.getElementById('pat-grid').innerHTML=pats.length?
     '<div class="pat-grid">'+pats.map(function(p){
       var color=clr(p.name);
@@ -2425,7 +2443,7 @@ function bindAll(){
       document.getElementById('sb-av').textContent=ini(name);
       // Show/hide nav items based on role
       var allNavIds=['ni-users','ni-patients','ni-followups','ni-files','ni-reports','ni-notices','ni-agent','ni-settings'];
-      var filterIds=['dash-ct-filter','pay-ct-filter','case-ct-filter'];
+      var filterIds=['dash-ct-filter','pay-ct-filter','case-ct-filter','pat-ct-filter'];
       if(S.role==='admin'){
         allNavIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
         filterIds.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='';});
@@ -2489,6 +2507,10 @@ function bindAll(){
 
   // Patients
   document.getElementById('pat-q').addEventListener('input',function(){S.patQ=this.value;rPatients();});
+  var patCt=document.getElementById('pat-ct-filter');
+  if(patCt)patCt.addEventListener('change',function(){S.patCt=this.value;rPatients();});
+  var patSort=document.getElementById('pat-sort');
+  if(patSort)patSort.addEventListener('change',function(){S.patSort=this.value;rPatients();});
 
   // Follow-ups
   document.getElementById('btn-add-fu').addEventListener('click',function(){openModal('fu',null);});
