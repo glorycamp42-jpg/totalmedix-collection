@@ -1228,18 +1228,25 @@ function loadFromSupabase() {
     var dbUsers    = results[6] || [];
     var dbKPI      = results[7] || [];
 
+    // Normalize clinic_type from Supabase to app short codes
+    function mapCT(v) {
+      if (!v) return '';
+      var m = {'Pain Management':'Pain','Chiropractic':'Chiro','MRI':'MRI'};
+      return m[v] || v;
+    }
+
     // Map Supabase rows → app format (keep demo data if Supabase table is empty)
     if (dbCases.length) {
       DB.cases = dbCases.map(function(r) {
         return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
-                dol:r.date_of_loss,st:r.status,ct:r.clinic_type,bi:parseFloat(r.billed)||0,
+                dol:r.date_of_loss,st:r.status,ct:mapCT(r.clinic_type),bi:parseFloat(r.billed)||0,
                 bal:parseFloat(r.balance)||0,gr:r.grade,notes:r.notes||''};
       });
     }
     if (dbPays.length) {
       DB.pays = dbPays.map(function(r) {
         return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
-                dol:r.date_of_loss,pd:r.pay_date,cs:r.check_status,ct:r.clinic_type,
+                dol:r.date_of_loss,pd:r.pay_date,cs:r.check_status,ct:mapCT(r.clinic_type),
                 ch:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0,
                 chkFrontPath:r.check_front_path||null,chkBackPath:r.check_back_path||null};
       });
