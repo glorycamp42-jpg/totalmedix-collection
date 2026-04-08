@@ -1119,7 +1119,7 @@ function supaFetch(path, opts, _retry) {
     mode: 'cors',
     body: bodyStr,
   }).then(function(r) {
-    if (!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    if (!r.ok) return r.text().then(function(t){ console.error('Supabase ERR:', r.status, path, t); throw new Error(t); });
     if (r.status === 204) return null;
     return r.json();
   }).catch(function(err) {
