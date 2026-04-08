@@ -405,7 +405,8 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="tb">
           <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search account #, patient, law office..."></div>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
-          <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="active">Active</option><option value="pending">Pending</option><option value="settled">Settled</option><option value="closed">Closed</option></select>
+          <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="active">Active</option><option value="Bill Sent">Bill Sent</option><option value="pending">Pending</option><option value="settled">Settled</option><option value="closed">Closed</option></select>
+          <select class="fl" id="case-sort"><option value="">Default</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
           <span class="rc" id="case-rc"></span>
         </div>
         <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
@@ -1419,7 +1420,7 @@ var S = {
   role:'admin', clinicType:null, user:null,
   fuTab:'pending', fuPri:'',
   payQ:'', paySt:'',
-  caseQ:'', caseSt:'',
+  caseQ:'', caseSt:'', caseSort:'',
   fileQ:'', fileCat:'',
   fuQ:'', patQ:'', ct:'',
   rptStart:null, rptEnd:null,
@@ -1594,6 +1595,12 @@ function rCase(){
     var cMatch=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;
     return m&&(!S.caseSt||c.st===S.caseSt)&&cMatch;
   });
+  // Sort
+  var sort=S.caseSort||'';
+  if(sort==='dol-desc') data.sort(function(a,b){return (b.dol||'').localeCompare(a.dol||'');});
+  else if(sort==='dol-asc') data.sort(function(a,b){return (a.dol||'').localeCompare(b.dol||'');});
+  else if(sort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'');});
+  else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
     return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
@@ -2469,6 +2476,8 @@ function bindAll(){
   document.getElementById('case-st-filter').addEventListener('change',function(){S.caseSt=this.value;rCase();});
   var caseCt=document.getElementById('case-ct-filter');
   if(caseCt)caseCt.addEventListener('change',function(){S.ct=this.value;rCase();});
+  var caseSort=document.getElementById('case-sort');
+  if(caseSort)caseSort.addEventListener('change',function(){S.caseSort=this.value;rCase();});
 
   // Patients
   document.getElementById('pat-q').addEventListener('input',function(){S.patQ=this.value;rPatients();});
