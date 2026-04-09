@@ -1698,35 +1698,53 @@ function bindCDEvents(){
   if(cdEmail)cdEmail.addEventListener('click',function(){emailCaseDetail();});
 }
 
+function getPrintStyles(){
+  return 'body{font-family:"Palatino Linotype",Palatino,Georgia,serif;padding:40px 50px;color:#1a1a1a;line-height:1.7;max-width:800px;margin:0 auto}'+
+    '.header{text-align:center;border-bottom:3px double #1a1a1a;padding-bottom:18px;margin-bottom:30px}'+
+    '.header h1{font-size:24px;font-weight:bold;letter-spacing:3px;text-transform:uppercase;margin:0}.header .divider{width:50px;height:2px;background:#6d28d9;margin:8px auto}'+
+    '.header .info{font-size:10px;color:#777;letter-spacing:1px;text-transform:uppercase;margin-top:6px}'+
+    '.title{font-size:18px;font-weight:bold;color:#1a1a1a;margin:0 0 4px}.subtitle{color:#666;font-size:12px;margin-bottom:24px}'+
+    '.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-left:8px}'+
+    '.meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:26px}'+
+    '.meta div{border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px}.meta .l{font-size:9px;text-transform:uppercase;color:#999;font-weight:700;letter-spacing:1px}.meta .v{font-size:17px;font-weight:800;margin-top:4px}'+
+    'h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#888;border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin:28px 0 14px}'+
+    'table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f8fafc;text-align:left;padding:9px 12px;font-size:10px;text-transform:uppercase;color:#888;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;font-weight:700}'+
+    'td{padding:8px 12px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#dc2626}'+
+    '.footer{margin-top:36px;padding-top:14px;border-top:2px double #e2e8f0;font-size:10px;color:#aaa;text-align:center;letter-spacing:.5px}'+
+    '.conf{margin-top:16px;padding:8px 12px;background:#fafafa;border-radius:4px;font-size:9px;color:#bbb;text-align:center;font-style:italic;line-height:1.5}'+
+    '@media print{body{padding:20px 30px}}';
+}
+
 function printCaseDetail(){
   var c=DB.cases.find(function(x){return x.id===S.curCase;}); if(!c)return;
   var pays=DB.pays.filter(function(p){return p.acct===c.acct;});
   var tp=pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var cr=c.bi>0?Math.round(tp/c.bi*100):0;
+  var stColor=c.st==='active'?'#0ea472':c.st==='settled'?'#3b5bdb':'#d97706';
+  var grColor={'A':'#0ea472','B':'#3b5bdb','C':'#d97706','D':'#e53935','F':'#7c3aed'}[c.gr]||'#94a3b8';
   var win=window.open('','_blank','width=800,height=900');
   win.document.write('<html><head><title>Case Report — '+(c.pat||'')+'</title>'+
-    '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#1e293b;line-height:1.6}'+
-    'h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin:24px 0 12px}'+
-    '.sub{color:#64748b;font-size:13px;margin-bottom:20px}.meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px}'+
-    '.meta div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px}.meta .l{font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:700}.meta .v{font-size:16px;font-weight:800}'+
-    'table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f1f5f9;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;color:#64748b}'+
-    'td{padding:8px 10px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#e53935}'+
-    '.footer{margin-top:30px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center}'+
-    '@media print{body{padding:20px}}</style></head><body>'+
-    '<h1>'+(c.pat||'Unknown')+'</h1>'+
-    '<div class="sub">Account #'+(c.acct||'—')+' · '+(c.lo||'—')+' · '+(c.prov||'—')+' · Status: '+(c.st||'—')+' · Grade: '+(c.gr||'N/A')+'</div>'+
+    '<style>'+getPrintStyles()+'</style></head><body>'+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div><div class="info">Tel: '+COMPANY.phone+' &bull; Fax: '+COMPANY.fax+' &bull; '+COMPANY.email+'</div></div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+      '<div class="title">'+(c.pat||'Unknown')+'</div>'+
+      '<div><span class="badge" style="background:'+stColor+'15;color:'+stColor+';border:1px solid '+stColor+'40">'+(c.st||'—')+'</span>'+
+      '<span class="badge" style="background:'+grColor+'15;color:'+grColor+';border:1px solid '+grColor+'40">Grade '+(c.gr||'N/A')+'</span></div>'+
+    '</div>'+
+    '<div class="subtitle">Account #'+(c.acct||'—')+' &bull; '+(c.lo||'—')+' &bull; '+(c.prov||'—')+' &bull; DOL: '+(c.dol?fd(c.dol):'N/A')+'</div>'+
     '<div class="meta">'+
-      '<div><div class="l">Billed</div><div class="v">'+fc(c.bi)+'</div></div>'+
-      '<div><div class="l">Balance</div><div class="v r">'+fc(c.bal)+'</div></div>'+
+      '<div><div class="l">Total Billed</div><div class="v">'+fc(c.bi)+'</div></div>'+
+      '<div><div class="l">Outstanding</div><div class="v r">'+fc(c.bal)+'</div></div>'+
       '<div><div class="l">Collected</div><div class="v g">'+fc(tp)+'</div></div>'+
-      '<div><div class="l">Collection Rate</div><div class="v '+(cr>=50?'g':'r')+'">'+cr+'%</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v" style="color:'+(cr>=50?'#0ea472':'#dc2626')+'">'+cr+'%</div></div>'+
     '</div>'+
     '<h2>Payment History ('+pays.length+')</h2>'+
     (pays.length?'<table><thead><tr><th>Pay Date</th><th>Check Status</th><th>Charged</th><th>Paid</th><th>DOL</th></tr></thead><tbody>'+
       pays.map(function(p){return '<tr><td>'+fd(p.pd)+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td><td>'+fd(p.dol)+'</td></tr>';}).join('')+
-    '</tbody></table>':'<p style="color:#94a3b8">No payments recorded.</p>')+
-    (c.notes?'<h2>Notes</h2><p>'+c.notes+'</p>':'')+
-    '<div class="footer">TotalMedix Collection Report · Printed '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '</tbody></table>':'<p style="color:#bbb;text-align:center;padding:16px">No payments recorded.</p>')+
+    (c.notes?'<h2>Case Notes</h2><p style="font-size:13px;color:#555;line-height:1.8">'+c.notes+'</p>':'')+
+    '<div class="footer">'+COMPANY.name+' &bull; Case Report &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for the named recipient.</div>'+
     '</body></html>');
   win.document.close();
   setTimeout(function(){win.print();},400);
@@ -1753,12 +1771,7 @@ function emailCaseDetail(){
 function printListPage(type){
   var win=window.open('','_blank','width=900,height=700');
   var title=type==='payments'?'Payments Report':'Cases Report';
-  var style='<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:30px;color:#1e293b}'+
-    'h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;color:#64748b;margin:0 0 16px}'+
-    'table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f1f5f9;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0}'+
-    'td{padding:6px 8px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#e53935}'+
-    '.footer{margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}'+
-    '@media print{body{padding:15px}}</style>';
+  var style='<style>'+getPrintStyles()+'</style>';
 
   var html='';
   if(type==='payments'){
@@ -1771,7 +1784,8 @@ function printListPage(type){
     });
     var tCh=pays.reduce(function(s,p){return s+(p.ch||0);},0);
     var tPd=pays.reduce(function(s,p){return s+(p.paid||0);},0);
-    html='<h1>Payments Report</h1><h2>'+pays.length+' records · Charged: '+fc(tCh)+' · Paid: '+fc(tPd)+'</h2>'+
+    html='<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div></div>'+
+      '<div class="title">Payments Report</div><div class="subtitle">'+pays.length+' records &bull; Total Charged: '+fc(tCh)+' &bull; Total Paid: '+fc(tPd)+' &bull; Outstanding: '+fc(tCh-tPd)+'</div>'+
       '<table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Pay Date</th><th>Clinic</th><th>Status</th><th>Charged</th><th>Paid</th></tr></thead><tbody>'+
       pays.map(function(p){return '<tr><td>'+(p.lo||'—')+'</td><td>'+(p.acct||'—')+'</td><td>'+(p.pat||'—')+'</td><td>'+(p.prov||'—')+'</td><td>'+fd(p.dol)+'</td><td>'+fd(p.pd)+'</td><td>'+(p.ct||'—')+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td></tr>';}).join('')+
       '</tbody></table>';
@@ -1785,14 +1799,16 @@ function printListPage(type){
     });
     var tBi=cases.reduce(function(s,c){return s+(c.bi||0);},0);
     var tBal=cases.reduce(function(s,c){return s+(c.bal||0);},0);
-    html='<h1>Cases Report</h1><h2>'+cases.length+' records · Billed: '+fc(tBi)+' · Balance: '+fc(tBal)+'</h2>'+
+    html='<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div></div>'+
+      '<div class="title">Cases Report</div><div class="subtitle">'+cases.length+' records &bull; Total Billed: '+fc(tBi)+' &bull; Total Balance: '+fc(tBal)+'</div>'+
       '<table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
       cases.map(function(c){return '<tr><td>'+(c.lo||'—')+'</td><td>'+(c.acct||'—')+'</td><td>'+(c.pat||'—')+'</td><td>'+(c.prov||'—')+'</td><td>'+fd(c.dol)+'</td><td>'+(c.st||'—')+'</td><td>'+(c.ct||'—')+'</td><td>'+(c.gr||'N/A')+'</td><td>'+fc(c.bi)+'</td><td class="r" style="font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
       '</tbody></table>';
   }
 
   win.document.write('<html><head><title>'+title+'</title>'+style+'</head><body>'+html+
-    '<div class="footer">TotalMedix Collection · Printed '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div></body></html>');
+    '<div class="footer">'+COMPANY.name+' &bull; '+title+' &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div></body></html>');
   win.document.close();
   setTimeout(function(){win.print();},400);
 }
@@ -2924,67 +2940,91 @@ function buildLetter(c, stage) {
     .replace(/\[CLINIC_ADDRESS\]/g,COMPANY.address);
 
   var stageTitles = {
-    '60':  'SECOND NOTICE — OUTSTANDING BALANCE',
-    '90':  'THIRD NOTICE — URGENT: IMMEDIATE PAYMENT REQUIRED',
-    '120': 'FINAL NOTICE — ACCOUNT REFERRED TO COLLECTION',
+    '60':  'COURTESY REMINDER — OUTSTANDING BALANCE',
+    '90':  'SECOND NOTICE — URGENT: IMMEDIATE PAYMENT REQUIRED',
+    '120': 'FINAL NOTICE — ACCOUNT SUBJECT TO COLLECTION ACTION',
   };
-  var stageColors = {'60':'#d97706','90':'#e53935','120':'#7c3aed'};
+  var stageColors = {'60':'#b45309','90':'#dc2626','120':'#6d28d9'};
+  var stageBorders = {'60':'#d97706','90':'#e53935','120':'#7c3aed'};
+  var stageAccentBg = {'60':'#fffbeb','90':'#fef2f2','120':'#f5f3ff'};
   var stageColor = stageColors[stage] || '#333';
+  var stageBorder = stageBorders[stage] || '#333';
+  var stageAccent = stageAccentBg[stage] || '#f9f9f9';
 
-  // Format body as HTML (newlines → <br>)
+  // Format body as HTML (newlines → <br>, numbered items)
   var bodyHtml = body.replace(/\n/g,'<br>');
 
-  return '<div class="letter-paper" style="font-family:Georgia,serif;font-size:14px;line-height:1.9;color:#111;max-width:680px;margin:0 auto">'+
+  return '<div class="letter-paper" style="font-family:\'Palatino Linotype\',Palatino,Georgia,serif;font-size:14px;line-height:1.85;color:#1a1a1a;max-width:700px;margin:0 auto;padding:10px">'+
 
-    // Letterhead
-    '<div style="text-align:center;border-bottom:3px solid #111;padding-bottom:16px;margin-bottom:28px">'+
-      '<div style="font-size:22px;font-weight:bold;letter-spacing:1px">'+COMPANY.name+'</div>'+
-      '<div style="font-size:12px;color:#555;margin-top:6px">'+COMPANY.address+'</div>'+
-      '<div style="font-size:12px;color:#555">Tel: '+COMPANY.phone+' &nbsp;|&nbsp; Fax: '+COMPANY.fax+' &nbsp;|&nbsp; '+COMPANY.email+'</div>'+
+    // Elegant letterhead with double border
+    '<div style="text-align:center;border-bottom:3px double #1a1a1a;padding-bottom:20px;margin-bottom:30px">'+
+      '<div style="font-size:26px;font-weight:bold;letter-spacing:3px;text-transform:uppercase;color:#1a1a1a">'+COMPANY.name+'</div>'+
+      '<div style="width:60px;height:2px;background:'+stageBorder+';margin:10px auto"></div>'+
+      '<div style="font-size:11px;color:#666;margin-top:8px;letter-spacing:1px;text-transform:uppercase">'+COMPANY.address+'</div>'+
+      '<div style="font-size:11px;color:#666;margin-top:3px;letter-spacing:.5px">Tel: '+COMPANY.phone+' &nbsp;&bull;&nbsp; Fax: '+COMPANY.fax+' &nbsp;&bull;&nbsp; '+COMPANY.email+'</div>'+
     '</div>'+
 
-    // Date
-    '<p style="margin-bottom:20px">'+today2+'</p>'+
+    // Date aligned right
+    '<div style="text-align:right;margin-bottom:24px;font-size:13px;color:#555">'+today2+'</div>'+
 
-    // Recipient
-    '<p style="margin-bottom:20px">'+
-      '<strong>'+(c.lo||'Law Office')+'</strong><br>'+
-      'RE: Patient: <strong>'+(c.pat||'—')+'</strong><br>'+
-      'Account #: <strong>'+(c.acct||'—')+'</strong>'+
-    '</p>'+
+    // Via certified mail badge for 90/120
+    (stage!=='60'?'<div style="display:inline-block;background:'+stageAccent+';border:1px solid '+stageBorder+';color:'+stageColor+';padding:4px 14px;border-radius:4px;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px">'+(stage==='120'?'VIA CERTIFIED MAIL':'URGENT — RESPONSE REQUIRED')+'</div>':'')+
 
-    // Subject line
-    '<div style="text-align:center;margin:24px 0">'+
-      '<span style="font-size:15px;font-weight:bold;text-decoration:underline;color:'+stageColor+'">'+
+    // Recipient block
+    '<div style="margin-bottom:24px;font-size:13px">'+
+      '<strong style="font-size:14px">'+(c.lo||'Law Office')+'</strong><br>'+
+      '<div style="margin-top:10px">'+
+        '<span style="color:#666">RE:</span> Patient: <strong>'+(c.pat||'—')+'</strong><br>'+
+        '<span style="color:#666">Account #:</span> <strong>'+(c.acct||'—')+'</strong><br>'+
+        '<span style="color:#666">Date of Loss:</span> '+(c.dol?fd(c.dol):'N/A')+
+      '</div>'+
+    '</div>'+
+
+    // Subject line with stage-colored accent
+    '<div style="text-align:center;margin:28px 0;padding:14px 20px;border-top:2px solid '+stageBorder+';border-bottom:2px solid '+stageBorder+';background:'+stageAccent+'">'+
+      '<span style="font-size:14px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:'+stageColor+'">'+
         stageTitles[stage]+
       '</span>'+
     '</div>'+
 
-    // Account summary box
-    '<div style="border:1px solid #ccc;border-radius:4px;padding:16px 20px;margin:20px 0;background:#f9f9f9">'+
-      '<div style="font-weight:bold;font-size:12px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;color:#666">Account Summary</div>'+
+    // Account summary box — elegant
+    '<div style="border:1px solid #d4d4d4;border-left:4px solid '+stageBorder+';padding:18px 22px;margin:24px 0;background:#fafafa">'+
+      '<div style="font-weight:bold;font-size:11px;margin-bottom:12px;text-transform:uppercase;letter-spacing:1.5px;color:#888">Account Summary</div>'+
       '<table style="width:100%;font-size:13px;border-collapse:collapse">'+
-        '<tr><td style="padding:4px 0;color:#555;width:50%">Patient Name:</td><td style="font-weight:bold">'+(c.pat||'—')+'</td></tr>'+
-        '<tr><td style="padding:4px 0;color:#555">Account Number:</td><td style="font-weight:bold">'+(c.acct||'—')+'</td></tr>'+
-        '<tr><td style="padding:4px 0;color:#555">Provider:</td><td>'+(c.prov||'—')+'</td></tr>'+
-        '<tr><td style="padding:4px 0;color:#555">Days Outstanding:</td><td style="color:'+stageColor+';font-weight:bold">'+daysOv+' days</td></tr>'+
-        '<tr style="border-top:2px solid #ccc"><td style="padding:8px 0 0;font-weight:bold;font-size:15px">TOTAL AMOUNT DUE:</td>'+
-        '<td style="font-weight:bold;font-size:18px;color:'+stageColor+';padding-top:8px">'+fc(c.bal)+'</td></tr>'+
+        '<tr><td style="padding:5px 0;color:#666;width:45%">Patient Name:</td><td style="font-weight:600">'+(c.pat||'—')+'</td></tr>'+
+        '<tr><td style="padding:5px 0;color:#666">Account Number:</td><td style="font-weight:600">'+(c.acct||'—')+'</td></tr>'+
+        '<tr><td style="padding:5px 0;color:#666">Provider:</td><td>'+(c.prov||'—')+'</td></tr>'+
+        '<tr><td style="padding:5px 0;color:#666">Date of Loss:</td><td>'+(c.dol?fd(c.dol):'N/A')+'</td></tr>'+
+        '<tr><td style="padding:5px 0;color:#666">Days Outstanding:</td><td style="color:'+stageColor+';font-weight:700">'+daysOv+' days</td></tr>'+
+        '<tr><td colspan="2" style="padding-top:8px"><div style="border-top:1px solid #d4d4d4"></div></td></tr>'+
+        '<tr><td style="padding:10px 0 0;font-weight:bold;font-size:14px;color:#1a1a1a">TOTAL AMOUNT DUE:</td>'+
+        '<td style="font-weight:800;font-size:20px;color:'+stageColor+';padding-top:10px">'+fc(c.bal)+'</td></tr>'+
       '</table>'+
     '</div>'+
 
     // Body from template
-    '<div style="margin:20px 0;line-height:2">'+bodyHtml+'</div>'+
+    '<div style="margin:24px 0;line-height:2;text-align:justify">'+bodyHtml+'</div>'+
 
-    // Signature
-    '<div style="margin-top:36px">'+
-      '<p style="margin-bottom:40px">Sincerely,</p>'+
-      '<p><strong>Billing Department</strong><br>'+COMPANY.name+'<br>'+COMPANY.phone+'<br>'+COMPANY.email+'</p>'+
+    // Signature block — formal
+    '<div style="margin-top:44px">'+
+      '<p style="margin-bottom:8px">Respectfully,</p>'+
+      '<div style="width:200px;border-bottom:1px solid #999;margin:30px 0 8px"></div>'+
+      '<p style="margin:0"><strong>Billing Department</strong></p>'+
+      '<p style="margin:2px 0;font-size:13px;color:#555">'+COMPANY.name+'</p>'+
+      '<p style="margin:2px 0;font-size:12px;color:#777">'+COMPANY.address+'</p>'+
+      '<p style="margin:2px 0;font-size:12px;color:#777">Tel: '+COMPANY.phone+' | Fax: '+COMPANY.fax+'</p>'+
+      '<p style="margin:2px 0;font-size:12px;color:#777">'+COMPANY.email+'</p>'+
     '</div>'+
 
-    // CC
-    '<div style="border-top:1px solid #ccc;margin-top:30px;padding-top:10px;font-size:12px;color:#666">'+
-      'cc: '+(c.pat||'Patient')+' (via patient file)'+
+    // CC line
+    '<div style="border-top:1px solid #d4d4d4;margin-top:36px;padding-top:12px;font-size:11px;color:#888;letter-spacing:.5px">'+
+      'CC: '+(c.pat||'Patient')+' (via patient file)'+
+    '</div>'+
+
+    // Confidentiality footer
+    '<div style="margin-top:24px;padding:10px 14px;background:#f8f8f8;border-radius:4px;font-size:10px;color:#999;line-height:1.5;text-align:center;font-style:italic">'+
+      'CONFIDENTIALITY NOTICE: This document contains confidential information intended solely for the addressee. '+
+      'If you are not the intended recipient, please notify the sender immediately and destroy this document.'+
     '</div>'+
   '</div>';
 }
@@ -3570,16 +3610,16 @@ bindAgentEvents();
 // ── Default templates ────────────────────────────────────────
 var TEMPLATES = {
   '60': {
-    subject: '60-Day Notice — Outstanding Balance: Account #[ACCOUNT_NUM]',
-    body: 'Dear [LAW_OFFICE],\n\nThis is a courtesy reminder that the following account remains unpaid as of [DATE]:\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Overdue: [DAYS_OVERDUE]\nBalance Due: [BALANCE]\n\nWe respectfully request that you arrange payment at your earliest convenience. If you have already submitted payment, please disregard this notice.\n\nTo resolve this account, please contact our billing department:\n📞 [CLINIC_PHONE]\n📧 [CLINIC_EMAIL]\n\nThank you for your prompt attention.\n\nSincerely,\nBilling Department\n[CLINIC_NAME]',
+    subject: '60-Day Courtesy Reminder — Outstanding Balance: Account #[ACCOUNT_NUM]',
+    body: 'Dear [LAW_OFFICE],\n\nWe hope this message finds you well. We are writing to bring to your attention that the following account has an outstanding balance that is now 60 days past due.\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Outstanding: [DAYS_OVERDUE]\nAmount Due: [BALANCE]\n\nWe understand that processing times may vary, and we appreciate your attention to this matter. If payment has already been submitted, please kindly disregard this notice and accept our thanks.\n\nShould you have any questions regarding this account or wish to discuss payment arrangements, our billing department is available to assist you:\n\nPhone: [CLINIC_PHONE]\nFax: [CLINIC_FAX]\nEmail: [CLINIC_EMAIL]\n\nWe value our professional relationship and look forward to resolving this matter promptly.\n\nThank you for your cooperation.',
   },
   '90': {
-    subject: 'URGENT — 90-Day Notice: Account #[ACCOUNT_NUM] Requires Immediate Action',
-    body: 'Dear [LAW_OFFICE],\n\nDespite our previous correspondence, Account #[ACCOUNT_NUM] for patient [PATIENT_NAME] remains unpaid.\n\nDays Overdue: [DAYS_OVERDUE]\nBalance Due: [BALANCE]\n\nThis is your URGENT NOTICE that failure to respond within 15 days will result in this account being escalated to our collections department.\n\nPlease contact us immediately to arrange payment:\n📞 [CLINIC_PHONE]\n📧 [CLINIC_EMAIL]\n\nWe strongly urge you to act promptly to avoid further action.\n\nSincerely,\nBilling Department\n[CLINIC_NAME]',
+    subject: 'SECOND NOTICE — Urgent: Account #[ACCOUNT_NUM] Requires Immediate Attention',
+    body: 'Dear [LAW_OFFICE],\n\nRE: SECOND NOTICE — PAYMENT OVERDUE\n\nWe are writing to follow up on our previous correspondence dated approximately 30 days ago regarding the outstanding balance on the account referenced above. Despite our prior notice, this account remains unresolved.\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Outstanding: [DAYS_OVERDUE]\nAmount Due: [BALANCE]\n\nPursuant to our billing policy, accounts exceeding 90 days past due are subject to escalation. We are providing you with a 15-day grace period from the date of this notice to submit payment or contact our office to establish a mutually agreeable payment arrangement.\n\nFailure to respond within the specified timeframe may result in the following actions:\n\n1. Assessment of additional administrative fees\n2. Referral to our collections department\n3. Reporting to applicable credit agencies\n\nWe strongly encourage you to address this matter immediately to avoid any adverse consequences.\n\nPlease contact our billing department:\nPhone: [CLINIC_PHONE]\nFax: [CLINIC_FAX]\nEmail: [CLINIC_EMAIL]\n\nYour immediate attention to this matter is greatly appreciated.',
   },
   '120': {
-    subject: 'FINAL NOTICE — Account #[ACCOUNT_NUM] Referred to Collections',
-    body: 'Dear [LAW_OFFICE],\n\nThis is your FINAL NOTICE regarding Account #[ACCOUNT_NUM] for patient [PATIENT_NAME].\n\nDays Overdue: [DAYS_OVERDUE]\nBalance Due: [BALANCE]\n\nThis account has been flagged for referral to an outside collection agency. If payment in full is not received within 10 business days of this notice, we will proceed with collection action which may include:\n\n• Referral to collections agency\n• Additional fees and interest\n• Potential legal action\n\nTo avoid these consequences, contact us immediately:\n📞 [CLINIC_PHONE]\n📧 [CLINIC_EMAIL]\n\nThis is your final opportunity to resolve this matter directly.\n\nSincerely,\nBilling Department\n[CLINIC_NAME]',
+    subject: 'FINAL NOTICE — Account #[ACCOUNT_NUM] Subject to Collection Action',
+    body: 'Dear [LAW_OFFICE],\n\nRE: FINAL NOTICE BEFORE COLLECTION ACTION\n\nThis letter serves as your FINAL NOTICE regarding the severely delinquent account referenced above. Multiple prior notices have been sent without response or resolution.\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Outstanding: [DAYS_OVERDUE]\nAmount Due: [BALANCE]\n\nPlease be advised that if full payment or a binding payment agreement is not received within TEN (10) BUSINESS DAYS from the date of this notice, [CLINIC_NAME] will have no alternative but to pursue the following actions:\n\n1. Immediate referral to an authorized third-party collection agency\n2. Assessment of all applicable collection fees, administrative costs, and statutory interest\n3. Filing of appropriate legal action to recover the full amount owed, including attorney fees and court costs\n4. Reporting of the delinquent account to all major credit reporting agencies\n\nThis is your final opportunity to resolve this obligation directly with our office before formal collection proceedings commence. We strongly urge you to treat this matter with the utmost urgency.\n\nAll future correspondence regarding this account should be directed to:\n\n[CLINIC_NAME]\n[CLINIC_ADDRESS]\nPhone: [CLINIC_PHONE]\nFax: [CLINIC_FAX]\nEmail: [CLINIC_EMAIL]\n\nGovern yourself accordingly.',
   },
 };
 
@@ -3650,9 +3690,9 @@ function saveTemplate() {
 function resetTemplate() {
   var stage = document.getElementById('template-select').value;
   var defaults = {
-    '60': { subject: '60-Day Notice — Outstanding Balance: Account #[ACCOUNT_NUM]', body: 'Dear [LAW_OFFICE],\n\nThis is a reminder that Account #[ACCOUNT_NUM] for [PATIENT_NAME] has an outstanding balance of [BALANCE] ([DAYS_OVERDUE] days overdue).\n\nPlease contact us at [CLINIC_PHONE] or [CLINIC_EMAIL].\n\nSincerely,\n[CLINIC_NAME]' },
-    '90': { subject: 'URGENT 90-Day Notice — Account #[ACCOUNT_NUM]', body: 'Dear [LAW_OFFICE],\n\nURGENT: Account #[ACCOUNT_NUM] for [PATIENT_NAME] is [DAYS_OVERDUE] days overdue with a balance of [BALANCE]. Immediate action required.\n\nContact: [CLINIC_PHONE] | [CLINIC_EMAIL]\n\n[CLINIC_NAME]' },
-    '120': { subject: 'FINAL NOTICE — Account #[ACCOUNT_NUM] Referred to Collections', body: 'Dear [LAW_OFFICE],\n\nFINAL NOTICE: Account #[ACCOUNT_NUM] for [PATIENT_NAME] ([BALANCE] balance, [DAYS_OVERDUE] days) is being referred to collections within 10 business days.\n\nContact immediately: [CLINIC_PHONE]\n\n[CLINIC_NAME]' },
+    '60': { subject: '60-Day Courtesy Reminder — Outstanding Balance: Account #[ACCOUNT_NUM]', body: 'Dear [LAW_OFFICE],\n\nWe hope this message finds you well. We are writing to bring to your attention that the following account has an outstanding balance that is now 60 days past due.\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Outstanding: [DAYS_OVERDUE]\nAmount Due: [BALANCE]\n\nWe understand that processing times may vary, and we appreciate your attention to this matter. If payment has already been submitted, please kindly disregard this notice and accept our thanks.\n\nShould you have any questions regarding this account or wish to discuss payment arrangements, our billing department is available to assist you:\n\nPhone: [CLINIC_PHONE]\nFax: [CLINIC_FAX]\nEmail: [CLINIC_EMAIL]\n\nWe value our professional relationship and look forward to resolving this matter promptly.\n\nThank you for your cooperation.' },
+    '90': { subject: 'SECOND NOTICE — Urgent: Account #[ACCOUNT_NUM] Requires Immediate Attention', body: 'Dear [LAW_OFFICE],\n\nRE: SECOND NOTICE — PAYMENT OVERDUE\n\nWe are writing to follow up on our previous correspondence regarding the outstanding balance on the account referenced above. Despite our prior notice, this account remains unresolved.\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Outstanding: [DAYS_OVERDUE]\nAmount Due: [BALANCE]\n\nPursuant to our billing policy, accounts exceeding 90 days past due are subject to escalation. We are providing you with a 15-day grace period from the date of this notice to submit payment or contact our office.\n\nFailure to respond may result in:\n1. Assessment of additional administrative fees\n2. Referral to our collections department\n3. Reporting to applicable credit agencies\n\nPlease contact our billing department:\nPhone: [CLINIC_PHONE]\nFax: [CLINIC_FAX]\nEmail: [CLINIC_EMAIL]\n\nYour immediate attention to this matter is greatly appreciated.' },
+    '120': { subject: 'FINAL NOTICE — Account #[ACCOUNT_NUM] Subject to Collection Action', body: 'Dear [LAW_OFFICE],\n\nRE: FINAL NOTICE BEFORE COLLECTION ACTION\n\nThis letter serves as your FINAL NOTICE regarding the severely delinquent account referenced above. Multiple prior notices have been sent without response or resolution.\n\nPatient: [PATIENT_NAME]\nAccount #: [ACCOUNT_NUM]\nDays Outstanding: [DAYS_OVERDUE]\nAmount Due: [BALANCE]\n\nIf full payment or a binding payment agreement is not received within TEN (10) BUSINESS DAYS, [CLINIC_NAME] will pursue:\n1. Referral to an authorized third-party collection agency\n2. Assessment of all applicable collection fees and statutory interest\n3. Filing of appropriate legal action including attorney fees and court costs\n4. Reporting to all major credit reporting agencies\n\nContact immediately:\n[CLINIC_NAME]\n[CLINIC_ADDRESS]\nPhone: [CLINIC_PHONE]\nFax: [CLINIC_FAX]\nEmail: [CLINIC_EMAIL]\n\nGovern yourself accordingly.' },
   };
   TEMPLATES[stage] = defaults[stage];
   loadTemplate(stage);
@@ -4516,36 +4556,35 @@ function openLODetail(nameEnc) {
 }
 
 function printLODetail(lo){
+  var gradeColors = {A:'#0ea472',B:'#3b5bdb',C:'#d97706',D:'#e53935',F:'#7c3aed'};
+  var gc=gradeColors[lo.grade]||'#94a3b8';
   var win=window.open('','_blank','width=800,height=900');
   win.document.write('<html><head><title>Law Office Report — '+lo.name+'</title>'+
-    '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#1e293b;line-height:1.6}'+
-    'h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin:24px 0 12px}'+
-    '.sub{color:#64748b;font-size:13px;margin-bottom:20px}.meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px}'+
-    '.meta div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px}.meta .l{font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:700}.meta .v{font-size:16px;font-weight:800}'+
-    'table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f1f5f9;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;color:#64748b}'+
-    'td{padding:7px 10px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#e53935}'+
-    '.footer{margin-top:30px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center}'+
-    '@media print{body{padding:20px}}</style></head><body>'+
-    '<h1>'+lo.name+'</h1>'+
-    '<div class="sub">'+lo.caseCount+' cases · '+lo.pays.length+' payments · Grade: '+lo.grade+'</div>'+
+    '<style>'+getPrintStyles()+'</style></head><body>'+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div><div class="info">Tel: '+COMPANY.phone+' &bull; Fax: '+COMPANY.fax+' &bull; '+COMPANY.email+'</div></div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+      '<div class="title">'+lo.name+'</div>'+
+      '<span class="badge" style="background:'+gc+'15;color:'+gc+';border:1px solid '+gc+'40;font-size:14px;padding:4px 14px">Grade '+lo.grade+'</span>'+
+    '</div>'+
+    '<div class="subtitle">'+lo.caseCount+' cases &bull; '+lo.pays.length+' payments'+(lo.avgDays!==null?' &bull; Avg pay time: '+lo.avgDays+' days':'')+'</div>'+
     '<div class="meta">'+
       '<div><div class="l">Total Charged</div><div class="v">'+fc(lo.charged)+'</div></div>'+
       '<div><div class="l">Collected</div><div class="v g">'+fc(lo.paid)+'</div></div>'+
       '<div><div class="l">Outstanding</div><div class="v r">'+fc(lo.balance)+'</div></div>'+
-      '<div><div class="l">Collection Rate</div><div class="v '+(lo.rate>=40?'g':'r')+'">'+lo.rate.toFixed(1)+'%</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v" style="color:'+(lo.rate>=40?'#0ea472':'#dc2626')+'">'+lo.rate.toFixed(1)+'%</div></div>'+
     '</div>'+
-    (lo.avgDays!==null?'<p style="color:#64748b;font-size:13px">Average pay time: <strong>'+lo.avgDays+' days</strong></p>':'')+
     '<h2>Cases ('+lo.cases.length+')</h2>'+
     (lo.cases.length?'<table><thead><tr><th>Account #</th><th>Patient</th><th>Status</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
-      lo.cases.map(function(c){return '<tr><td>'+(c.acct||'—')+'</td><td>'+(c.pat||'—')+'</td><td>'+(c.st||'—')+'</td><td>'+(c.gr||'N/A')+'</td><td>'+fc(c.bi)+'</td><td class="r">'+fc(c.bal)+'</td></tr>';}).join('')+
-    '</tbody></table>':'<p style="color:#94a3b8">No cases.</p>')+
+      lo.cases.map(function(c){return '<tr><td>'+(c.acct||'—')+'</td><td>'+(c.pat||'—')+'</td><td>'+(c.st||'—')+'</td><td>'+(c.gr||'N/A')+'</td><td>'+fc(c.bi)+'</td><td class="r" style="font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
+    '</tbody></table>':'<p style="color:#bbb;text-align:center;padding:16px">No cases.</p>')+
     '<h2>Payment History ('+lo.pays.length+')</h2>'+
     (lo.pays.length?'<table><thead><tr><th>Pay Date</th><th>Patient</th><th>Status</th><th>Charged</th><th>Paid</th><th>Outstanding</th></tr></thead><tbody>'+
       lo.pays.slice().sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');}).map(function(p){
-        return '<tr><td>'+fd(p.pd)+'</td><td>'+(p.pat||'—')+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td><td class="r">'+fc((p.ch||0)-(p.paid||0))+'</td></tr>';
+        return '<tr><td>'+fd(p.pd)+'</td><td>'+(p.pat||'—')+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td><td class="r" style="font-weight:700">'+fc((p.ch||0)-(p.paid||0))+'</td></tr>';
       }).join('')+
-    '</tbody></table>':'<p style="color:#94a3b8">No payments.</p>')+
-    '<div class="footer">TotalMedix Collection — Law Office Report · Printed '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '</tbody></table>':'<p style="color:#bbb;text-align:center;padding:16px">No payments.</p>')+
+    '<div class="footer">'+COMPANY.name+' &bull; Law Office Analysis Report &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div>'+
     '</body></html>');
   win.document.close();
   setTimeout(function(){win.print();},400);
