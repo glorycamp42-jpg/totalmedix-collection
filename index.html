@@ -2263,6 +2263,19 @@ function savePay(){
     else{o.id=r?r.id:DB.nid.pay++;DB.pays.unshift(o);}
     var payId=o.id||id;
     uploadCheckImages(payId).then(function(){toast(id?'Payment updated':'Payment saved','✅');rPay();}).catch(function(){toast(id?'Payment updated (image upload failed)':'Payment saved (image upload failed)','⚠️');rPay();});
+    // Auto-create case if no matching case exists for this account
+    if(!id&&o.acct){
+      var exists=DB.cases.some(function(c){return c.acct===o.acct;});
+      if(!exists){
+        var nc={lo:o.lo,acct:o.acct,pat:o.pat,prov:o.prov,dol:o.dol,st:'active',ct:o.ct,bi:o.ch||0,bal:Math.max((o.ch||0)-(o.paid||0),0),gr:null,notes:''};
+        sbSaveCase(nc,null).then(function(cr){
+          nc.id=cr?cr.id:DB.nid.case++;DB.cases.unshift(nc);rCase();
+          toast('Case auto-created for '+o.pat,'📋');
+        }).catch(function(){
+          nc.id=DB.nid.case++;DB.cases.unshift(nc);rCase();
+        });
+      }
+    }
   }).catch(function(e){
     if(id){Object.assign(DB.pays.find(function(p){return p.id===id;}),o);}
     else{o.id=DB.nid.pay++;DB.pays.unshift(o);}
