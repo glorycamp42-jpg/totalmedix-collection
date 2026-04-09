@@ -381,6 +381,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="ph">
           <div><div class="pt">Payments</div><div class="ps">Manage payment records</div></div>
           <div class="ha">
+            <button class="btn bs bsm" id="btn-print-pay">🖨️ Print</button>
             <button class="btn bs bsm" id="btn-export-pay">↓ Export CSV</button>
             <button class="btn bp bsm" id="btn-add-pay2">+ Add Payment</button>
           </div>
@@ -398,6 +399,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="ph">
           <div><div class="pt">Cases</div><div class="ps">Manage patient cases</div></div>
           <div class="ha">
+            <button class="btn bs bsm" id="btn-print-cases">🖨️ Print</button>
             <button class="btn bs bsm" id="btn-export-cases">↓ Export CSV</button>
             <button class="btn bp bsm" id="btn-add-case">+ Add Case</button>
           </div>
@@ -481,7 +483,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div id="pg-reports" class="pg">
         <div class="ph">
           <div><div class="pt">Reports</div><div class="ps">Analytics and performance</div></div>
-          <div class="ha"><button class="btn bs bsm" id="btn-rpt-print">🖨️ Print</button></div>
+          <div class="ha"><button class="btn bs bsm" id="btn-rpt-print">🖨️ Print</button><button class="btn bg2 bsm" id="btn-rpt-email" style="margin-left:6px">📧 Email</button></div>
         </div>
         <!-- Report view tabs -->
         <div style="display:flex;gap:6px;margin-bottom:16px;background:var(--g100);padding:4px;border-radius:14px;width:fit-content">
@@ -1636,6 +1638,8 @@ function openCD(id){
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+sb(c.st)+' '+gb(c.gr)+
           '<button style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" data-edit-case="'+c.id+'">Edit</button>'+
           '<button style="background:rgba(124,58,237,.4);border:1px solid rgba(124,58,237,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" data-ai-case="'+c.id+'">🤖 AI Analyze</button>'+
+          '<button style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-print">🖨️ Print</button>'+
+          '<button style="background:rgba(14,164,114,.4);border:1px solid rgba(14,164,114,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-email">📧 Email</button>'+
         '</div>'+
       '</div>'+
       '<div class="dstats">'+
@@ -1688,6 +1692,109 @@ function bindCDEvents(){
   document.querySelectorAll('[data-ai-case]').forEach(function(el){
     el.addEventListener('click',function(){aiAnalyzeCase(parseInt(el.dataset.aiCase));});
   });
+  var cdPrint=document.getElementById('cd-print');
+  if(cdPrint)cdPrint.addEventListener('click',function(){printCaseDetail();});
+  var cdEmail=document.getElementById('cd-email');
+  if(cdEmail)cdEmail.addEventListener('click',function(){emailCaseDetail();});
+}
+
+function printCaseDetail(){
+  var c=DB.cases.find(function(x){return x.id===S.curCase;}); if(!c)return;
+  var pays=DB.pays.filter(function(p){return p.acct===c.acct;});
+  var tp=pays.reduce(function(s,p){return s+(p.paid||0);},0);
+  var cr=c.bi>0?Math.round(tp/c.bi*100):0;
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write('<html><head><title>Case Report — '+(c.pat||'')+'</title>'+
+    '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#1e293b;line-height:1.6}'+
+    'h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin:24px 0 12px}'+
+    '.sub{color:#64748b;font-size:13px;margin-bottom:20px}.meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px}'+
+    '.meta div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px}.meta .l{font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:700}.meta .v{font-size:16px;font-weight:800}'+
+    'table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f1f5f9;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;color:#64748b}'+
+    'td{padding:8px 10px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#e53935}'+
+    '.footer{margin-top:30px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center}'+
+    '@media print{body{padding:20px}}</style></head><body>'+
+    '<h1>'+(c.pat||'Unknown')+'</h1>'+
+    '<div class="sub">Account #'+(c.acct||'—')+' · '+(c.lo||'—')+' · '+(c.prov||'—')+' · Status: '+(c.st||'—')+' · Grade: '+(c.gr||'N/A')+'</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Billed</div><div class="v">'+fc(c.bi)+'</div></div>'+
+      '<div><div class="l">Balance</div><div class="v r">'+fc(c.bal)+'</div></div>'+
+      '<div><div class="l">Collected</div><div class="v g">'+fc(tp)+'</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v '+(cr>=50?'g':'r')+'">'+cr+'%</div></div>'+
+    '</div>'+
+    '<h2>Payment History ('+pays.length+')</h2>'+
+    (pays.length?'<table><thead><tr><th>Pay Date</th><th>Check Status</th><th>Charged</th><th>Paid</th><th>DOL</th></tr></thead><tbody>'+
+      pays.map(function(p){return '<tr><td>'+fd(p.pd)+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td><td>'+fd(p.dol)+'</td></tr>';}).join('')+
+    '</tbody></table>':'<p style="color:#94a3b8">No payments recorded.</p>')+
+    (c.notes?'<h2>Notes</h2><p>'+c.notes+'</p>':'')+
+    '<div class="footer">TotalMedix Collection Report · Printed '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
+function emailCaseDetail(){
+  var c=DB.cases.find(function(x){return x.id===S.curCase;}); if(!c)return;
+  var pays=DB.pays.filter(function(p){return p.acct===c.acct;});
+  var tp=pays.reduce(function(s,p){return s+(p.paid||0);},0);
+  var cr=c.bi>0?Math.round(tp/c.bi*100):0;
+  var subj='Case Report: '+(c.pat||'Unknown')+' — Acct #'+(c.acct||'');
+  var body='CASE REPORT\n\nPatient: '+(c.pat||'Unknown')+'\nAccount #: '+(c.acct||'—')+
+    '\nLaw Office: '+(c.lo||'—')+'\nProvider: '+(c.prov||'—')+
+    '\nStatus: '+(c.st||'—')+'\nGrade: '+(c.gr||'N/A')+
+    '\nDOL: '+fd(c.dol)+
+    '\n\nBilled: '+fc(c.bi)+'\nBalance: '+fc(c.bal)+'\nCollected: '+fc(tp)+'\nCollection Rate: '+cr+'%'+
+    '\n\n--- PAYMENTS ('+pays.length+') ---\n'+
+    (pays.length?pays.map(function(p){return fd(p.pd)+' | '+(p.cs||'—')+' | Charged: '+fc(p.ch)+' | Paid: '+fc(p.paid);}).join('\n'):'No payments')+
+    (c.notes?'\n\nNotes: '+c.notes:'')+
+    '\n\n— TotalMedix Collection';
+  window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
+}
+
+function printListPage(type){
+  var win=window.open('','_blank','width=900,height=700');
+  var title=type==='payments'?'Payments Report':'Cases Report';
+  var style='<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:30px;color:#1e293b}'+
+    'h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;color:#64748b;margin:0 0 16px}'+
+    'table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f1f5f9;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0}'+
+    'td{padding:6px 8px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#e53935}'+
+    '.footer{margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}'+
+    '@media print{body{padding:15px}}</style>';
+
+  var html='';
+  if(type==='payments'){
+    var pays=DB.pays.filter(function(p){
+      if(S.clinicType&&p.ct!==S.clinicType)return false;
+      if(S.ct&&p.ct!==S.ct)return false;
+      if(S.paySt&&p.cs!==S.paySt)return false;
+      if(S.payQ){var q=S.payQ.toLowerCase();if(![p.pat,p.lo,p.acct,p.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return false;}
+      return true;
+    });
+    var tCh=pays.reduce(function(s,p){return s+(p.ch||0);},0);
+    var tPd=pays.reduce(function(s,p){return s+(p.paid||0);},0);
+    html='<h1>Payments Report</h1><h2>'+pays.length+' records · Charged: '+fc(tCh)+' · Paid: '+fc(tPd)+'</h2>'+
+      '<table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Pay Date</th><th>Clinic</th><th>Status</th><th>Charged</th><th>Paid</th></tr></thead><tbody>'+
+      pays.map(function(p){return '<tr><td>'+(p.lo||'—')+'</td><td>'+(p.acct||'—')+'</td><td>'+(p.pat||'—')+'</td><td>'+(p.prov||'—')+'</td><td>'+fd(p.dol)+'</td><td>'+fd(p.pd)+'</td><td>'+(p.ct||'—')+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td></tr>';}).join('')+
+      '</tbody></table>';
+  } else {
+    var cases=DB.cases.filter(function(c){
+      if(S.clinicType&&c.ct!==S.clinicType)return false;
+      if(S.ct&&c.ct!==S.ct)return false;
+      if(S.caseSt&&c.st!==S.caseSt)return false;
+      if(S.caseQ){var q=S.caseQ.toLowerCase();if(![c.pat,c.lo,c.acct,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return false;}
+      return true;
+    });
+    var tBi=cases.reduce(function(s,c){return s+(c.bi||0);},0);
+    var tBal=cases.reduce(function(s,c){return s+(c.bal||0);},0);
+    html='<h1>Cases Report</h1><h2>'+cases.length+' records · Billed: '+fc(tBi)+' · Balance: '+fc(tBal)+'</h2>'+
+      '<table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
+      cases.map(function(c){return '<tr><td>'+(c.lo||'—')+'</td><td>'+(c.acct||'—')+'</td><td>'+(c.pat||'—')+'</td><td>'+(c.prov||'—')+'</td><td>'+fd(c.dol)+'</td><td>'+(c.st||'—')+'</td><td>'+(c.ct||'—')+'</td><td>'+(c.gr||'N/A')+'</td><td>'+fc(c.bi)+'</td><td class="r" style="font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
+      '</tbody></table>';
+  }
+
+  win.document.write('<html><head><title>'+title+'</title>'+style+'</head><body>'+html+
+    '<div class="footer">TotalMedix Collection · Printed '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div></body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
 }
 
 // ── FOLLOW-UPS ───────────────────────────────────────────────
@@ -2503,6 +2610,7 @@ function bindAll(){
   // Payments
   document.getElementById('btn-add-pay2').addEventListener('click',function(){openModal('pay',null);});
   document.getElementById('btn-export-pay').addEventListener('click',function(){exportCSV('pays');});
+  document.getElementById('btn-print-pay').addEventListener('click',function(){printListPage('payments');});
   document.getElementById('pay-q').addEventListener('input',function(){S.payQ=this.value;rPay();});
   document.getElementById('pay-st-filter').addEventListener('change',function(){S.paySt=this.value;rPay();});
   var payCt=document.getElementById('pay-ct-filter');
@@ -2511,6 +2619,7 @@ function bindAll(){
   // Cases
   document.getElementById('btn-add-case').addEventListener('click',function(){openModal('case',null);});
   document.getElementById('btn-export-cases').addEventListener('click',function(){exportCSV('cases');});
+  document.getElementById('btn-print-cases').addEventListener('click',function(){printListPage('cases');});
   document.getElementById('case-q').addEventListener('input',function(){S.caseQ=this.value;rCase();});
   document.getElementById('case-st-filter').addEventListener('change',function(){S.caseSt=this.value;rCase();});
   var caseCt=document.getElementById('case-ct-filter');
@@ -2982,6 +3091,22 @@ function bindNoticeEvents() {
 
   var btnRptPrint = document.getElementById('btn-rpt-print');
   if (btnRptPrint) btnRptPrint.addEventListener('click', function(){ window.print(); });
+  var btnRptEmail = document.getElementById('btn-rpt-email');
+  if (btnRptEmail) btnRptEmail.addEventListener('click', function(){
+    var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
+    var tPd=DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
+    var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
+    var active=DB.cases.filter(function(c){return c.st==='active';}).length;
+    var subj='TotalMedix Collection Report — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    var body='TOTALMEDIX COLLECTION REPORT\n'+new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+
+      '\n\nTotal Charged: '+fc(tCh)+'\nTotal Collected: '+fc(tPd)+'\nOutstanding: '+fc(tCh-tPd)+'\nCollection Rate: '+rate+'%'+
+      '\nActive Cases: '+active+'\nTotal Cases: '+DB.cases.length+'\nTotal Payments: '+DB.pays.length+
+      '\n\nTop Outstanding:\n'+
+      DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10)
+        .map(function(c,i){return (i+1)+'. '+(c.pat||'—')+' ('+(c.lo||'—')+') — '+fc(c.bal);}).join('\n')+
+      '\n\n— TotalMedix Collection';
+    window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
+  });
 
   var btnRef = document.getElementById('btn-refresh-notices');
   if (btnRef) btnRef.addEventListener('click', rNotices);
@@ -4316,7 +4441,11 @@ function openLODetail(nameEnc) {
           '<h1 style="font-size:20px;font-weight:800">'+lo.name+'</h1>'+
           '<p style="color:rgba(255,255,255,.5);font-size:13px;margin-top:4px">'+lo.caseCount+' cases &nbsp;·&nbsp; '+lo.pays.length+' payments</p>'+
         '</div>'+
-        '<span style="background:rgba(255,255,255,.15);color:#fff;padding:6px 14px;border-radius:10px;font-size:18px;font-weight:800">Grade: '+lo.grade+'</span>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<span style="background:rgba(255,255,255,.15);color:#fff;padding:6px 14px;border-radius:10px;font-size:18px;font-weight:800">Grade: '+lo.grade+'</span>'+
+          '<button style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="lo-print-btn">🖨️ Print</button>'+
+          '<button style="background:rgba(14,164,114,.4);border:1px solid rgba(14,164,114,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="lo-email-btn">📧 Email</button>'+
+        '</div>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px">'+
         '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px">'+
@@ -4378,6 +4507,65 @@ function openLODetail(nameEnc) {
       }).join('') : '<tr><td colspan="6"><div class="empty" style="padding:20px"><div class="et">No payments</div></div></td></tr>')+
       '</tbody></table></div>'+
     '</div>';
+
+  // Bind print/email
+  var loPrint=document.getElementById('lo-print-btn');
+  if(loPrint)loPrint.addEventListener('click',function(){printLODetail(lo);});
+  var loEmail=document.getElementById('lo-email-btn');
+  if(loEmail)loEmail.addEventListener('click',function(){emailLODetail(lo);});
+}
+
+function printLODetail(lo){
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write('<html><head><title>Law Office Report — '+lo.name+'</title>'+
+    '<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#1e293b;line-height:1.6}'+
+    'h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin:24px 0 12px}'+
+    '.sub{color:#64748b;font-size:13px;margin-bottom:20px}.meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px}'+
+    '.meta div{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px}.meta .l{font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:700}.meta .v{font-size:16px;font-weight:800}'+
+    'table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f1f5f9;text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;color:#64748b}'+
+    'td{padding:7px 10px;border-bottom:1px solid #f1f5f9}.g{color:#0ea472}.r{color:#e53935}'+
+    '.footer{margin-top:30px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center}'+
+    '@media print{body{padding:20px}}</style></head><body>'+
+    '<h1>'+lo.name+'</h1>'+
+    '<div class="sub">'+lo.caseCount+' cases · '+lo.pays.length+' payments · Grade: '+lo.grade+'</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Total Charged</div><div class="v">'+fc(lo.charged)+'</div></div>'+
+      '<div><div class="l">Collected</div><div class="v g">'+fc(lo.paid)+'</div></div>'+
+      '<div><div class="l">Outstanding</div><div class="v r">'+fc(lo.balance)+'</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v '+(lo.rate>=40?'g':'r')+'">'+lo.rate.toFixed(1)+'%</div></div>'+
+    '</div>'+
+    (lo.avgDays!==null?'<p style="color:#64748b;font-size:13px">Average pay time: <strong>'+lo.avgDays+' days</strong></p>':'')+
+    '<h2>Cases ('+lo.cases.length+')</h2>'+
+    (lo.cases.length?'<table><thead><tr><th>Account #</th><th>Patient</th><th>Status</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
+      lo.cases.map(function(c){return '<tr><td>'+(c.acct||'—')+'</td><td>'+(c.pat||'—')+'</td><td>'+(c.st||'—')+'</td><td>'+(c.gr||'N/A')+'</td><td>'+fc(c.bi)+'</td><td class="r">'+fc(c.bal)+'</td></tr>';}).join('')+
+    '</tbody></table>':'<p style="color:#94a3b8">No cases.</p>')+
+    '<h2>Payment History ('+lo.pays.length+')</h2>'+
+    (lo.pays.length?'<table><thead><tr><th>Pay Date</th><th>Patient</th><th>Status</th><th>Charged</th><th>Paid</th><th>Outstanding</th></tr></thead><tbody>'+
+      lo.pays.slice().sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');}).map(function(p){
+        return '<tr><td>'+fd(p.pd)+'</td><td>'+(p.pat||'—')+'</td><td>'+(p.cs||'—')+'</td><td>'+fc(p.ch)+'</td><td class="g" style="font-weight:700">'+fc(p.paid)+'</td><td class="r">'+fc((p.ch||0)-(p.paid||0))+'</td></tr>';
+      }).join('')+
+    '</tbody></table>':'<p style="color:#94a3b8">No payments.</p>')+
+    '<div class="footer">TotalMedix Collection — Law Office Report · Printed '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
+function emailLODetail(lo){
+  var subj='Law Office Report: '+lo.name+' — Collection '+lo.rate.toFixed(1)+'%';
+  var body='LAW OFFICE REPORT\n\n'+lo.name+'\n'+
+    lo.caseCount+' cases · '+lo.pays.length+' payments · Grade: '+lo.grade+'\n\n'+
+    'Total Charged: '+fc(lo.charged)+'\n'+
+    'Collected: '+fc(lo.paid)+'\n'+
+    'Outstanding: '+fc(lo.balance)+'\n'+
+    'Collection Rate: '+lo.rate.toFixed(1)+'%\n'+
+    (lo.avgDays!==null?'Avg Pay Time: '+lo.avgDays+' days\n':'')+
+    '\n--- CASES ('+lo.cases.length+') ---\n'+
+    (lo.cases.length?lo.cases.map(function(c){return (c.acct||'—')+' | '+(c.pat||'—')+' | '+(c.st||'—')+' | Grade: '+(c.gr||'N/A')+' | Billed: '+fc(c.bi)+' | Bal: '+fc(c.bal);}).join('\n'):'No cases')+
+    '\n\n--- PAYMENTS ('+lo.pays.length+') ---\n'+
+    (lo.pays.length?lo.pays.slice().sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');}).map(function(p){return fd(p.pd)+' | '+(p.pat||'—')+' | Charged: '+fc(p.ch)+' | Paid: '+fc(p.paid);}).join('\n'):'No payments')+
+    '\n\n— TotalMedix Collection';
+  window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
 }
 
 // Init on page load
