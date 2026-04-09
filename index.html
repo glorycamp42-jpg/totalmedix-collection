@@ -373,6 +373,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div><div class="pt">Dashboard</div><div class="ps" id="d-date"></div></div>
           <div class="ha">
             <select class="fl" id="dash-ct-filter" style="font-size:12px;padding:6px 10px"><option value="">All Clinics</option><option value="MRI">🔵 MRI</option><option value="Chiro">🟢 Chiropractic</option><option value="Pain">🟡 Pain Mgmt</option></select>
+            <button class="btn bs bsm" id="btn-print-dash">🖨️ Print</button>
             <button class="btn bs bsm" id="btn-kpi">🎯 KPI Goals</button>
             <button class="btn bp bsm" id="btn-add-pay">+ Add Payment</button>
           </div>
@@ -430,7 +431,8 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div id="pg-patients" class="pg">
         <div class="ph">
           <div><div class="pt">Patients</div><div class="ps">Patient profiles</div></div>
-          <div class="ha"><div class="sw" style="min-width:240px"><span class="si">🔍</span><input id="pat-q" placeholder="Search patient, account #, law office..."></div>
+          <div class="ha"><button class="btn bs bsm" id="btn-print-pat">🖨️ Print</button>
+          <div class="sw" style="min-width:240px"><span class="si">🔍</span><input id="pat-q" placeholder="Search patient, account #, law office..."></div>
           <select class="fl" id="pat-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="pat-sort"><option value="">Default</option><option value="name-asc">Name A-Z</option><option value="name-desc">Name Z-A</option><option value="bal-desc">Balance High→Low</option><option value="bal-asc">Balance Low→High</option><option value="cases-desc">Most Cases</option><option value="bi-desc">Most Billed</option></select>
           </div>
@@ -448,6 +450,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="ph">
           <div><div class="pt">Follow-up Queue</div><div class="ps">Manage daily follow-ups</div></div>
           <div class="ha">
+            <button class="btn bs bsm" id="btn-print-fu">🖨️ Print</button>
             <button class="btn bs bsm" id="btn-gen-fu">⟳ Generate</button>
             <button class="btn bp bsm" id="btn-add-fu">+ Schedule</button>
           </div>
@@ -1821,6 +1824,181 @@ function printListPage(type){
   setTimeout(function(){win.print();},400);
 }
 
+function printDashboard(){
+  var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
+  var tPd=DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
+  var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
+  var active=DB.cases.filter(function(c){return c.st==='active';}).length;
+  var pending=DB.cases.filter(function(c){return c.st==='pending';}).length;
+  var settled=DB.cases.filter(function(c){return c.st==='settled';}).length;
+  // Top 10 by balance
+  var top=DB.cases.filter(function(c){return c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10);
+  // Payment by law office
+  var loMap={};DB.pays.forEach(function(p){var lo=p.lo||'Unknown';if(!loMap[lo])loMap[lo]={ch:0,paid:0};loMap[lo].ch+=p.ch||0;loMap[lo].paid+=p.paid||0;});
+  var loArr=Object.keys(loMap).map(function(k){return{name:k,ch:loMap[k].ch,paid:loMap[k].paid};}).sort(function(a,b){return b.ch-a.ch;}).slice(0,15);
+
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write('<html><head><title>Dashboard Report</title><style>'+getPrintStyles()+'</style></head><body>'+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div><div class="info">Tel: '+COMPANY.phone+' &bull; Fax: '+COMPANY.fax+' &bull; '+COMPANY.email+'</div></div>'+
+    '<div class="title">Dashboard Summary</div>'+
+    '<div class="subtitle">Report Date: '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Total Charged</div><div class="v">'+fc(tCh)+'</div></div>'+
+      '<div><div class="l">Total Collected</div><div class="v g">'+fc(tPd)+'</div></div>'+
+      '<div><div class="l">Outstanding</div><div class="v r">'+fc(tCh-tPd)+'</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v" style="color:'+(parseFloat(rate)>=40?'#0ea472':'#dc2626')+'">'+rate+'%</div></div>'+
+    '</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Total Cases</div><div class="v">'+DB.cases.length+'</div></div>'+
+      '<div><div class="l">Active</div><div class="v g">'+active+'</div></div>'+
+      '<div><div class="l">Pending</div><div class="v" style="color:#d97706">'+pending+'</div></div>'+
+      '<div><div class="l">Settled</div><div class="v" style="color:#3b5bdb">'+settled+'</div></div>'+
+    '</div>'+
+    '<h2>Top Outstanding Balances</h2>'+
+    '<table><thead><tr><th>Patient</th><th>Law Office</th><th>Account #</th><th>Status</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
+    top.map(function(c){return '<tr><td style="font-weight:600">'+(c.pat||'—')+'</td><td>'+(c.lo||'—')+'</td><td>'+(c.acct||'—')+'</td><td>'+(c.st||'—')+'</td><td>'+(c.gr||'N/A')+'</td><td>'+fc(c.bi)+'</td><td class="r" style="font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<h2>Collections by Law Office</h2>'+
+    '<table><thead><tr><th>Law Office</th><th>Charged</th><th>Collected</th><th>Outstanding</th><th>Rate</th></tr></thead><tbody>'+
+    loArr.map(function(lo){var r=lo.ch>0?(lo.paid/lo.ch*100).toFixed(1):'0';return '<tr><td style="font-weight:600">'+lo.name+'</td><td>'+fc(lo.ch)+'</td><td class="g" style="font-weight:700">'+fc(lo.paid)+'</td><td class="r" style="font-weight:700">'+fc(lo.ch-lo.paid)+'</td><td style="color:'+(parseFloat(r)>=40?'#0ea472':'#dc2626')+'">'+r+'%</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<div class="footer">'+COMPANY.name+' &bull; Dashboard Report &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
+function printReportsOverview(){
+  var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
+  var tPd=DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
+  var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
+  var active=DB.cases.filter(function(c){return c.st==='active';}).length;
+  var billSent=DB.cases.filter(function(c){return c.st==='Bill Sent';}).length;
+  var settled=DB.cases.filter(function(c){return c.st==='settled';}).length;
+  var closed=DB.cases.filter(function(c){return c.st==='closed';}).length;
+  // Grade distribution
+  var grades={};DB.cases.forEach(function(c){var g=c.gr||'N/A';grades[g]=(grades[g]||0)+1;});
+  // Monthly trend
+  var months={};DB.pays.forEach(function(p){if(!p.pd)return;var k=p.pd.slice(0,7);if(!months[k])months[k]={ch:0,pd:0,cnt:0};months[k].ch+=p.ch||0;months[k].pd+=p.paid||0;months[k].cnt++;});
+  var mKeys=Object.keys(months).sort().slice(-12);
+
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write('<html><head><title>Reports Overview</title><style>'+getPrintStyles()+'</style></head><body>'+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div><div class="info">Tel: '+COMPANY.phone+' &bull; Fax: '+COMPANY.fax+' &bull; '+COMPANY.email+'</div></div>'+
+    '<div class="title">Collection Performance Report</div>'+
+    '<div class="subtitle">Report Date: '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Total Charged</div><div class="v">'+fc(tCh)+'</div></div>'+
+      '<div><div class="l">Total Collected</div><div class="v g">'+fc(tPd)+'</div></div>'+
+      '<div><div class="l">Outstanding</div><div class="v r">'+fc(tCh-tPd)+'</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v" style="color:'+(parseFloat(rate)>=40?'#0ea472':'#dc2626')+'">'+rate+'%</div></div>'+
+    '</div>'+
+    '<h2>Case Status Breakdown</h2>'+
+    '<table><thead><tr><th>Status</th><th>Count</th><th>Percentage</th></tr></thead><tbody>'+
+    [['Active',active],['Bill Sent',billSent],['Settled',settled],['Closed',closed]].map(function(r){var pct=DB.cases.length>0?(r[1]/DB.cases.length*100).toFixed(1):'0';return '<tr><td style="font-weight:600">'+r[0]+'</td><td>'+r[1]+'</td><td>'+pct+'%</td></tr>';}).join('')+
+    '<tr style="border-top:2px solid #e2e8f0"><td style="font-weight:700">Total</td><td style="font-weight:700">'+DB.cases.length+'</td><td style="font-weight:700">100%</td></tr>'+
+    '</tbody></table>'+
+    '<h2>Grade Distribution</h2>'+
+    '<table><thead><tr><th>Grade</th><th>Count</th><th>Percentage</th></tr></thead><tbody>'+
+    Object.entries(grades).sort(function(a,b){return b[1]-a[1];}).map(function(e){var pct=DB.cases.length>0?(e[1]/DB.cases.length*100).toFixed(1):'0';return '<tr><td style="font-weight:700">'+e[0]+'</td><td>'+e[1]+'</td><td>'+pct+'%</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<h2>Monthly Collection Trend (Last 12 Months)</h2>'+
+    '<table><thead><tr><th>Month</th><th>Payments</th><th>Charged</th><th>Collected</th><th>Rate</th></tr></thead><tbody>'+
+    mKeys.map(function(k){var m=months[k];var r2=m.ch>0?(m.pd/m.ch*100).toFixed(1):'0';return '<tr><td style="font-weight:600">'+k+'</td><td>'+m.cnt+'</td><td>'+fc(m.ch)+'</td><td class="g" style="font-weight:700">'+fc(m.pd)+'</td><td style="color:'+(parseFloat(r2)>=40?'#0ea472':'#dc2626')+'">'+r2+'%</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<div class="footer">'+COMPANY.name+' &bull; Performance Report &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
+function printPatients(){
+  var q=S.patQ?S.patQ.toLowerCase():'';
+  var ctF=S.patCt||'';
+  var seen={},pats=[];
+  DB.cases.forEach(function(c){
+    if(!c.pat)return;
+    if(S.clinicType&&c.ct!==S.clinicType)return;
+    if(ctF&&c.ct!==ctF)return;
+    if(q&&![c.pat,c.lo,c.acct,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return;
+    if(!seen[c.pat]){
+      seen[c.pat]=true;
+      var filt=function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType)&&(!ctF||x.ct===ctF);};
+      var cs=DB.cases.filter(filt);
+      pats.push({name:c.pat,cases:cs.length,bi:cs.reduce(function(s,x){return s+(x.bi||0);},0),bal:cs.reduce(function(s,x){return s+(x.bal||0);},0),lo:c.lo});
+    }
+  });
+  var sort=S.patSort||'';
+  if(sort==='name-asc')pats.sort(function(a,b){return(a.name||'').localeCompare(b.name||'');});
+  else if(sort==='name-desc')pats.sort(function(a,b){return(b.name||'').localeCompare(a.name||'');});
+  else if(sort==='bal-desc')pats.sort(function(a,b){return b.bal-a.bal;});
+  else if(sort==='bal-asc')pats.sort(function(a,b){return a.bal-b.bal;});
+
+  var tBi=pats.reduce(function(s,p){return s+p.bi;},0);
+  var tBal=pats.reduce(function(s,p){return s+p.bal;},0);
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write('<html><head><title>Patients Report</title><style>'+getPrintStyles()+'</style></head><body>'+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div></div>'+
+    '<div class="title">Patients Report</div>'+
+    '<div class="subtitle">'+pats.length+' patients &bull; Total Billed: '+fc(tBi)+' &bull; Total Balance: '+fc(tBal)+'</div>'+
+    '<table><thead><tr><th>Patient Name</th><th>Law Office</th><th>Cases</th><th>Total Billed</th><th>Total Balance</th></tr></thead><tbody>'+
+    pats.map(function(p){return '<tr><td style="font-weight:600">'+p.name+'</td><td>'+(p.lo||'—')+'</td><td>'+p.cases+'</td><td>'+fc(p.bi)+'</td><td class="r" style="font-weight:700">'+fc(p.bal)+'</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<div class="footer">'+COMPANY.name+' &bull; Patients Report &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
+function printFollowups(){
+  var t=today();
+  var all=DB.fus;
+  var pending=all.filter(function(f){return f.st==='pending';});
+  var overdue=pending.filter(function(f){return f.due<t;});
+  var highPri=pending.filter(function(f){return f.pri==='high';});
+  var dueToday=pending.filter(function(f){return f.due===t;});
+
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write('<html><head><title>Follow-ups Report</title><style>'+getPrintStyles()+'</style></head><body>'+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div></div>'+
+    '<div class="title">Follow-up Queue Report</div>'+
+    '<div class="subtitle">Report Date: '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Pending</div><div class="v">'+pending.length+'</div></div>'+
+      '<div><div class="l">Overdue</div><div class="v r">'+overdue.length+'</div></div>'+
+      '<div><div class="l">High Priority</div><div class="v" style="color:#d97706">'+highPri.length+'</div></div>'+
+      '<div><div class="l">Due Today</div><div class="v" style="color:#3b5bdb">'+dueToday.length+'</div></div>'+
+    '</div>'+
+    (overdue.length?'<h2>Overdue ('+overdue.length+')</h2>'+
+      '<table><thead><tr><th>Due Date</th><th>Priority</th><th>Patient</th><th>Law Office</th><th>Action</th><th>Subject</th></tr></thead><tbody>'+
+      overdue.sort(function(a,b){return(a.due||'').localeCompare(b.due||'');}).map(function(f){
+        var c=DB.cases.find(function(x){return x.id===f.cid;})||{};
+        return '<tr><td class="r" style="font-weight:700">'+fd(f.due)+'</td><td style="text-transform:capitalize">'+f.pri+'</td><td style="font-weight:600">'+(c.pat||'—')+'</td><td>'+(c.lo||'—')+'</td><td style="text-transform:capitalize">'+f.act+'</td><td>'+(f.subj||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>':'')+
+    (dueToday.length?'<h2>Due Today ('+dueToday.length+')</h2>'+
+      '<table><thead><tr><th>Priority</th><th>Patient</th><th>Law Office</th><th>Action</th><th>Subject</th></tr></thead><tbody>'+
+      dueToday.map(function(f){
+        var c=DB.cases.find(function(x){return x.id===f.cid;})||{};
+        return '<tr><td style="text-transform:capitalize;font-weight:600">'+f.pri+'</td><td style="font-weight:600">'+(c.pat||'—')+'</td><td>'+(c.lo||'—')+'</td><td style="text-transform:capitalize">'+f.act+'</td><td>'+(f.subj||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>':'')+
+    '<h2>All Pending Follow-ups ('+pending.length+')</h2>'+
+    '<table><thead><tr><th>Due Date</th><th>Priority</th><th>Patient</th><th>Law Office</th><th>Balance</th><th>Action</th><th>Subject</th></tr></thead><tbody>'+
+    pending.sort(function(a,b){return(a.due||'').localeCompare(b.due||'');}).map(function(f){
+      var c=DB.cases.find(function(x){return x.id===f.cid;})||{};
+      var isOv=f.due<t;
+      return '<tr><td style="font-weight:600;'+(isOv?'color:#dc2626':'')+'">'+fd(f.due)+'</td><td style="text-transform:capitalize">'+f.pri+'</td><td style="font-weight:600">'+(c.pat||'—')+'</td><td>'+(c.lo||'—')+'</td><td class="r" style="font-weight:700">'+fc(c.bal)+'</td><td style="text-transform:capitalize">'+f.act+'</td><td>'+(f.subj||'—')+'</td></tr>';
+    }).join('')+
+    '</tbody></table>'+
+    '<div class="footer">'+COMPANY.name+' &bull; Follow-up Report &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
 // ── FOLLOW-UPS ───────────────────────────────────────────────
 function rFU(){
   var all=DB.fus, t=today();
@@ -2630,6 +2808,7 @@ function bindAll(){
   var dashCt=document.getElementById('dash-ct-filter');
   if(dashCt)dashCt.addEventListener('change',function(){S.ct=this.value;rDash();});
   document.getElementById('btn-add-pay').addEventListener('click',function(){openModal('pay',null);});
+  document.getElementById('btn-print-dash').addEventListener('click',function(){printDashboard();});
 
   // Payments
   document.getElementById('btn-add-pay2').addEventListener('click',function(){openModal('pay',null);});
@@ -2652,6 +2831,7 @@ function bindAll(){
   if(caseSort)caseSort.addEventListener('change',function(){S.caseSort=this.value;rCase();});
 
   // Patients
+  document.getElementById('btn-print-pat').addEventListener('click',function(){printPatients();});
   document.getElementById('pat-q').addEventListener('input',function(){S.patQ=this.value;rPatients();});
   var patCt=document.getElementById('pat-ct-filter');
   if(patCt)patCt.addEventListener('change',function(){S.patCt=this.value;rPatients();});
@@ -2660,6 +2840,7 @@ function bindAll(){
 
   // Follow-ups
   document.getElementById('btn-add-fu').addEventListener('click',function(){openModal('fu',null);});
+  document.getElementById('btn-print-fu').addEventListener('click',function(){printFollowups();});
   document.getElementById('btn-gen-fu').addEventListener('click',genFU);
   document.getElementById('fu-q').addEventListener('input',function(){S.fuQ=this.value;rFU();});
   document.getElementById('fu-pri-filter').addEventListener('change',function(){S.fuPri=this.value;rFU();});
@@ -3138,7 +3319,7 @@ function bindNoticeEvents() {
   if (btnAll) btnAll.addEventListener('click', sendAllNotices);
 
   var btnRptPrint = document.getElementById('btn-rpt-print');
-  if (btnRptPrint) btnRptPrint.addEventListener('click', function(){ window.print(); });
+  if (btnRptPrint) btnRptPrint.addEventListener('click', function(){ printReportsOverview(); });
   var btnRptEmail = document.getElementById('btn-rpt-email');
   if (btnRptEmail) btnRptEmail.addEventListener('click', function(){
     var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
@@ -3165,14 +3346,13 @@ function bindNoticeEvents() {
 
   var btnPrint = document.getElementById('btn-print-letter');
   if (btnPrint) btnPrint.addEventListener('click', function(){
-    // Print only the letter content
     var content = document.getElementById('letter-preview').innerHTML;
     var win = window.open('','_blank','width=800,height=900');
     win.document.write('<!DOCTYPE html><html><head><title>Notice Letter</title>'+
-      '<style>body{font-family:Georgia,serif;padding:40px 60px;color:#111;max-width:800px;margin:auto;font-size:14px;line-height:1.9}'+
+      '<style>body{font-family:"Palatino Linotype",Palatino,Georgia,serif;padding:50px 65px;color:#1a1a1a;max-width:780px;margin:0 auto;font-size:14px;line-height:1.85}'+
       'table{width:100%;border-collapse:collapse}'+
-      '@page{margin:1.5cm}'+
-      '@media print{body{padding:0}}'+
+      '@page{margin:1.2cm 1.5cm}'+
+      '@media print{body{padding:30px 40px}}'+
       '</style></head><body>'+content+'</body></html>');
     win.document.close();
     setTimeout(function(){ win.print(); }, 400);
