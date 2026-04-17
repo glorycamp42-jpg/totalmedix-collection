@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/eugen/totalmedix-collection -type f \\\\\\(-name *.js -o -name *.css -o -name *.html -o -name *.vue -o -name *.jsx -o -name *.tsx \\\\\\))",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(disappears\" effect.:*)"
+    ]
+  }
+}
