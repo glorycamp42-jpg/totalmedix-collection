@@ -3497,7 +3497,7 @@ function sendViaGmailMCP(from, toName, ccName, subject, body, noticeObj, callbac
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: 'You are a medical billing assistant. Use Gmail to send emails on behalf of the user.',
       messages: [{
@@ -3628,7 +3628,7 @@ function runRiskAnalysis() {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 600,
       system: 'You are a medical billing collection expert. Analyze cases and provide concise risk assessment with specific actionable recommendations. Use bullet points. Be direct.',
       messages: [{role:'user',content:'Analyze these active cases for collection risk and prioritize:\n\n'+context+'\n\nProvide: 1) Top 3 highest risk cases, 2) Recommended immediate actions, 3) Overall collection health score (1-10).'}],
@@ -3695,7 +3695,7 @@ function runWeeklyReport() {
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 512,
         system: 'Send emails via Gmail.',
         messages: [{role:'user',content:'Send this weekly report email:\nFrom: '+from+'\nTo: '+reportEmail+'\nSubject: TotalMedix Weekly Report — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'\n\n'+reportBody}],
