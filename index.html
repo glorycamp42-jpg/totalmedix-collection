@@ -417,11 +417,11 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search account #, patient, law office..."></div>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
-          <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
+          <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="coldest">❄️ Coldest Contact</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
           <select class="fl" id="case-sol-filter" title="SOL urgency filter"><option value="">All SOL</option><option value="expired">❌ Expired</option><option value="critical">🚨 ≤30 days</option><option value="urgent">🔴 ≤90 days</option><option value="warn">⚠️ ≤180 days</option></select>
           <span class="rc" id="case-rc"></span>
         </div>
-        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
+        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th title="Last contact heat-map">Last Contact 🌡</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
       </div>
 
       <div id="pg-casedetail" class="pg">
@@ -1052,12 +1052,24 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 
 <div class="mb" id="m-memo">
   <div class="modal">
-    <div class="mh"><span class="mtt">Add Activity Note</span><button class="mx" id="mx-memo">×</button></div>
+    <div class="mh"><span class="mtt">Log Activity</span><button class="mx" id="mx-memo">×</button></div>
     <div class="mbd">
-      <div class="fd" style="margin-bottom:12px"><label>Type</label><select id="memo-type"><option value="note">📝 Note</option><option value="call">📞 Call</option><option value="email">📧 Email</option><option value="payment">💰 Payment</option></select></div>
-      <div class="fd"><label>Note</label><textarea id="memo-text" rows="4"></textarea></div>
+      <div class="fg" style="margin-bottom:12px">
+        <div class="fd"><label>Type</label><select id="memo-type"><option value="note">📝 Note</option><option value="call">📞 Call</option><option value="email">📧 Email</option><option value="text">💬 Text</option><option value="payment">💰 Payment</option></select></div>
+        <div class="fd" id="memo-dir-wrap"><label>Direction</label><select id="memo-dir"><option value="out">⬆ Outbound</option><option value="in">⬇ Inbound</option></select></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px" id="memo-row-contact">
+        <div class="fd"><label>Contact Person</label><input id="memo-contact" placeholder="e.g. Jane (paralegal)"></div>
+        <div class="fd" id="memo-dur-wrap"><label>Duration (min)</label><input id="memo-dur" type="number" min="0"></div>
+      </div>
+      <div class="fd" id="memo-outcome-wrap" style="margin-bottom:12px"><label>Outcome</label><select id="memo-outcome"></select></div>
+      <div class="fg" id="memo-ptp-wrap" style="margin-bottom:12px;display:none">
+        <div class="fd"><label>PTP Amount ($)</label><input id="memo-ptp-amt" type="number" step="0.01" min="0"></div>
+        <div class="fd"><label>PTP Due Date</label><input id="memo-ptp-date" type="date"></div>
+      </div>
+      <div class="fd"><label>Note</label><textarea id="memo-text" rows="3" placeholder="Details..."></textarea></div>
     </div>
-    <div class="mft"><button class="btn bs" id="mx2-memo">Cancel</button><button class="btn bp" id="save-memo">Add Note</button></div>
+    <div class="mft"><button class="btn bs" id="mx2-memo">Cancel</button><button class="btn bp" id="save-memo">Log Activity</button></div>
   </div>
 </div>
 
@@ -1307,7 +1319,7 @@ function loadFromSupabase() {
       DB.acts = {};
       dbActs.forEach(function(r) {
         if (!DB.acts[r.case_id]) DB.acts[r.case_id] = [];
-        DB.acts[r.case_id].push({id:r.id,type:r.activity_type,text:r.text,date:r.created_at?r.created_at.slice(0,10):null,by:r.created_by});
+        DB.acts[r.case_id].push({id:r.id,type:r.activity_type,text:r.text,date:r.created_at?r.created_at.slice(0,10):null,by:r.created_by,outcome:r.outcome||null,dir:r.direction||null,contact:r.contact_person||null,dur:r.duration_min||null,ptpAmt:r.ptp_amount||null,ptpDate:r.ptp_date||null,ptpSt:r.ptp_status||null});
       });
     }
     // Notices
@@ -1400,8 +1412,18 @@ function sbSaveFU(o, id) {
   return SB.insert('follow_ups', row).then(function(r){return r&&r[0]?r[0]:r;});
 }
 
-function sbSaveActivity(caseId, type, text, by) {
-  return SB.insert('activities', {case_id:caseId,activity_type:type,text:text,created_by:by||'Staff'});
+function sbSaveActivity(caseId, type, text, by, extra) {
+  var row = {case_id:caseId,activity_type:type,text:text,created_by:by||'Staff'};
+  if (extra) {
+    if (extra.outcome)  row.outcome = extra.outcome;
+    if (extra.dir)      row.direction = extra.dir;
+    if (extra.contact)  row.contact_person = extra.contact;
+    if (extra.dur)      row.duration_min = parseInt(extra.dur)||null;
+    if (extra.ptpAmt)   row.ptp_amount = parseFloat(extra.ptpAmt)||null;
+    if (extra.ptpDate)  row.ptp_date = extra.ptpDate;
+    if (extra.ptpSt)    row.ptp_status = extra.ptpSt;
+  }
+  return SB.insert('activities', row);
 }
 
 function sbSaveNotice(caseId, stage, to, cc, by) {
@@ -1499,6 +1521,26 @@ function gb(g){if(!g)return '<span style="color:var(--g400)">—</span>';return 
 function calcSOL(d,y){if(!d)return null;y=y||2;var x=new Date(d+'T00:00:00');if(isNaN(x))return null;var s=new Date(x);s.setFullYear(s.getFullYear()+y);var t=new Date();t.setHours(0,0,0,0);return{date:s,daysLeft:Math.ceil((s-t)/86400000),years:y};}
 function solBand(d){if(d<0)return{bg:'#000',fg:'#fff',ic:'❌',l:'EXPIRED '+Math.abs(d)+'d',t:5};if(d<=30)return{bg:'#dc2626',fg:'#fff',ic:'🚨',l:'D-'+d,t:4};if(d<=90)return{bg:'#ea580c',fg:'#fff',ic:'🔴',l:'D-'+d,t:3};if(d<=180)return{bg:'#fef3c7',fg:'#92400e',ic:'⚠️',l:'D-'+d,t:2};if(d<=365)return{bg:'#fef9c3',fg:'#854d0e',ic:'',l:'D-'+d,t:1};return{bg:'var(--g100)',fg:'var(--g600)',ic:'',l:'D-'+d,t:0};}
 function solBadge(d,y){var s=calcSOL(d,y);if(!s)return '<span style="color:var(--g400);font-size:11px">—</span>';var b=solBand(s.daysLeft);return '<span style="background:'+b.bg+';color:'+b.fg+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap" title="SOL Expires: '+s.date.toISOString().slice(0,10)+' (CA PI '+s.years+'yr from DOL)">'+(b.ic?b.ic+' ':'')+b.l+'</span>';}
+
+// Activity Log v2 helpers
+var OUTCOME_META = {
+  vm:       {bg:'#fef3c7',fg:'#92400e',l:'Voicemail',   i:'📱'},
+  no_ans:   {bg:'#fee2e2',fg:'#991b1b',l:'No Answer',   i:'🔇'},
+  spoke:    {bg:'#dbeafe',fg:'#1e40af',l:'Spoke',       i:'💬'},
+  ptp:      {bg:'#dcfce7',fg:'#166534',l:'Promise',     i:'🤝'},
+  dispute:  {bg:'#fecaca',fg:'#7f1d1d',l:'Dispute',     i:'⚠️'},
+  refused:  {bg:'#000',   fg:'#fff',   l:'Refused',     i:'❌'},
+  paid:     {bg:'#059669',fg:'#fff',   l:'Paid',        i:'✅'},
+  wrong_num:{bg:'#f3f4f6',fg:'#374151',l:'Wrong Num',   i:'📵'},
+  sent:     {bg:'#e0e7ff',fg:'#3730a3',l:'Sent',        i:'📤'},
+  replied:  {bg:'#dcfce7',fg:'#166534',l:'Replied',     i:'📥'},
+  bounced:  {bg:'#fecaca',fg:'#7f1d1d',l:'Bounced',     i:'⚠️'}
+};
+function outcomeBadge(o){if(!o)return '';var m=OUTCOME_META[o];if(!m)return '';return '<span style="background:'+m.bg+';color:'+m.fg+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap">'+m.i+' '+m.l+'</span>';}
+function lastContactDays(caseId){var a=DB.acts&&DB.acts[caseId];if(!a||!a.length)return null;var latest=null;for(var i=0;i<a.length;i++){if(a[i].date&&(!latest||a[i].date>latest))latest=a[i].date;}if(!latest)return null;var d0=new Date(latest+'T00:00:00');if(isNaN(d0))return null;var t=new Date();t.setHours(0,0,0,0);return Math.floor((t-d0)/86400000);}
+function lastContactBadge(caseId){var d=lastContactDays(caseId);if(d===null)return '<span style="background:var(--g100);color:var(--g500);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700" title="Never contacted">— Never</span>';var cfg;if(d===0)cfg={bg:'#dcfce7',fg:'#166534',l:'Today',i:''};else if(d<=7)cfg={bg:'#dcfce7',fg:'#166534',l:d+'d',i:''};else if(d<=14)cfg={bg:'#fef9c3',fg:'#854d0e',l:d+'d',i:''};else if(d<=30)cfg={bg:'#fed7aa',fg:'#9a3412',l:d+'d',i:'🧊'};else cfg={bg:'#fecaca',fg:'#7f1d1d',l:d+'d cold',i:'❄️'};return '<span style="background:'+cfg.bg+';color:'+cfg.fg+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap" title="Last contact '+d+' days ago">'+(cfg.i?cfg.i+' ':'')+cfg.l+'</span>';}
+function autoFUFromOutcome(cid,outcome,ptpDate,noteTxt){if(!outcome)return null;var map={vm:{days:3,pri:'medium',act:'call',subj:'VM follow-up'},no_ans:{days:2,pri:'medium',act:'call',subj:'Retry call'},spoke:{days:5,pri:'medium',act:'call',subj:'Follow-up after call'},ptp:{date:ptpDate,pri:'high',act:'call',subj:'PTP due'},dispute:{days:1,pri:'high',act:'call',subj:'Dispute follow-up'},refused:{days:7,pri:'low',act:'review',subj:'Re-engage after refusal'}};var cfg=map[outcome];if(!cfg)return null;var due;if(cfg.date){due=cfg.date;}else{var d=new Date();d.setDate(d.getDate()+cfg.days);due=d.toISOString().slice(0,10);}return{cid:cid,act:cfg.act,subj:cfg.subj,pri:cfg.pri,st:'pending',due:due,notes:noteTxt||''};}
+
 
 function toast(msg,icon){
   var t=document.getElementById('toast');
@@ -1658,14 +1700,15 @@ function rCase(){
   // Sort
   var sort=S.caseSort||'';
   if(sort==='sol-urgent') data.sort(function(a,b){var sa=calcSOL(a.dol),sb=calcSOL(b.dol);var da=sa?sa.daysLeft:99999,db=sb?sb.daysLeft:99999;return da-db;});
+  if(sort==='coldest') data.sort(function(a,b){var da=lastContactDays(a.id);var db=lastContactDays(b.id);if(da===null&&db===null)return 0;if(da===null)return -1;if(db===null)return 1;return db-da;});
   else if(sort==='dol-desc') data.sort(function(a,b){return (b.dol||'').localeCompare(a.dol||'');});
   else if(sort==='dol-asc') data.sort(function(a,b){return (a.dol||'').localeCompare(b.dol||'');});
   else if(sort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'');});
   else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
-  }).join(''):'<tr><td colspan="14"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+  }).join(''):'<tr><td colspan="15"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
 }
 
 function openCD(id){
@@ -1725,9 +1768,20 @@ function openCD(id){
     '</div></div>'+
     '<div class="card" style="margin-top:14px"><div class="ch"><span class="ct">📝 Activity ('+acts.length+')</span><button class="btn bs bsm" id="cd-add-memo">+ Add Note</button></div><div style="padding:16px 18px">'+
       (acts.length?'<div class="tl">'+acts.map(function(a){
-        var icons={note:'📝',call:'📞',email:'📧',payment:'💰'};
-        var colors={note:'#3b5bdb',call:'#0ea472',email:'#f59e0b',payment:'#0ea472'};
-        return '<div class="tl-item"><div class="tl-dot" style="background:'+(colors[a.type]||'#94a3b8')+'20;border-color:'+(colors[a.type]||'#94a3b8')+'40">'+(icons[a.type]||'📝')+'</div><div><div class="tl-txt">'+a.text+'</div><div class="tl-tm">'+fd(a.date)+' by '+(a.by||'Staff')+'</div></div></div>';
+        var icons={note:'📝',call:'📞',email:'📧',text:'💬',payment:'💰'};
+        var colors={note:'#3b5bdb',call:'#0ea472',email:'#f59e0b',text:'#8b5cf6',payment:'#0ea472'};
+        var dirIco=a.dir==='in'?'⬇':(a.dir==='out'?'⬆':'');
+        var metaBits=[];
+        if(a.contact)metaBits.push('👤 '+a.contact);
+        if(a.dur)metaBits.push('⏱ '+a.dur+'m');
+        if(a.ptpAmt)metaBits.push('💵 $'+(+a.ptpAmt).toFixed(2)+(a.ptpDate?' by '+fd(a.ptpDate):'')+(a.ptpSt?' ('+a.ptpSt+')':''));
+        var metaLn=metaBits.length?'<div class="tl-tm" style="color:var(--g600);margin-top:2px">'+metaBits.join(' · ')+'</div>':'';
+        var oBadge=a.outcome?(' '+outcomeBadge(a.outcome)):'';
+        var dirBadge=dirIco?('<span style="font-size:11px;color:var(--g500);margin-right:4px">'+dirIco+'</span>'):'';
+        var typeLabel=(a.type||'note');
+        var headLine='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;color:'+(colors[a.type]||'#94a3b8')+'">'+dirBadge+typeLabel+'</span>'+oBadge+'</div>';
+        var txtLn=a.text?('<div class="tl-txt">'+a.text+'</div>'):'';
+        return '<div class="tl-item"><div class="tl-dot" style="background:'+(colors[a.type]||'#94a3b8')+'20;border-color:'+(colors[a.type]||'#94a3b8')+'40">'+(icons[a.type]||'📝')+'</div><div style="flex:1">'+headLine+txtLn+metaLn+'<div class="tl-tm">'+fd(a.date)+' by '+(a.by||'Staff')+'</div></div></div>';
       }).join('')+'</div>':'<p style="color:var(--g400);font-size:13px;text-align:center;padding:16px">No activity yet.</p>')+
     '</div></div>'+
     (c.notes?'<div class="card" style="margin-top:14px"><div class="ch"><span class="ct">📌 Notes</span></div><div style="padding:16px 18px;font-size:13px;color:var(--g700);line-height:1.7">'+c.notes+'</div></div>':'');
@@ -1746,7 +1800,7 @@ function bindCDEvents(){
   var addFu=document.getElementById('cd-add-fu');
   if(addFu)addFu.addEventListener('click',function(){openModal('fu',null);});
   var addMemo=document.getElementById('cd-add-memo');
-  if(addMemo)addMemo.addEventListener('click',function(){document.getElementById('m-memo').classList.add('open');});
+  if(addMemo)addMemo.addEventListener('click',function(){document.getElementById('m-memo').classList.add('open');initMemoModal();});
   document.querySelectorAll('[data-complete-fu]').forEach(function(el){
     el.addEventListener('click',function(){completeFU(parseInt(el.dataset.completeFu));});
   });
@@ -2741,14 +2795,81 @@ function saveFU(){
 function saveMemo(){
   var text=document.getElementById('memo-text').value.trim();
   var type=document.getElementById('memo-type').value;
-  if(!text){toast('Please enter a note','⚠️');return;}
+  var outcome=(document.getElementById('memo-outcome').value||'').trim()||null;
+  var dir=(document.getElementById('memo-dir')||{}).value||null;
+  var contact=(document.getElementById('memo-contact').value||'').trim()||null;
+  var durRaw=document.getElementById('memo-dur').value; var dur=durRaw?parseInt(durRaw):null;
+  var ptpAmtRaw=document.getElementById('memo-ptp-amt').value; var ptpAmt=(outcome==='ptp'&&ptpAmtRaw)?parseFloat(ptpAmtRaw):null;
+  var ptpDate=(outcome==='ptp')?(document.getElementById('memo-ptp-date').value||null):null;
+  var ptpSt=(outcome==='ptp')?'pending':null;
+  if(!text&&!outcome){toast('Enter a note or pick an outcome','⚠️');return;}
   var cid=S.curCase;if(!cid)return;
   if(!DB.acts[cid])DB.acts[cid]=[];
-  var entry={id:DB.nid.act++,type:type,text:text,date:today(),by:S.user?S.user.name:'Staff'};
+  var entry={id:DB.nid.act++,type:type,text:text||'',date:today(),by:S.user?S.user.name:'Staff',outcome:outcome,dir:dir,contact:contact,dur:dur,ptpAmt:ptpAmt,ptpDate:ptpDate,ptpSt:ptpSt};
   DB.acts[cid].unshift(entry);
-  sbSaveActivity(cid,type,text,entry.by).catch(function(){});
-  closeModal('m-memo');openCD(cid);toast('Note added','📝');
+  var extra={outcome:outcome,dir:(type==='call'||type==='email'||type==='text')?dir:null,contact:contact,dur:dur,ptpAmt:ptpAmt,ptpDate:ptpDate,ptpSt:ptpSt};
+  sbSaveActivity(cid,type,text||'',entry.by,extra).catch(function(){});
+  // Auto-follow-up from outcome
+  var fuData=autoFUFromOutcome(cid,outcome,ptpDate,text);
+  if(fuData){
+    var c0=DB.cases.find(function(x){return x.id===cid;})||{};
+    var o={cid:cid,acct:c0.acct,pat:c0.pat,lo:c0.lo,gr:c0.gr,bal:c0.bal,act:fuData.act,subj:fuData.subj,pri:fuData.pri,st:'pending',due:fuData.due,notes:fuData.notes};
+    sbSaveFU(o).then(function(r){if(r&&r.id){o.id=r.id;}else if(r&&r[0]){o.id=r[0].id;}DB.fus.push(o);if(typeof updFUBadge==='function')updFUBadge();}).catch(function(){});
+    toast('Activity + auto FU '+fuData.due,'⚙️');
+  } else {
+    toast('Activity logged','📝');
+  }
+  closeModal('m-memo');openCD(cid);
 }
+// Init/refresh the memo modal (populate outcome list, show/hide fields)
+function initMemoModal(){
+  var t=document.getElementById('memo-type');
+  var o=document.getElementById('memo-outcome');
+  if(!t||!o) return;
+  // Reset values
+  document.getElementById('memo-text').value='';
+  document.getElementById('memo-contact').value='';
+  document.getElementById('memo-dur').value='';
+  document.getElementById('memo-ptp-amt').value='';
+  document.getElementById('memo-ptp-date').value='';
+  t.value='note';
+  refreshMemoModal();
+  // Bind listeners once
+  if(!t.dataset.bound){
+    t.addEventListener('change',refreshMemoModal);
+    o.addEventListener('change',refreshPtpFields);
+    t.dataset.bound='1';
+  }
+}
+function refreshMemoModal(){
+  var t=document.getElementById('memo-type');
+  var o=document.getElementById('memo-outcome');
+  var type=t.value;
+  var opts={
+    call:    [{v:'',l:'\u2014 Select \u2014'},{v:'vm',l:'\ud83d\udcf1 Voicemail'},{v:'no_ans',l:'\ud83d\udd07 No Answer'},{v:'spoke',l:'\ud83d\udcac Spoke'},{v:'ptp',l:'\ud83e\udd1d Promise to Pay'},{v:'dispute',l:'\u26a0\ufe0f Dispute'},{v:'refused',l:'\u274c Refused'},{v:'paid',l:'\u2705 Paid'},{v:'wrong_num',l:'\ud83d\udcf5 Wrong Number'}],
+    email:   [{v:'',l:'\u2014 Select \u2014'},{v:'sent',l:'\ud83d\udce4 Sent'},{v:'replied',l:'\ud83d\udce5 Replied'},{v:'bounced',l:'\u26a0\ufe0f Bounced'}],
+    text:    [{v:'',l:'\u2014 Select \u2014'},{v:'sent',l:'\ud83d\udce4 Sent'},{v:'replied',l:'\ud83d\udce5 Replied'}],
+    note:    [{v:'',l:'(none)'}],
+    payment: [{v:'',l:'(none)'}]
+  };
+  var list=opts[type]||[{v:'',l:''}];
+  o.innerHTML=list.map(function(x){return '<option value="'+x.v+'">'+x.l+'</option>';}).join('');
+  var showDir=(type==='call'||type==='email'||type==='text');
+  var showDur=(type==='call');
+  var showContact=(type==='call'||type==='email'||type==='text');
+  var showOutcome=(type!=='note'&&type!=='payment');
+  document.getElementById('memo-dir-wrap').style.display=showDir?'':'none';
+  document.getElementById('memo-dur-wrap').style.display=showDur?'':'none';
+  document.getElementById('memo-row-contact').style.display=showContact?'':'none';
+  document.getElementById('memo-outcome-wrap').style.display=showOutcome?'':'none';
+  refreshPtpFields();
+}
+function refreshPtpFields(){
+  var o=document.getElementById('memo-outcome');
+  var w=document.getElementById('memo-ptp-wrap');
+  if(w) w.style.display=(o&&o.value==='ptp')?'':'none';
+}
+
 function saveUser(){
   var id=S.eid.user;
   var pw=document.getElementById('uf-pw').value;
