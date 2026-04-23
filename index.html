@@ -417,10 +417,11 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search account #, patient, law office..."></div>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
-          <select class="fl" id="case-sort"><option value="">Default</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
+          <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
+          <select class="fl" id="case-sol-filter" title="SOL urgency filter"><option value="">All SOL</option><option value="expired">❌ Expired</option><option value="critical">🚨 ≤30 days</option><option value="urgent">🔴 ≤90 days</option><option value="warn">⚠️ ≤180 days</option></select>
           <span class="rc" id="case-rc"></span>
         </div>
-        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
+        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
       </div>
 
       <div id="pg-casedetail" class="pg">
@@ -1495,6 +1496,10 @@ function cb(s){
 function pb2(p){var m={high:'br',medium:'ba',low:'bgr'};return '<span class="bdg '+(m[p]||'bgr')+'">'+p+'</span>';}
 function gb(g){if(!g)return '<span style="color:var(--g400)">—</span>';return '<span class="g'+g+'">'+g+'</span>';}
 
+function calcSOL(d,y){if(!d)return null;y=y||2;var x=new Date(d+'T00:00:00');if(isNaN(x))return null;var s=new Date(x);s.setFullYear(s.getFullYear()+y);var t=new Date();t.setHours(0,0,0,0);return{date:s,daysLeft:Math.ceil((s-t)/86400000),years:y};}
+function solBand(d){if(d<0)return{bg:'#000',fg:'#fff',ic:'❌',l:'EXPIRED '+Math.abs(d)+'d',t:5};if(d<=30)return{bg:'#dc2626',fg:'#fff',ic:'🚨',l:'D-'+d,t:4};if(d<=90)return{bg:'#ea580c',fg:'#fff',ic:'🔴',l:'D-'+d,t:3};if(d<=180)return{bg:'#fef3c7',fg:'#92400e',ic:'⚠️',l:'D-'+d,t:2};if(d<=365)return{bg:'#fef9c3',fg:'#854d0e',ic:'',l:'D-'+d,t:1};return{bg:'var(--g100)',fg:'var(--g600)',ic:'',l:'D-'+d,t:0};}
+function solBadge(d,y){var s=calcSOL(d,y);if(!s)return '<span style="color:var(--g400);font-size:11px">—</span>';var b=solBand(s.daysLeft);return '<span style="background:'+b.bg+';color:'+b.fg+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap" title="SOL Expires: '+s.date.toISOString().slice(0,10)+' (CA PI '+s.years+'yr from DOL)">'+(b.ic?b.ic+' ':'')+b.l+'</span>';}
+
 function toast(msg,icon){
   var t=document.getElementById('toast');
   t.innerHTML=(icon?icon+' ':'')+msg;
@@ -1639,18 +1644,28 @@ function rCase(){
     var q=S.caseQ.toLowerCase();
     var m=!q||[c.lo,c.acct,c.pat,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});
     var cMatch=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;
-    return m&&(!S.caseSt||c.st===S.caseSt)&&cMatch;
+    if(!(m&&(!S.caseSt||c.st===S.caseSt)&&cMatch)) return false;
+    if(S.caseSolF){
+      var s=calcSOL(c.dol); if(!s) return false;
+      var d=s.daysLeft;
+      if(S.caseSolF==='expired'  && !(d<0))   return false;
+      if(S.caseSolF==='critical' && !(d>=0&&d<=30))  return false;
+      if(S.caseSolF==='urgent'   && !(d>=0&&d<=90))  return false;
+      if(S.caseSolF==='warn'     && !(d>=0&&d<=180)) return false;
+    }
+    return true;
   });
   // Sort
   var sort=S.caseSort||'';
-  if(sort==='dol-desc') data.sort(function(a,b){return (b.dol||'').localeCompare(a.dol||'');});
+  if(sort==='sol-urgent') data.sort(function(a,b){var sa=calcSOL(a.dol),sb=calcSOL(b.dol);var da=sa?sa.daysLeft:99999,db=sb?sb.daysLeft:99999;return da-db;});
+  else if(sort==='dol-desc') data.sort(function(a,b){return (b.dol||'').localeCompare(a.dol||'');});
   else if(sort==='dol-asc') data.sort(function(a,b){return (a.dol||'').localeCompare(b.dol||'');});
   else if(sort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'');});
   else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
-  }).join(''):'<tr><td colspan="13"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+  }).join(''):'<tr><td colspan="14"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
 }
 
 function openCD(id){
@@ -1688,6 +1703,7 @@ function openCD(id){
         '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Sex</div><div style="color:var(--g800);font-weight:600">'+(c.sex||'—')+'</div></div>'+
         '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div><div style="color:var(--g800);font-weight:600">'+(c.location||'—')+'</div></div>'+
         '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date of Loss</div><div style="color:var(--g800);font-weight:600">'+(c.dol?fd(c.dol):'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">SOL Countdown ⏰</div><div>'+solBadge(c.dol)+'</div></div>'+
         '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Study Date</div><div style="color:var(--g800);font-weight:600">'+(c.study?fd(c.study):'—')+'</div></div>'+
         '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Procedure</div><div style="color:var(--accent);font-weight:700">'+(c.proc||'—')+'</div></div>'+
         '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Referring MD</div><div style="color:var(--g800);font-weight:600">'+(c.refmd||'—')+'</div></div>'+
@@ -2904,6 +2920,8 @@ function bindAll(){
   if(caseCt)caseCt.addEventListener('change',function(){S.ct=this.value;rCase();});
   var caseSort=document.getElementById('case-sort');
   if(caseSort)caseSort.addEventListener('change',function(){S.caseSort=this.value;rCase();});
+  var caseSolF=document.getElementById('case-sol-filter');
+  if(caseSolF)caseSolF.addEventListener('change',function(){S.caseSolF=this.value;rCase();});
 
   // Patients
   document.getElementById('btn-print-pat').addEventListener('click',function(){printPatients();});
