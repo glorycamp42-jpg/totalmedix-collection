@@ -416,11 +416,11 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="tb">
           <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search account #, patient, law office..."></div>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
-          <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="active">Active</option><option value="Bill Sent">Bill Sent</option><option value="pending">Pending</option><option value="settled">Settled</option><option value="closed">Closed</option></select>
+          <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
           <select class="fl" id="case-sort"><option value="">Default</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
           <span class="rc" id="case-rc"></span>
         </div>
-        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
+        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
       </div>
 
       <div id="pg-casedetail" class="pg">
@@ -1001,18 +1001,31 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
   <div class="modal">
     <div class="mh"><span class="mtt" id="m-case-title">Add Case</span><button class="mx" id="mx-case">×</button></div>
     <div class="mbd"><div class="fg">
-      <div class="fd"><label>Law Office</label><input id="cf-law"></div>
+      <div class="fd"><label>Law Office</label><input id="cf-law" list="dl-law-offices" autocomplete="off"></div>
       <div class="fd"><label>Account #</label><input id="cf-acct"></div>
       <div class="fd"><label>Patient Name</label><input id="cf-pat"></div>
-      <div class="fd"><label>Provider</label><input id="cf-prov"></div>
+      <div class="fd"><label>Phone</label><input id="cf-phone" placeholder="(555) 555-5555"></div>
+      <div class="fd"><label>Date of Birth</label><input type="date" id="cf-dob"></div>
+      <div class="fd"><label>Sex</label><select id="cf-sex"><option value="">—</option><option value="M">M</option><option value="F">F</option><option value="O">Other</option></select></div>
+      <div class="fd"><label>Provider</label><input id="cf-prov" list="dl-doctors" autocomplete="off"></div>
+      <div class="fd"><label>Location</label><input id="cf-location" list="dl-locations" autocomplete="off"></div>
+      <div class="fd"><label>Referring MD</label><input id="cf-refmd" list="dl-ref-mds" autocomplete="off"></div>
       <div class="fd"><label>Date of Loss</label><input type="date" id="cf-dol"></div>
-      <div class="fd"><label>Status</label><select id="cf-st"><option value="active">Active</option><option value="pending">Pending</option><option value="settled">Settled</option><option value="closed">Closed</option></select></div>
+      <div class="fd"><label>Study Date</label><input type="date" id="cf-study"></div>
+      <div class="fd"><label>Procedure</label><input id="cf-proc" placeholder="MRI / CESI / PRP / Consult..."></div>
+      <div class="fd"><label>Status</label><select id="cf-st"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select></div>
+      <div class="fd"><label>Lien ($)</label><input type="number" id="cf-lien" step="0.01"></div>
       <div class="fd"><label>Billed ($)</label><input type="number" id="cf-bi" step="0.01"></div>
       <div class="fd"><label>Balance ($)</label><input type="number" id="cf-bal" step="0.01"></div>
       <div class="fd"><label>Clinic Type</label><select id="cf-ct"><option value="">—</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select></div>
       <div class="fd"><label>Grade</label><select id="cf-gr"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option><option>F</option></select></div>
       <div class="fd full"><label>Notes</label><textarea id="cf-notes"></textarea></div>
-    </div></div>
+    </div>
+    <datalist id="dl-law-offices"></datalist>
+    <datalist id="dl-doctors"></datalist>
+    <datalist id="dl-locations"></datalist>
+    <datalist id="dl-ref-mds"></datalist>
+    </div>
     <div class="mft"><button class="btn bs" id="mx2-case">Cancel</button><button class="btn bp" id="save-case">Save</button></div>
   </div>
 </div>
@@ -1266,7 +1279,11 @@ function loadFromSupabase() {
       DB.cases = dbCases.map(function(r) {
         return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
                 dol:r.date_of_loss,st:r.status,ct:mapCT(r.clinic_type),bi:parseFloat(r.billed)||0,
-                bal:parseFloat(r.balance)||0,gr:r.grade,notes:r.notes||''};
+                bal:parseFloat(r.balance)||0,gr:r.grade,notes:r.notes||'',
+                phone:r.phone||'',dob:r.dob||null,sex:r.sex||'',
+                location:r.location||'',study:r.study_date||null,
+                refmd:r.referring_md||'',lien:parseFloat(r.lien)||0,
+                proc:r.procedure||''};
       });
     }
     if (dbPays.length) {
@@ -1327,6 +1344,7 @@ function loadFromSupabase() {
     DB_READY = true;
     showGlobalLoader(false);
     toast('Connected to Supabase ✓', '🟢');
+    if(typeof loadMasters==='function') loadMasters();
     rDash();
     updFUBadge();
     // Re-render Users page if currently active
@@ -1355,7 +1373,10 @@ function showGlobalLoader(show) {
 function sbSaveCase(o, id) {
   var row = {law_office:o.lo,account_num:o.acct,patient_name:o.pat,provider:o.prov,
              date_of_loss:o.dol||null,status:o.st,clinic_type:unmapCT(o.ct),
-             billed:o.bi,balance:o.bal,grade:o.gr||null,notes:o.notes||''};
+             billed:o.bi,balance:o.bal,grade:o.gr||null,notes:o.notes||'',
+             phone:o.phone||null,dob:o.dob||null,sex:o.sex||null,
+             location:o.location||null,study_date:o.study||null,
+             referring_md:o.refmd||null,lien:o.lien||null,procedure:o.proc||null};
   if (id) return SB.update('cases', id, row);
   return SB.insert('cases', row).then(function(r){return r&&r[0]?r[0]:r;});
 }
@@ -1628,8 +1649,8 @@ function rCase(){
   else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
-  }).join(''):'<tr><td colspan="10"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+  }).join(''):'<tr><td colspan="13"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
 }
 
 function openCD(id){
@@ -1658,6 +1679,22 @@ function openCD(id){
         '<div class="ds"><div class="dsl">Balance</div><div class="dsv r">'+fc(c.bal)+'</div></div>'+
         '<div class="ds"><div class="dsl">Collected</div><div class="dsv g">'+fc(tp)+'</div><div class="pw"><div class="pb" style="width:'+Math.min(cr,100)+'%"></div></div></div>'+
         '<div class="ds"><div class="dsl">Collection Rate</div><div class="dsv '+(cr>=50?'g':'r')+'">'+cr+'%</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:14px"><div class="ch"><span class="ct">👤 Patient & Case Info</span></div>'+
+      '<div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;font-size:13px">'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Phone</div><div style="color:var(--g800);font-weight:600">'+(c.phone||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">DOB</div><div style="color:var(--g800);font-weight:600">'+(c.dob?fd(c.dob):'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Sex</div><div style="color:var(--g800);font-weight:600">'+(c.sex||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Location</div><div style="color:var(--g800);font-weight:600">'+(c.location||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date of Loss</div><div style="color:var(--g800);font-weight:600">'+(c.dol?fd(c.dol):'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Study Date</div><div style="color:var(--g800);font-weight:600">'+(c.study?fd(c.study):'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Procedure</div><div style="color:var(--accent);font-weight:700">'+(c.proc||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Referring MD</div><div style="color:var(--g800);font-weight:600">'+(c.refmd||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lien</div><div style="color:var(--amber);font-weight:700">'+(c.lien?fc(c.lien):'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Status</div><div style="color:var(--g800);font-weight:600">'+(c.st||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Clinic Type</div><div style="color:var(--g800);font-weight:600">'+(c.ct||'—')+'</div></div>'+
+        '<div><div style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Grade</div><div style="color:var(--g800);font-weight:600">'+(c.gr||'—')+'</div></div>'+
       '</div>'+
     '</div>'+
     '<div class="card"><div class="ch"><span class="ct">💳 Payments ('+pays.length+')</span><button class="btn bp bsm" id="cd-add-pay">+ Add</button></div><div class="tw">'+
@@ -2431,6 +2468,34 @@ function rSettings(){
   }).join('');
 }
 
+// ── DATALISTS for Add/Edit Case ──────────────────────────────
+var MASTERS = {law_offices:[], doctors:[], locations:[], ref_mds:[]};
+function loadMasters(){
+  // Try master tables first; fall back to distinct values from cases
+  var pLO  = SB.getAll('law_offices', 'order=name.asc').catch(function(){return [];});
+  var pDoc = SB.get('doctors', 'order=name.asc').catch(function(){return [];});
+  var pLoc = SB.get('locations', 'order=name.asc').catch(function(){return [];});
+  var pRMD = SB.getAll('referring_mds', 'order=name.asc').catch(function(){return [];});
+  Promise.all([pLO,pDoc,pLoc,pRMD]).then(function(r){
+    MASTERS.law_offices = (r[0]||[]).map(function(x){return x.name;}).filter(Boolean);
+    MASTERS.doctors     = (r[1]||[]).map(function(x){return x.name;}).filter(Boolean);
+    MASTERS.locations   = (r[2]||[]).map(function(x){return x.name;}).filter(Boolean);
+    MASTERS.ref_mds     = (r[3]||[]).map(function(x){return x.name;}).filter(Boolean);
+  });
+}
+function populateCaseDatalists(){
+  function distinct(arr){var s={};arr.forEach(function(v){if(v)s[v]=1;});return Object.keys(s).sort();}
+  var lo  = MASTERS.law_offices.length ? MASTERS.law_offices : distinct(DB.cases.map(function(c){return c.lo;}));
+  var doc = MASTERS.doctors.length     ? MASTERS.doctors     : distinct(DB.cases.map(function(c){return c.prov;}));
+  var loc = MASTERS.locations.length   ? MASTERS.locations   : distinct(DB.cases.map(function(c){return c.location;}));
+  var rmd = MASTERS.ref_mds.length     ? MASTERS.ref_mds     : distinct(DB.cases.map(function(c){return c.refmd;}));
+  function fill(id, items){var el=document.getElementById(id);if(el)el.innerHTML=items.slice(0,500).map(function(v){return '<option value="'+(v||'').replace(/"/g,'&quot;')+'">';}).join('');}
+  fill('dl-law-offices', lo);
+  fill('dl-doctors', doc);
+  fill('dl-locations', loc);
+  fill('dl-ref-mds', rmd);
+}
+
 // ── MODALS ───────────────────────────────────────────────────
 function openModal(type,id){
   S.eid[type]=id;
@@ -2447,8 +2512,10 @@ function openModal(type,id){
   } else if(type==='case'){
     var c=id?DB.cases.find(function(x){return x.id===id;}):null;
     document.getElementById('m-case-title').textContent=id?'Edit Case':'Add Case';
-    if(c){document.getElementById('cf-law').value=c.lo||'';document.getElementById('cf-acct').value=c.acct||'';document.getElementById('cf-pat').value=c.pat||'';document.getElementById('cf-prov').value=c.prov||'';document.getElementById('cf-dol').value=c.dol||'';document.getElementById('cf-st').value=c.st||'active';document.getElementById('cf-bi').value=c.bi||'';document.getElementById('cf-bal').value=c.bal||'';document.getElementById('cf-gr').value=c.gr||'';document.getElementById('cf-ct').value=c.ct||'';document.getElementById('cf-notes').value=c.notes||'';}
-    else{['cf-law','cf-acct','cf-pat','cf-prov','cf-dol','cf-bi','cf-bal','cf-notes'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('cf-st').value='active';document.getElementById('cf-gr').value='';if(S.clinicType){document.getElementById('cf-ct').value=S.clinicType;}else{document.getElementById('cf-ct').value='';}}
+    populateCaseDatalists();
+    if(c){document.getElementById('cf-law').value=c.lo||'';document.getElementById('cf-acct').value=c.acct||'';document.getElementById('cf-pat').value=c.pat||'';document.getElementById('cf-prov').value=c.prov||'';document.getElementById('cf-dol').value=c.dol||'';document.getElementById('cf-st').value=c.st||'Active';document.getElementById('cf-bi').value=c.bi||'';document.getElementById('cf-bal').value=c.bal||'';document.getElementById('cf-gr').value=c.gr||'';document.getElementById('cf-ct').value=c.ct||'';document.getElementById('cf-notes').value=c.notes||'';
+      document.getElementById('cf-phone').value=c.phone||'';document.getElementById('cf-dob').value=c.dob||'';document.getElementById('cf-sex').value=c.sex||'';document.getElementById('cf-location').value=c.location||'';document.getElementById('cf-refmd').value=c.refmd||'';document.getElementById('cf-study').value=c.study||'';document.getElementById('cf-proc').value=c.proc||'';document.getElementById('cf-lien').value=c.lien||'';}
+    else{['cf-law','cf-acct','cf-pat','cf-prov','cf-dol','cf-bi','cf-bal','cf-notes','cf-phone','cf-dob','cf-location','cf-refmd','cf-study','cf-proc','cf-lien'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('cf-st').value='Active';document.getElementById('cf-gr').value='';document.getElementById('cf-sex').value='';if(S.clinicType){document.getElementById('cf-ct').value=S.clinicType;}else{document.getElementById('cf-ct').value='';}}
     var cfCtEl=document.getElementById('cf-ct');
     if(S.clinicType){cfCtEl.disabled=true;}else{cfCtEl.disabled=false;}
     document.getElementById('m-case').classList.add('open');
@@ -2619,7 +2686,15 @@ function viewCheckImages(payId){
 
 function saveCase(){
   var id=S.eid.case;
-  var o={lo:document.getElementById('cf-law').value,acct:document.getElementById('cf-acct').value,pat:document.getElementById('cf-pat').value,prov:document.getElementById('cf-prov').value,dol:document.getElementById('cf-dol').value||null,st:document.getElementById('cf-st').value,bi:parseFloat(document.getElementById('cf-bi').value)||0,bal:parseFloat(document.getElementById('cf-bal').value)||0,gr:document.getElementById('cf-gr').value||null,ct:document.getElementById('cf-ct').value||null,notes:document.getElementById('cf-notes').value};
+  var o={lo:document.getElementById('cf-law').value,acct:document.getElementById('cf-acct').value,pat:document.getElementById('cf-pat').value,prov:document.getElementById('cf-prov').value,dol:document.getElementById('cf-dol').value||null,st:document.getElementById('cf-st').value,bi:parseFloat(document.getElementById('cf-bi').value)||0,bal:parseFloat(document.getElementById('cf-bal').value)||0,gr:document.getElementById('cf-gr').value||null,ct:document.getElementById('cf-ct').value||null,notes:document.getElementById('cf-notes').value,
+    phone:document.getElementById('cf-phone').value,
+    dob:document.getElementById('cf-dob').value||null,
+    sex:document.getElementById('cf-sex').value,
+    location:document.getElementById('cf-location').value,
+    refmd:document.getElementById('cf-refmd').value,
+    study:document.getElementById('cf-study').value||null,
+    proc:document.getElementById('cf-proc').value,
+    lien:parseFloat(document.getElementById('cf-lien').value)||0};
   closeModal('m-case');
   sbSaveCase(o, id).then(function(r){
     if(id){Object.assign(DB.cases.find(function(c){return c.id===id;}),o);}
