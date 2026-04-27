@@ -2885,7 +2885,7 @@ function bfuPreview(){
     '<div style="font-size:11px;color:var(--g500);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Sample (first 5)</div>'+
     '<div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden">'+
       samples.map(function(c){
-        var s=calcSOL(c.dol); var solStr=s?(s.daysLeft+'d':'—');
+        var s=calcSOL(c.dol); var solStr=s?(s.daysLeft+'d'):'—';
         var lc=lastContactDays(c.id); var lcStr=lc===null?'never':(lc+'d ago');
         return '<div style="padding:8px 12px;border-bottom:1px solid var(--g100);font-size:12px;display:flex;justify-content:space-between;gap:8px">'+
           '<div><strong>'+(c.pat||'(no name)')+'</strong> · '+(c.acct||'—')+' · '+(c.lo||'—')+'</div>'+
