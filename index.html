@@ -473,6 +473,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="ha">
             <button class="btn bs bsm" id="btn-print-fu">🖨️ Print</button>
             <button class="btn bs bsm" id="btn-gen-fu">⟳ Generate</button>
+            <button class="btn bp bsm" id="btn-bulk-fu" style="background:#7c3aed">🔄 Bulk Create</button>
             <button class="btn bp bsm" id="btn-add-fu">+ Schedule</button>
           </div>
         </div>
@@ -1215,6 +1216,63 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     <div class="mh"><span class="mtt">Set KPI Goals</span><button class="mx" id="mx-kpi">×</button></div>
     <div class="mbd"><div class="fg" id="kpi-modal-fields"></div></div>
     <div class="mft"><button class="btn bs" id="mx2-kpi">Cancel</button><button class="btn bp" id="save-kpi-modal">Save</button></div>
+  </div>
+</div>
+
+<!-- Bulk Follow-up Modal -->
+<div class="mb" id="m-bulk-fu">
+  <div class="modal" style="max-width:720px">
+    <div class="mh">
+      <span class="mtt">🔄 Bulk Follow-up Generator</span>
+      <button class="mx" id="mx-bfu">×</button>
+    </div>
+    <div class="mbd">
+      <div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
+        ⚠ This creates real follow-up tasks in Supabase for every matching case. Always preview before generating.
+      </div>
+      <div class="fd full" style="margin-bottom:10px">
+        <label>Preset (or pick custom below)</label>
+        <select id="bfu-preset" style="font-size:13px;padding:8px 10px;border:1.5px solid var(--g200);border-radius:8px;font-family:inherit">
+          <option value="">— Custom —</option>
+          <option value="sol-30">⏰ SOL ≤ 30 days remaining</option>
+          <option value="sol-90">⏰ SOL ≤ 90 days remaining</option>
+          <option value="bs-cold30">💰 Bill Sent · cold ≥ 30 days</option>
+          <option value="bs-cold60">💰 Bill Sent · cold ≥ 60 days</option>
+          <option value="bs-cold90">💰 Bill Sent · cold ≥ 90 days</option>
+          <option value="collections">💸 Sent to collections (all)</option>
+          <option value="litigation">⚖️ Litigation (all)</option>
+          <option value="big-bal">💵 Balance ≥ $5,000 + cold ≥ 30d</option>
+          <option value="settled">⏳ Settled, Payment Pending (all)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fd"><label>CFPC Status (optional)</label>
+          <select id="bfu-cfpc" style="font-size:13px;padding:8px 10px;border:1.5px solid var(--g200);border-radius:8px;font-family:inherit">
+            <option value="">Any</option>
+          </select>
+        </div>
+        <div class="fd"><label>Min balance ($)</label><input type="number" id="bfu-bal" min="0" step="100"></div>
+        <div class="fd"><label>SOL ≤ days (blank = any)</label><input type="number" id="bfu-sol" min="0" step="1"></div>
+        <div class="fd"><label>Cold ≥ days last contact</label><input type="number" id="bfu-cold" min="0" step="1"></div>
+        <div class="fd"><label>Action</label>
+          <select id="bfu-act"><option value="call">📞 Call</option><option value="email">✉️ Email</option><option value="text">💬 Text</option></select>
+        </div>
+        <div class="fd"><label>Priority</label>
+          <select id="bfu-pri"><option value="high">🔴 High</option><option value="medium" selected>🟡 Medium</option><option value="low">🟢 Low</option></select>
+        </div>
+        <div class="fd"><label>Due in N days from today</label><input type="number" id="bfu-due" value="3" min="0" max="180"></div>
+        <div class="fd full"><label>Subject template (use {patient}, {acct}, {balance}, {lo})</label><input id="bfu-subj" value="Follow-up: {patient} ({lo}) — Balance ${balance}"></div>
+        <div class="fd full"><label>Skip cases that already have a pending follow-up?</label>
+          <select id="bfu-skip-existing"><option value="yes" selected>Yes (recommended)</option><option value="no">No (allow duplicates)</option></select>
+        </div>
+      </div>
+      <div id="bfu-preview" style="margin-top:14px"></div>
+    </div>
+    <div class="mft">
+      <button class="btn bs" id="mx2-bfu">Cancel</button>
+      <button class="btn bs" id="bfu-preview-btn">🔍 Preview</button>
+      <button class="btn bp" id="bfu-create-btn" style="background:#7c3aed" disabled>Create Follow-ups</button>
+    </div>
   </div>
 </div>
 
@@ -2758,6 +2816,138 @@ function genFU(){
   rFU();toast(added>0?'Generated '+added+' follow-up'+(added>1?'s':''):'All covered','⟳');
 }
 
+// ── 🔄 Bulk Follow-up Generator ─────────────────────────────────
+function openBulkFU(){
+  // Populate CFPC status dropdown
+  var sel=document.getElementById('bfu-cfpc');
+  if(sel && sel.options.length<=1){
+    var counts=cfpcStatusCounts();
+    Object.keys(counts).filter(function(k){return k!=='(none)';}).sort().forEach(function(k){
+      var opt=document.createElement('option');opt.value=k;opt.textContent=k+' ('+counts[k]+')';sel.appendChild(opt);
+    });
+  }
+  // Reset preview
+  document.getElementById('bfu-preview').innerHTML='';
+  document.getElementById('bfu-create-btn').disabled=true;
+  openModal('bulk-fu');
+}
+
+function bfuApplyPreset(){
+  var v=document.getElementById('bfu-preset').value;
+  var setVal=function(id,val){var el=document.getElementById(id);if(el)el.value=val;};
+  // Reset all custom fields first
+  setVal('bfu-cfpc',''); setVal('bfu-bal',''); setVal('bfu-sol',''); setVal('bfu-cold','');
+  setVal('bfu-act','call'); setVal('bfu-pri','medium');
+  if(v==='sol-30'){setVal('bfu-sol','30');setVal('bfu-pri','high');setVal('bfu-act','call');setVal('bfu-due','1');}
+  else if(v==='sol-90'){setVal('bfu-sol','90');setVal('bfu-pri','high');setVal('bfu-act','call');setVal('bfu-due','3');}
+  else if(v==='bs-cold30'){setVal('bfu-cfpc','Bill Sent');setVal('bfu-cold','30');setVal('bfu-pri','medium');setVal('bfu-act','email');setVal('bfu-due','3');}
+  else if(v==='bs-cold60'){setVal('bfu-cfpc','Bill Sent');setVal('bfu-cold','60');setVal('bfu-pri','high');setVal('bfu-act','call');setVal('bfu-due','1');}
+  else if(v==='bs-cold90'){setVal('bfu-cfpc','Bill Sent');setVal('bfu-cold','90');setVal('bfu-pri','high');setVal('bfu-act','call');setVal('bfu-due','1');}
+  else if(v==='collections'){setVal('bfu-cfpc','Sent to collections');setVal('bfu-pri','high');setVal('bfu-act','call');setVal('bfu-due','2');}
+  else if(v==='litigation'){setVal('bfu-cfpc','Litigation');setVal('bfu-pri','medium');setVal('bfu-act','email');setVal('bfu-due','7');}
+  else if(v==='big-bal'){setVal('bfu-bal','5000');setVal('bfu-cold','30');setVal('bfu-pri','high');setVal('bfu-act','call');setVal('bfu-due','2');}
+  else if(v==='settled'){setVal('bfu-cfpc','Settled, Payment Pending');setVal('bfu-pri','medium');setVal('bfu-act','call');setVal('bfu-due','5');}
+  bfuPreview();
+}
+
+function bfuMatch(){
+  var cfpcF=document.getElementById('bfu-cfpc').value;
+  var balF=parseFloat(document.getElementById('bfu-bal').value)||0;
+  var solF=document.getElementById('bfu-sol').value; solF=solF===''?null:parseInt(solF);
+  var coldF=document.getElementById('bfu-cold').value; coldF=coldF===''?null:parseInt(coldF);
+  var skipExisting=document.getElementById('bfu-skip-existing').value==='yes';
+  return DB.cases.filter(function(c){
+    if(c.merged_into) return false;
+    if(cfpcF && c.stCfpc!==cfpcF) return false;
+    if(balF>0 && (c.bal||0)<balF) return false;
+    if(solF!==null){var s=calcSOL(c.dol);if(!s||s.daysLeft>solF)return false;}
+    if(coldF!==null){var lc=lastContactDays(c.id);if(lc===null){lc=99999;}if(lc<coldF)return false;}
+    if(skipExisting && DB.fus.some(function(f){return f.cid===c.id && f.st==='pending';})) return false;
+    return true;
+  });
+}
+
+function bfuPreview(){
+  var matched=bfuMatch();
+  var prevDiv=document.getElementById('bfu-preview');
+  var btn=document.getElementById('bfu-create-btn');
+  if(!matched.length){
+    prevDiv.innerHTML='<div style="background:var(--g100);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--g500);text-align:center">No cases match these criteria</div>';
+    btn.disabled=true;btn.textContent='Create Follow-ups';
+    return;
+  }
+  var samples=matched.slice(0,5);
+  var totalBal=matched.reduce(function(s,c){return s+(c.bal||0);},0);
+  prevDiv.innerHTML=
+    '<div style="background:#dbeafe;border-left:4px solid var(--accent);border-radius:8px;padding:12px 14px;margin-bottom:8px">'+
+      '<div style="font-weight:700;font-size:14px;color:var(--accent)">'+matched.length.toLocaleString()+' matching cases · Total balance '+fc(totalBal)+'</div>'+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--g500);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Sample (first 5)</div>'+
+    '<div style="border:1px solid var(--g200);border-radius:8px;overflow:hidden">'+
+      samples.map(function(c){
+        var s=calcSOL(c.dol); var solStr=s?(s.daysLeft+'d':'—');
+        var lc=lastContactDays(c.id); var lcStr=lc===null?'never':(lc+'d ago');
+        return '<div style="padding:8px 12px;border-bottom:1px solid var(--g100);font-size:12px;display:flex;justify-content:space-between;gap:8px">'+
+          '<div><strong>'+(c.pat||'(no name)')+'</strong> · '+(c.acct||'—')+' · '+(c.lo||'—')+'</div>'+
+          '<div style="color:var(--g500);font-size:11px">'+(c.stCfpc||'—')+' · '+fc(c.bal)+' · SOL '+solStr+' · LC '+lcStr+'</div>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+  btn.disabled=false;
+  btn.textContent='✨ Create '+matched.length.toLocaleString()+' Follow-up'+(matched.length>1?'s':'');
+}
+
+function bfuCreate(){
+  var matched=bfuMatch();
+  if(!matched.length) return;
+  var act=document.getElementById('bfu-act').value;
+  var pri=document.getElementById('bfu-pri').value;
+  var dueDays=parseInt(document.getElementById('bfu-due').value)||0;
+  var subjTpl=document.getElementById('bfu-subj').value || 'Follow-up: {patient}';
+  var due=new Date(); due.setDate(due.getDate()+dueDays);
+  var dueStr=due.toISOString().slice(0,10);
+  if(!confirm('Create '+matched.length+' follow-ups?\n\nAction: '+act+'\nPriority: '+pri+'\nDue: '+dueStr+'\n\nThis will write to Supabase.')) return;
+  // Build rows
+  var rows=matched.map(function(c){
+    var subj=subjTpl
+      .replace(/\{patient\}/g, c.pat||'')
+      .replace(/\{acct\}/g, c.acct||'')
+      .replace(/\{balance\}/g, fc(c.bal).replace('$',''))
+      .replace(/\{lo\}/g, c.lo||'')
+      .replace(/\{cfpc\}/g, c.stCfpc||'');
+    return {
+      case_id: c.id, account_num: c.acct, patient_name: c.pat, law_office: c.lo,
+      grade: c.gr, balance: c.bal, action: act, subject: subj, priority: pri,
+      status: 'pending', due_date: dueStr, notes: 'Bulk-generated '+today()
+    };
+  });
+  closeModal('bulk-fu');
+  toast('Creating '+rows.length+' follow-ups...', '🔄');
+  // Batch INSERT in chunks of 100
+  var chunkSize=100, ok=0, fail=0;
+  function nextChunk(i){
+    if (i>=rows.length){
+      toast('Created '+ok+' follow-ups'+(fail?' · '+fail+' failed':''), ok?'✅':'⚠️');
+      // Reload follow-ups from Supabase to refresh DB.fus with real ids
+      SB.get('follow_ups','order=id.asc').then(function(rows){
+        if(rows){
+          DB.fus = rows.map(function(r){
+            return {id:r.id, cid:r.case_id, acct:r.account_num, pat:r.patient_name, lo:r.law_office, gr:r.grade, bal:parseFloat(r.balance)||0, act:r.action, subj:r.subject, pri:r.priority, st:r.status, due:r.due_date, notes:r.notes||''};
+          });
+          rFU();
+          go('followups');
+        }
+      });
+      return;
+    }
+    var batch = rows.slice(i, i+chunkSize);
+    supaFetch('follow_ups',{method:'POST',body:batch,prefer:'return=minimal'})
+      .then(function(){ ok+=batch.length; nextChunk(i+chunkSize); })
+      .catch(function(){ fail+=batch.length; nextChunk(i+chunkSize); });
+  }
+  nextChunk(0);
+}
+
 // ── FILES ────────────────────────────────────────────────────
 function fileIcon(name){
   var ext=(name||'').split('.').pop().toLowerCase();
@@ -4144,6 +4334,16 @@ function bindAll(){
   document.getElementById('btn-add-fu').addEventListener('click',function(){openModal('fu',null);});
   document.getElementById('btn-print-fu').addEventListener('click',function(){printFollowups();});
   document.getElementById('btn-gen-fu').addEventListener('click',genFU);
+  // Bulk Follow-up generator
+  var bBfu=document.getElementById('btn-bulk-fu'); if(bBfu) bBfu.addEventListener('click', openBulkFU);
+  ['mx-bfu','mx2-bfu'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){closeModal('bulk-fu');});});
+  var bfPre=document.getElementById('bfu-preset'); if(bfPre) bfPre.addEventListener('change', bfuApplyPreset);
+  var bfPrev=document.getElementById('bfu-preview-btn'); if(bfPrev) bfPrev.addEventListener('click', bfuPreview);
+  var bfCre=document.getElementById('bfu-create-btn'); if(bfCre) bfCre.addEventListener('click', bfuCreate);
+  // Re-preview on any custom field change
+  ['bfu-cfpc','bfu-bal','bfu-sol','bfu-cold','bfu-skip-existing'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.addEventListener('change', bfuPreview);
+  });
   document.getElementById('fu-q').addEventListener('input',function(){S.fuQ=this.value;rFU();});
   document.getElementById('fu-pri-filter').addEventListener('change',function(){S.fuPri=this.value;rFU();});
   ['pending','overdue','high','today','completed'].forEach(function(t){
