@@ -401,7 +401,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           </div>
         </div>
         <div class="tb">
-          <div class="sw"><span class="si">🔍</span><input id="pay-q" placeholder="Search account #, patient, law office..."></div>
+          <div class="sw"><span class="si">🔍</span><input id="pay-q" placeholder="Search by patient, acct #, law office, doctor, DOL, pay date... (multi-word OK)"></div>
           <select class="fl" id="pay-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="pay-st-filter"><option value="">All Status</option><option value="received">Received</option><option value="pending">Pending</option><option value="cleared">Cleared</option><option value="returned">Returned</option></select>
           <span class="rc" id="pay-rc"></span>
@@ -419,7 +419,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           </div>
         </div>
         <div class="tb">
-          <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search account #, patient, law office..."></div>
+          <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search by name, PID, phone, DOB, DOL, doctor, procedure, location, notes... (multi-word OK)"></div>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
           <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="coldest">❄️ Coldest Contact</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
@@ -438,7 +438,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="ph">
           <div><div class="pt">Patients</div><div class="ps">Patient profiles</div></div>
           <div class="ha"><button class="btn bs bsm" id="btn-print-pat">🖨️ Print</button>
-          <div class="sw" style="min-width:240px"><span class="si">🔍</span><input id="pat-q" placeholder="Search patient, account #, law office..."></div>
+          <div class="sw" style="min-width:240px"><span class="si">🔍</span><input id="pat-q" placeholder="Search by name, PID, phone, DOB, DOL, doctor... (multi-word OK)"></div>
           <select class="fl" id="pat-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="pat-sort"><option value="">Default</option><option value="name-asc">Name A-Z</option><option value="name-desc">Name Z-A</option><option value="bal-desc">Balance High→Low</option><option value="bal-asc">Balance Low→High</option><option value="cases-desc">Most Cases</option><option value="bi-desc">Most Billed</option></select>
           </div>
@@ -2050,12 +2050,40 @@ function ctBadge(ct){
   var m={MRI:'background:#dbeafe;color:#1e40af',Chiro:'background:#d1fae5;color:#065f46',Pain:'background:#fef3c7;color:#92400e'};
   return '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;'+(m[ct]||'background:var(--g100);color:var(--g600)')+'">'+ct+'</span>';
 }
+// ── Universal multi-field search helper ───────────────────────
+// Matches any of the given fields by substring (case-insensitive).
+// Supports multiple space-separated keywords (all must match).
+// Date fields auto-formatted so user can search "2024" "2024-03" "Mar 2024" etc.
+function searchMatch(obj, q, fields) {
+  if (!q) return true;
+  // Build a single haystack string from selected fields
+  var hay = fields.map(function(f){
+    var v = obj[f];
+    if (v == null || v === '') return '';
+    var s = String(v);
+    // For ISO dates, also include human-friendly variants
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      var d = new Date(s);
+      if (!isNaN(d)) {
+        s += ' ' + d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) + ' ' + d.toLocaleDateString('en-US',{year:'numeric',month:'long'});
+      }
+    }
+    return s;
+  }).join(' ').toLowerCase();
+  // Split query on whitespace, all keywords must appear
+  var keywords = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return keywords.every(function(k){ return hay.indexOf(k) >= 0; });
+}
+
+var PAY_SEARCH_FIELDS = ['lo','acct','pat','prov','dol','pd','cs','ct'];
+var CASE_SEARCH_FIELDS = ['lo','acct','pat','prov','cfpc_pid','phone','dob','dol','refmd','location','proc','sex','notes','st','gr','ct','study'];
+var PAT_SEARCH_FIELDS = ['name','pid','phone','lo','dol','dob'];
+
 function rPay(){
   var data=DB.pays.filter(function(p){
-    var q=S.payQ.toLowerCase();
-    var m=!q||[p.lo,p.acct,p.pat,p.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});
+    if(!searchMatch(p, S.payQ, PAY_SEARCH_FIELDS)) return false;
     var cMatch=S.clinicType?p.ct===S.clinicType:!S.ct||p.ct===S.ct;
-    return m&&(!S.paySt||p.cs===S.paySt)&&cMatch;
+    return (!S.paySt||p.cs===S.paySt)&&cMatch;
   });
   document.getElementById('pay-rc').textContent=data.length+' records';
   document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
@@ -2068,10 +2096,9 @@ function rPay(){
 function rCase(){
   var data=DB.cases.filter(function(c){
     if(c.merged_into) return false;
-    var q=S.caseQ.toLowerCase();
-    var m=!q||[c.lo,c.acct,c.pat,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});
+    if(!searchMatch(c, S.caseQ, CASE_SEARCH_FIELDS)) return false;
     var cMatch=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;
-    if(!(m&&(!S.caseSt||c.st===S.caseSt)&&cMatch)) return false;
+    if(!(!S.caseSt||c.st===S.caseSt)||!cMatch) return false;
     if(S.caseSolF){
       var s=calcSOL(c.dol); if(!s) return false;
       var d=s.daysLeft;
@@ -2270,7 +2297,7 @@ function printListPage(type){
       if(S.clinicType&&p.ct!==S.clinicType)return false;
       if(S.ct&&p.ct!==S.ct)return false;
       if(S.paySt&&p.cs!==S.paySt)return false;
-      if(S.payQ){var q=S.payQ.toLowerCase();if(![p.pat,p.lo,p.acct,p.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return false;}
+      if(!searchMatch(p, S.payQ, PAY_SEARCH_FIELDS)) return false;
       return true;
     });
     var tCh=pays.reduce(function(s,p){return s+(p.ch||0);},0);
@@ -2285,7 +2312,7 @@ function printListPage(type){
       if(S.clinicType&&c.ct!==S.clinicType)return false;
       if(S.ct&&c.ct!==S.ct)return false;
       if(S.caseSt&&c.st!==S.caseSt)return false;
-      if(S.caseQ){var q=S.caseQ.toLowerCase();if(![c.pat,c.lo,c.acct,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return false;}
+      if(!searchMatch(c, S.caseQ, CASE_SEARCH_FIELDS)) return false;
       return true;
     });
     var tBi=cases.reduce(function(s,c){return s+(c.bi||0);},0);
@@ -2612,8 +2639,8 @@ function rPatients(){
     if(ctF&&c.ct!==ctF)return;
     var key = c.master_id ? ('m'+c.master_id) : (c.cfpc_pid || c.pat || ('id-'+c.id));
     if(q){
-      var hay=[c.pat,c.lo,c.acct,c.prov,c.cfpc_pid,c.phone].filter(Boolean).join(' ').toLowerCase();
-      if(hay.indexOf(q)<0)return;
+      // Use the same multi-keyword + date-friendly matcher
+      if(!searchMatch(c, S.patQ, CASE_SEARCH_FIELDS)) return;
     }
     if(!groups[key]){
       groups[key]={key:key, master_id:c.master_id||null, pids:{}, phones:{}, dois:{}, name:c.pat||'', lo:c.lo||'', ct:c.ct||'', cases:[]};
