@@ -3741,13 +3741,22 @@ function callClaude(systemPrompt, userPrompt, opts) {
 // Build a compact data summary for AI prompts (avoids token bloat)
 function aiDataContext() {
   var active = DB.cases.filter(function(c){return !c.merged_into;});
-  var stCounts = {}; active.forEach(function(c){var s=c.stCfpc||'(none)'; stCounts[s]=(stCounts[s]||0)+1;});
-  var ctCounts = {}; active.forEach(function(c){var s=c.ct||'(none)'; ctCounts[s]=(ctCounts[s]||0)+1;});
+  var stCounts={}, ctCounts={}, loCounts={}, loBal={}, provCounts={};
+  active.forEach(function(c){
+    var s=c.stCfpc||'(none)'; stCounts[s]=(stCounts[s]||0)+1;
+    var ct=c.ct||'(none)'; ctCounts[ct]=(ctCounts[ct]||0)+1;
+    var lo=c.lo||'(none)'; loCounts[lo]=(loCounts[lo]||0)+1; loBal[lo]=(loBal[lo]||0)+(c.bal||0);
+    var pv=c.prov||'(none)'; provCounts[pv]=(provCounts[pv]||0)+1;
+  });
   var totalBilled = active.reduce(function(s,c){return s+(c.bi||0);},0);
   var totalBalance = active.reduce(function(s,c){return s+(c.bal||0);},0);
   var totalPaid = DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var collectionRate = totalBilled>0 ? (totalPaid/totalBilled*100).toFixed(1) : 0;
   var overdueFUs = DB.fus.filter(function(f){return f.st==='pending' && f.due<today();});
+  // Top 30 law offices by case count + balance
+  var topLO = Object.keys(loCounts).sort(function(a,b){return loCounts[b]-loCounts[a];}).slice(0,30).map(function(k){return {law_office:k, cases:loCounts[k], outstanding_balance:Math.round(loBal[k])};});
+  // Top 20 providers
+  var topProv = Object.keys(provCounts).sort(function(a,b){return provCounts[b]-provCounts[a];}).slice(0,20).map(function(k){return {provider:k, cases:provCounts[k]};});
   return {
     today: today(),
     cases_active: active.length,
@@ -3759,9 +3768,39 @@ function aiDataContext() {
     overdue_followups: overdueFUs.length,
     cfpc_status_counts: stCounts,
     clinic_type_counts: ctCounts,
+    top_law_offices: topLO,
+    top_providers: topProv,
     kpi_goal_collection_rate: DB.kpi.collectionRate,
     kpi_goal_monthly_target: DB.kpi.monthlyTarget
   };
+}
+
+// Find entities mentioned in user query and return matching cases (for richer context)
+function aiMatchEntities(q) {
+  if (!q) return [];
+  var qLower = q.toLowerCase();
+  var active = DB.cases.filter(function(c){return !c.merged_into;});
+  var hits = [];
+  // Build a unique entity index: law_offices, providers, patient names, PIDs
+  var seen = {};
+  active.forEach(function(c){
+    var entities = [c.lo, c.prov, c.pat, c.cfpc_pid].filter(Boolean);
+    entities.forEach(function(e){
+      var key = e.toLowerCase();
+      if (key.length>=3 && qLower.indexOf(key)>=0 && !seen[key]) {
+        seen[key] = true;
+        hits.push(e);
+      }
+    });
+  });
+  if (!hits.length) return [];
+  // Collect all cases matching ANY of the matched entities (cap at 50)
+  var matchedCases = active.filter(function(c){
+    return hits.some(function(h){
+      return c.lo===h || c.prov===h || c.pat===h || c.cfpc_pid===h;
+    });
+  }).slice(0,50);
+  return matchedCases.map(aiCaseSnippet);
 }
 
 // Build a compact case object for AI (strips fields it doesn't need)
@@ -3795,8 +3834,10 @@ function sendAI(){
   var top10balances = DB.cases.filter(function(c){return !c.merged_into && c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10).map(aiCaseSnippet);
   var recentFUs = DB.fus.filter(function(f){return f.st==='pending';}).sort(function(a,b){return (a.due||'').localeCompare(b.due||'');}).slice(0,10).map(function(f){return {patient:f.pat, due:f.due, action:f.act, priority:f.pri, balance:f.bal};});
   var currentCase = S.curCase ? aiCaseSnippet(DB.cases.find(function(x){return x.id===S.curCase;})||{}) : null;
-  var sys = 'You are a medical-collections analyst at TotalMedix. Reply in concise English (or Korean if user asks in Korean). Use markdown: **bold** for names/amounts, bullet lists where helpful, emoji headers like 📊 🔥 ✉️. Always ground answers in the JSON provided — if data is missing say so. Cite cases by Patient + Acct # + balance.';
-  var userPrompt = '## Question\n'+q+'\n\n## Live pipeline snapshot\n```json\n'+JSON.stringify(ctx,null,2)+'\n```\n\n## Top 10 outstanding balances\n```json\n'+JSON.stringify(top10balances,null,2)+'\n```\n\n## Pending follow-ups (top 10)\n```json\n'+JSON.stringify(recentFUs,null,2)+'\n```\n'+(currentCase?'\n## User is currently viewing this case\n```json\n'+JSON.stringify(currentCase,null,2)+'\n```\n':'')+'\nKeep the answer under 200 words unless the user explicitly asks for more.';
+  // Dynamic: if user mentions a law office / provider / patient / PID, include those cases
+  var matchedCases = aiMatchEntities(q);
+  var sys = 'You are a medical-collections analyst at TotalMedix. Reply in concise English (or Korean if user asks in Korean). Use markdown: **bold** for names/amounts, bullet lists where helpful, emoji headers like 📊 🔥 ✉️. Always ground answers in the JSON provided — the snapshot includes top 30 law offices and 20 providers, plus dynamic matches. Cite cases by Patient + Acct # + balance.';
+  var userPrompt = '## Question\n'+q+'\n\n## Live pipeline snapshot\n```json\n'+JSON.stringify(ctx,null,2)+'\n```\n\n## Top 10 outstanding balances\n```json\n'+JSON.stringify(top10balances,null,2)+'\n```\n\n## Pending follow-ups (top 10)\n```json\n'+JSON.stringify(recentFUs,null,2)+'\n```\n'+(matchedCases.length?'\n## Cases matching entities in your question (up to 50)\n```json\n'+JSON.stringify(matchedCases,null,2)+'\n```\n':'')+(currentCase?'\n## User is currently viewing this case\n```json\n'+JSON.stringify(currentCase,null,2)+'\n```\n':'')+'\nKeep the answer under 200 words unless the user explicitly asks for more.';
   callClaude(sys, userPrompt, {maxTokens:1500})
     .then(function(text){
       var html = text
