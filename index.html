@@ -385,6 +385,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         </div>
         <div id="kpi-alerts"></div>
         <div class="metrics" id="d-metrics"></div>
+        <div id="d-cfpc-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px"></div>
         <div class="g2">
           <div class="card"><div class="ch"><span class="ct">📊 Payments by Law Office</span></div><div class="cb" id="d-bar"></div></div>
           <div class="card"><div class="ch"><span class="ct">🍩 Check Status</span></div><div class="cb" id="d-pie"></div></div>
@@ -426,7 +427,8 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <select class="fl" id="case-sol-filter" title="SOL urgency filter"><option value="">All SOL</option><option value="expired">❌ Expired</option><option value="critical">🚨 ≤30 days</option><option value="urgent">🔴 ≤90 days</option><option value="warn">⚠️ ≤180 days</option></select>
           <span class="rc" id="case-rc"></span>
         </div>
-        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th title="Last contact heat-map">Last Contact 🌡</th><th>Status</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
+        <div id="case-cfpc-pills" style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;align-items:center"></div>
+        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th title="Last contact heat-map">Last Contact 🌡</th><th>Status</th><th title="CFPC pipeline stage">CFPC</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
       </div>
 
       <div id="pg-casedetail" class="pg">
@@ -1434,7 +1436,8 @@ function loadFromSupabase() {
                 location:r.location||'',study:r.study_date||null,
                 refmd:r.referring_md||'',lien:parseFloat(r.lien)||0,
                 proc:r.procedure||'',merged_into:r.merged_into||null,
-                cfpc_pid:r.cfpc_pid||null,master_id:r.master_id||null};
+                cfpc_pid:r.cfpc_pid||null,master_id:r.master_id||null,
+                stCfpc:r.status_cfpc||null};
       });
     }
     if (dbPays.length) {
@@ -1630,7 +1633,7 @@ var S = {
   role:'admin', clinicType:null, user:null,
   fuTab:'pending', fuPri:'',
   payQ:'', paySt:'',
-  caseQ:'', caseSt:'', caseSort:'', patCt:'', patSort:'',
+  caseQ:'', caseSt:'', caseStCfpc:'', caseSort:'', patCt:'', patSort:'',
   fileQ:'', fileCat:'',
   fuQ:'', patQ:'', ct:'',
   rptStart:null, rptEnd:null,
@@ -1970,6 +1973,26 @@ function go(pg){
 // ── DASHBOARD ────────────────────────────────────────────────
 function rDash(){
   var _dn=new Date();var _days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];var _months=['January','February','March','April','May','June','July','August','September','October','November','December'];document.getElementById('d-date').textContent=_days[_dn.getDay()]+', '+_months[_dn.getMonth()]+' '+_dn.getDate()+', '+_dn.getFullYear();
+  // CFPC Status Tiles — quick pulse on the pipeline
+  var cfpcTiles=document.getElementById('d-cfpc-tiles');
+  if (cfpcTiles) {
+    var counts=cfpcStatusCounts(), bal=cfpcStatusBalance();
+    cfpcTiles.innerHTML = CFPC_QUICK_FILTERS.map(function(f){
+      var n=counts[f.key]||0, b=bal[f.key]||0;
+      var st=CFPC_STATUS_STYLE[f.key]||{bg:'#f1f5f9',fg:'#475569'};
+      return '<div data-cfpc-tile="'+f.key+'" style="background:#fff;border:1px solid var(--g200);border-left:4px solid '+st.fg+';border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(15,23,42,.04)" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(15,23,42,.08)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(15,23,42,.04)\'">'+
+        '<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--g500);font-weight:700;text-transform:uppercase;letter-spacing:.5px">'+f.icon+' '+f.label+'</div>'+
+        '<div style="font-size:24px;font-weight:800;color:var(--g900);margin-top:4px">'+n.toLocaleString()+'</div>'+
+        '<div style="font-size:11px;color:var(--g500);margin-top:2px">Balance '+fc(b)+'</div>'+
+      '</div>';
+    }).join('');
+    cfpcTiles.querySelectorAll('[data-cfpc-tile]').forEach(function(el){
+      el.addEventListener('click', function(){
+        S.caseStCfpc = el.dataset.cfpcTile;
+        go('cases');
+      });
+    });
+  }
   var P=DB.pays.filter(function(p){var cMatch=S.clinicType?p.ct===S.clinicType:!S.ct||p.ct===S.ct;return cMatch;});
   var tCh=P.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd=P.reduce(function(s,p){return s+(p.paid||0);},0);
@@ -2050,6 +2073,61 @@ function ctBadge(ct){
   var m={MRI:'background:#dbeafe;color:#1e40af',Chiro:'background:#d1fae5;color:#065f46',Pain:'background:#fef3c7;color:#92400e'};
   return '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;'+(m[ct]||'background:var(--g100);color:var(--g600)')+'">'+ct+'</span>';
 }
+// ── CFPC status_cfpc visualization ───────────────────────────
+// Color + emoji per CFPC pipeline stage. Unknown → grey.
+var CFPC_STATUS_STYLE = {
+  'Bill Sent':                 {bg:'#dbeafe', fg:'#1e40af', icon:'💰'},
+  'Sent to collections':       {bg:'#fee2e2', fg:'#991b1b', icon:'💸'},
+  'Litigation':                {bg:'#ede9fe', fg:'#5b21b6', icon:'⚖️'},
+  'Liberty Mutual Case':       {bg:'#fef3c7', fg:'#92400e', icon:'🛡'},
+  'Settled, Payment Pending':  {bg:'#d1fae5', fg:'#065f46', icon:'⏳'},
+  'Paid':                      {bg:'#d1fae5', fg:'#065f46', icon:'✅'},
+  'Disregard':                 {bg:'#f1f5f9', fg:'#475569', icon:'🚫'},
+  'Dropped':                   {bg:'#f1f5f9', fg:'#475569', icon:'❌'},
+  'Scheduled':                 {bg:'#dbeafe', fg:'#1d4ed8', icon:'📅'},
+  'Schedule Needed':           {bg:'#fef3c7', fg:'#92400e', icon:'📅'},
+  'Follow Up Schedule Needed': {bg:'#fef3c7', fg:'#92400e', icon:'🔁'},
+  'Follow Up Report Pending':  {bg:'#fef3c7', fg:'#92400e', icon:'📝'},
+  'Need Auth for Injection':   {bg:'#ffe4e6', fg:'#9f1239', icon:'🔐'},
+  'Need Auth for Surgery':     {bg:'#ffe4e6', fg:'#9f1239', icon:'🔐'},
+  'Injection Schedule Needed': {bg:'#fef3c7', fg:'#92400e', icon:'💉'},
+  'Injection Report Pending':  {bg:'#fef3c7', fg:'#92400e', icon:'💉'},
+  'Surgery Schedule Needed':   {bg:'#fef3c7', fg:'#92400e', icon:'🔪'},
+  'Surgery Report Pending':    {bg:'#fef3c7', fg:'#92400e', icon:'🔪'},
+  'Mri Pending':               {bg:'#e0e7ff', fg:'#3730a3', icon:'🧲'},
+  'Xray Pending':              {bg:'#e0e7ff', fg:'#3730a3', icon:'🩻'},
+  'EmgNcv Study Pending':      {bg:'#e0e7ff', fg:'#3730a3', icon:'⚡'},
+  'IC Report Pending':         {bg:'#fef3c7', fg:'#92400e', icon:'📋'},
+  'BI Pending':                {bg:'#dbeafe', fg:'#1e40af', icon:'💼'},
+  'ACT Scan Pending':          {bg:'#e0e7ff', fg:'#3730a3', icon:'🧠'},
+  'Unsigned Liens':            {bg:'#ffe4e6', fg:'#9f1239', icon:'✍️'}
+};
+function cfpcStatusBadge(s) {
+  if (!s) return '';
+  var st = CFPC_STATUS_STYLE[s] || {bg:'#f1f5f9', fg:'#475569', icon:'•'};
+  return '<span title="'+s+'" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;background:'+st.bg+';color:'+st.fg+';white-space:nowrap">'+st.icon+' '+s+'</span>';
+}
+// Quick-filter tags shown as pills above the case list.
+// Order matters — first 3 are the "main 3" the user mentioned.
+var CFPC_QUICK_FILTERS = [
+  {key:'Bill Sent',           label:'Bill Sent',    icon:'💰'},
+  {key:'Sent to collections', label:'In Collections', icon:'💸'},
+  {key:'Litigation',          label:'Litigation',   icon:'⚖️'},
+  {key:'Settled, Payment Pending', label:'Settled (Pending Pay)', icon:'⏳'},
+  {key:'Paid',                label:'Paid',         icon:'✅'},
+  {key:'Liberty Mutual Case', label:'Liberty Mutual', icon:'🛡'}
+];
+function cfpcStatusCounts() {
+  var c = {};
+  DB.cases.forEach(function(x){ if(x.merged_into)return; var k=x.stCfpc||'(none)'; c[k]=(c[k]||0)+1; });
+  return c;
+}
+function cfpcStatusBalance(){
+  var b = {};
+  DB.cases.forEach(function(x){ if(x.merged_into)return; var k=x.stCfpc||'(none)'; b[k]=(b[k]||0)+(x.bal||0); });
+  return b;
+}
+
 // ── Universal multi-field search helper ───────────────────────
 // Matches any of the given fields by substring (case-insensitive).
 // Supports multiple space-separated keywords (all must match).
@@ -2076,7 +2154,7 @@ function searchMatch(obj, q, fields) {
 }
 
 var PAY_SEARCH_FIELDS = ['lo','acct','pat','prov','dol','pd','cs','ct'];
-var CASE_SEARCH_FIELDS = ['lo','acct','pat','prov','cfpc_pid','phone','dob','dol','refmd','location','proc','sex','notes','st','gr','ct','study'];
+var CASE_SEARCH_FIELDS = ['lo','acct','pat','prov','cfpc_pid','phone','dob','dol','refmd','location','proc','sex','notes','st','stCfpc','gr','ct','study'];
 var PAT_SEARCH_FIELDS = ['name','pid','phone','lo','dol','dob'];
 
 function rPay(){
@@ -2094,9 +2172,39 @@ function rPay(){
 
 // ── CASES ────────────────────────────────────────────────────
 function rCase(){
+  // Render CFPC status filter pills (idempotent — re-renders each call so counts stay live)
+  var pillsEl = document.getElementById('case-cfpc-pills');
+  if (pillsEl) {
+    var counts = cfpcStatusCounts();
+    var totalActive = DB.cases.filter(function(x){return !x.merged_into;}).length;
+    var pillHtml = '<button class="cfpc-pill" data-cfpc-pill="" style="border:1px solid '+(!S.caseStCfpc?'var(--accent)':'var(--g200)')+';background:'+(!S.caseStCfpc?'var(--accent)':'#fff')+';color:'+(!S.caseStCfpc?'#fff':'var(--g700)')+';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">All ('+totalActive+')</button>';
+    CFPC_QUICK_FILTERS.forEach(function(f){
+      var n = counts[f.key]||0;
+      var active = (S.caseStCfpc===f.key);
+      var st = CFPC_STATUS_STYLE[f.key]||{bg:'#f1f5f9',fg:'#475569'};
+      pillHtml += '<button class="cfpc-pill" data-cfpc-pill="'+f.key+'" style="border:1px solid '+(active?st.fg:'var(--g200)')+';background:'+(active?st.fg:st.bg)+';color:'+(active?'#fff':st.fg)+';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">'+f.icon+' '+f.label+' ('+n+')</button>';
+    });
+    // "More" dropdown for the rest
+    var rest = Object.keys(counts).filter(function(k){return k!=='(none)' && !CFPC_QUICK_FILTERS.some(function(f){return f.key===k;});}).sort(function(a,b){return counts[b]-counts[a];});
+    var selVal = (S.caseStCfpc && rest.indexOf(S.caseStCfpc)>=0) ? S.caseStCfpc : '';
+    pillHtml += '<select class="fl" id="case-cfpc-more" style="font-size:12px;padding:6px 10px;margin-left:6px"><option value="">▼ More CFPC status...</option>'+
+      rest.map(function(k){return '<option value="'+k+'"'+(selVal===k?' selected':'')+'>'+k+' ('+counts[k]+')</option>';}).join('')+'</select>';
+    pillsEl.innerHTML = pillHtml;
+    // Bind pills
+    pillsEl.querySelectorAll('[data-cfpc-pill]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var v = b.dataset.cfpcPill || '';
+        S.caseStCfpc = (S.caseStCfpc===v && v!=='') ? '' : v;  // toggle
+        rCase();
+      });
+    });
+    var moreSel = document.getElementById('case-cfpc-more');
+    if (moreSel) moreSel.addEventListener('change', function(){ S.caseStCfpc = this.value || ''; rCase(); });
+  }
   var data=DB.cases.filter(function(c){
     if(c.merged_into) return false;
     if(!searchMatch(c, S.caseQ, CASE_SEARCH_FIELDS)) return false;
+    if(S.caseStCfpc && c.stCfpc!==S.caseStCfpc) return false;
     var cMatch=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;
     if(!(!S.caseSt||c.st===S.caseSt)||!cMatch) return false;
     if(S.caseSolF){
@@ -2119,8 +2227,8 @@ function rCase(){
   else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
   document.getElementById('case-rc').textContent=data.length+' records';
   document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
-  }).join(''):'<tr><td colspan="15"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+  }).join(''):'<tr><td colspan="16"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
 }
 
 function openCD(id){
