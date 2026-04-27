@@ -1434,7 +1434,7 @@ function loadFromSupabase() {
                 location:r.location||'',study:r.study_date||null,
                 refmd:r.referring_md||'',lien:parseFloat(r.lien)||0,
                 proc:r.procedure||'',merged_into:r.merged_into||null,
-                cfpc_pid:r.cfpc_pid||null};
+                cfpc_pid:r.cfpc_pid||null,master_id:r.master_id||null};
       });
     }
     if (dbPays.length) {
@@ -2603,24 +2603,27 @@ function delFile(id){
 function rPatients(){
   var q=S.patQ.toLowerCase();
   var ctF=S.patCt||'';
-  // Group by cfpc_pid (preferred) or patient name (legacy fallback)
-  var groups={};  // key -> {key, pid, name, phone, lo, cases:[c,...]}
+  // Group by master_id (best — same person across multiple PIDs/accidents)
+  // Falls back to cfpc_pid → patient name → row id
+  var groups={};
   DB.cases.forEach(function(c){
     if(c.merged_into)return;
     if(S.clinicType&&c.ct!==S.clinicType)return;
     if(ctF&&c.ct!==ctF)return;
-    var key=c.cfpc_pid||c.pat||('id-'+c.id);
+    var key = c.master_id ? ('m'+c.master_id) : (c.cfpc_pid || c.pat || ('id-'+c.id));
     if(q){
       var hay=[c.pat,c.lo,c.acct,c.prov,c.cfpc_pid,c.phone].filter(Boolean).join(' ').toLowerCase();
       if(hay.indexOf(q)<0)return;
     }
     if(!groups[key]){
-      groups[key]={key:key, pid:c.cfpc_pid||'', name:c.pat||'', phone:c.phone||'', lo:c.lo||'', ct:c.ct||'', cases:[]};
+      groups[key]={key:key, master_id:c.master_id||null, pids:{}, phones:{}, dois:{}, name:c.pat||'', lo:c.lo||'', ct:c.ct||'', cases:[]};
     }
     var g=groups[key];
     g.cases.push(c);
-    if(!g.name && c.pat) g.name=c.pat;
-    if(!g.phone && c.phone) g.phone=c.phone;
+    if(c.cfpc_pid) g.pids[c.cfpc_pid]=true;
+    if(c.phone) g.phones[c.phone]=true;
+    if(c.dol) g.dois[c.dol]=true;
+    if((!g.name||g.name.length<(c.pat||'').length) && c.pat) g.name=c.pat;
     if(!g.lo && c.lo) g.lo=c.lo;
   });
   var pats=Object.keys(groups).map(function(k){
@@ -2629,6 +2632,11 @@ function rPatients(){
     g.bi=g.cases.reduce(function(s,x){return s+(x.bi||0);},0);
     g.bal=g.cases.reduce(function(s,x){return s+(x.bal||0);},0);
     g.dol=g.cases.reduce(function(m,x){return x.dol&&x.dol>m?x.dol:m;},'');
+    g.pidList=Object.keys(g.pids);
+    g.phoneList=Object.keys(g.phones);
+    g.doiList=Object.keys(g.dois);
+    g.pid=g.pidList[0]||'';
+    g.phone=g.phoneList[0]||'';
     return g;
   });
   // Sort
@@ -2645,12 +2653,17 @@ function rPatients(){
     '<div class="pat-grid">'+pats.map(function(p){
       var label=p.name||p.pid||'(no name)';
       var color=clr(label);
-      // PID is the real account #. Show "Acct # PID" when there's a real name; just "PID" alone is the label
-      var sub=[p.pid?('Acct # '+p.pid):'', p.phone?('📞 '+p.phone):'', p.lo].filter(Boolean).join(' · ');
+      // Sub-line shows acct, phone, law office. Multi-PID/phone = same person across accidents
+      var acctText = p.pidList.length>1 ? ('Acct # '+p.pid+' (+'+(p.pidList.length-1)+' more)') : (p.pid?'Acct # '+p.pid:'');
+      var phoneText = p.phoneList.length>1 ? ('📞 '+p.phone+' (+'+(p.phoneList.length-1)+' more)') : (p.phone?'📞 '+p.phone:'');
+      var sub=[acctText, phoneText, p.lo].filter(Boolean).join(' · ');
+      var multiBadges='';
+      if (p.doiList.length>1) multiBadges += '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-right:4px">'+p.doiList.length+' accidents</span>';
+      if (p.pidList.length>1) multiBadges += '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">'+p.pidList.length+' PIDs</span>';
       return '<div class="pat-card" data-open-key="'+encodeURIComponent(p.key)+'">'+
         '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">'+
           '<div class="pat-av" style="background:'+color+'">'+ini(label)+'</div>'+
-          '<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:700;color:var(--g900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+label+'</div><div style="font-size:11px;color:var(--g500);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(sub||'—')+'</div></div>'+
+          '<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:700;color:var(--g900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+label+'</div><div style="font-size:11px;color:var(--g500);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(sub||'—')+'</div>'+(multiBadges?'<div style="margin-top:6px">'+multiBadges+'</div>':'')+'</div>'+
         '</div>'+
         '<div class="pat-stats">'+
           '<div><div class="pst-l">Cases</div><div class="pst-v">'+p.casesCount+'</div></div>'+
@@ -2664,23 +2677,78 @@ function rPatients(){
 }
 
 function openPatProfile(key){
-  // key may be cfpc_pid OR patient name OR 'id-<n>' fallback
+  // key may be 'm<masterId>' OR cfpc_pid OR patient name OR 'id-<n>' fallback
+  var masterId = key.indexOf('m')===0 && /^m\d+$/.test(key) ? parseInt(key.slice(1)) : null;
   var cases=DB.cases.filter(function(c){
     if(c.merged_into) return false;
-    return (c.cfpc_pid && c.cfpc_pid===key) || (c.pat && c.pat===key) || ('id-'+c.id===key);
+    if(masterId && c.master_id===masterId) return true;
+    if(c.cfpc_pid && c.cfpc_pid===key) return true;
+    if(c.pat && c.pat===key) return true;
+    if('id-'+c.id===key) return true;
+    return false;
   });
-  // Determine display name from this group
+  // Build derived info
   var first=cases[0]||{};
-  var name=first.pat || first.cfpc_pid || key;
-  var pays=DB.pays.filter(function(p){return p.pat && first.pat && p.pat===first.pat;});
+  // Pick longest patient_name as canonical (e.g. "Vasquez, Brissette Medrano")
+  var name=cases.reduce(function(m,c){return c.pat&&c.pat.length>m.length?c.pat:m;},'') || first.cfpc_pid || key;
+  var pidSet={}, phoneSet={}, doiSet={};
+  cases.forEach(function(c){
+    if(c.cfpc_pid) pidSet[c.cfpc_pid]=true;
+    if(c.phone) phoneSet[c.phone]=true;
+    if(c.dol) doiSet[c.dol]=true;
+  });
+  var pidList=Object.keys(pidSet);
+  var phoneList=Object.keys(phoneSet);
+  var doiList=Object.keys(doiSet).sort();
+  // Group cases by DOI = "accident"
+  var accidents={};
+  cases.forEach(function(c){
+    var d=c.dol||'(unknown date)';
+    if(!accidents[d]) accidents[d]={dol:d, cases:[], pids:{}, phones:{}};
+    accidents[d].cases.push(c);
+    if(c.cfpc_pid) accidents[d].pids[c.cfpc_pid]=true;
+    if(c.phone) accidents[d].phones[c.phone]=true;
+  });
+  var accidentList=Object.keys(accidents).map(function(k){return accidents[k];}).sort(function(a,b){return (b.dol||'').localeCompare(a.dol||'');});
+  // Match payments by any of the patient names (or PIDs via account_num)
+  var pays=DB.pays.filter(function(p){
+    if(p.pat && cases.some(function(c){return c.pat===p.pat;})) return true;
+    if(p.acct && pidList.indexOf(p.acct)>=0) return true;
+    return false;
+  });
   var tbi=cases.reduce(function(s,c){return s+(c.bi||0);},0);
   var tpd=pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var tbal=cases.reduce(function(s,c){return s+(c.bal||0);},0);
   var color=clr(name);
+  // Build accident timeline HTML
+  var accidentHtml = accidentList.map(function(a, idx){
+    var color2 = a.dol==='(unknown date)' ? 'var(--g500)' : (idx===0?'var(--accent)':'var(--g700)');
+    var pidsArr = Object.keys(a.pids);
+    var phonesArr = Object.keys(a.phones);
+    var billed = a.cases.reduce(function(s,c){return s+(c.bi||0);},0);
+    var balance = a.cases.reduce(function(s,c){return s+(c.bal||0);},0);
+    var procRows = a.cases.map(function(c){
+      return '<tr style="font-size:12px"><td style="padding:6px 8px"><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:600" data-open-case="'+c.id+'">'+(c.acct||c.cfpc_pid||'—')+'</a></td><td style="padding:6px 8px">'+(c.prov||'—')+'</td><td style="padding:6px 8px">'+(c.proc||'—')+'</td><td style="padding:6px 8px">'+sb(c.st)+'</td><td style="padding:6px 8px;text-align:right">'+fc(c.bi)+'</td><td style="padding:6px 8px;text-align:right;color:var(--red);font-weight:600">'+fc(c.bal)+'</td></tr>';
+    }).join('');
+    return '<div style="border-left:3px solid '+color2+';padding-left:14px;margin-bottom:18px">'+
+      '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap">'+
+        '<span style="font-weight:800;font-size:14px;color:'+color2+'">📅 DOI '+(a.dol==='(unknown date)'?a.dol:fd(a.dol))+'</span>'+
+        '<span style="font-size:11px;color:var(--g500)">'+a.cases.length+' visits · '+pidsArr.length+' PID'+(pidsArr.length>1?'s':'')+(phonesArr.length?' · 📞 '+phonesArr.join(', '):'')+'</span>'+
+        '<span style="margin-left:auto;font-size:11px;color:var(--g500)">Billed '+fc(billed)+' · Balance <span style="color:var(--red);font-weight:700">'+fc(balance)+'</span></span>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--g200)"><th style="text-align:left;padding:6px 8px;color:var(--g500);font-weight:600">Acct #</th><th style="text-align:left;padding:6px 8px;color:var(--g500);font-weight:600">Provider</th><th style="text-align:left;padding:6px 8px;color:var(--g500);font-weight:600">Procedure</th><th style="text-align:left;padding:6px 8px;color:var(--g500);font-weight:600">Status</th><th style="text-align:right;padding:6px 8px;color:var(--g500);font-weight:600">Billed</th><th style="text-align:right;padding:6px 8px;color:var(--g500);font-weight:600">Balance</th></tr></thead><tbody>'+procRows+'</tbody></table>'+
+    '</div>';
+  }).join('');
+  // Multi-PID/Phone summary line under name
+  var summaryLine = [];
+  if (pidList.length>0) summaryLine.push('🆔 '+pidList.length+' PID'+(pidList.length>1?'s':'')+': '+pidList.join(', '));
+  if (phoneList.length>0) summaryLine.push('📞 '+phoneList.length+' phone'+(phoneList.length>1?'s':'')+': '+phoneList.join(', '));
+  if (doiList.length>0) summaryLine.push('🚗 '+doiList.length+' accident'+(doiList.length>1?'s':''));
   document.getElementById('pp-body').innerHTML=
     '<div style="display:flex;align-items:center;gap:20px;background:#fff;border:1px solid var(--g200);border-radius:18px;padding:24px 28px;margin-bottom:18px;box-shadow:0 1px 3px rgba(15,23,42,.06)">'+
       '<div class="pat-av" style="background:'+color+';width:70px;height:70px;font-size:24px">'+ini(name)+'</div>'+
       '<div style="flex:1"><div style="font-size:20px;font-weight:800;color:var(--g900)">'+name+'</div>'+
+        (summaryLine.length?'<div style="font-size:11px;color:var(--g500);margin-top:4px;line-height:1.6">'+summaryLine.join('<br>')+'</div>':'')+
         '<div class="pat-stats" style="margin-top:12px">'+
           '<div><div class="pst-l">Cases</div><div class="pst-v">'+cases.length+'</div></div>'+
           '<div><div class="pst-l">Total Billed</div><div class="pst-v" style="font-size:14px">'+fc(tbi)+'</div></div>'+
@@ -2688,9 +2756,10 @@ function openPatProfile(key){
           '<div><div class="pst-l">Balance</div><div class="pst-v" style="font-size:14px;color:var(--red)">'+fc(tbal)+'</div></div>'+
         '</div></div>'+
     '</div>'+
+    (accidentList.length?'<div class="card" style="margin-bottom:14px"><div class="ch"><span class="ct">🚗 Accident Timeline ('+accidentList.length+')</span></div><div class="cb">'+accidentHtml+'</div></div>':'')+
     '<div class="g2">'+
-      '<div class="card"><div class="ch"><span class="ct">📋 Cases</span></div><div class="tw"><table><thead><tr><th>Account #</th><th>Status</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
-        cases.map(function(c){return '<tr><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+sb(c.st)+'</td><td>'+gb(c.gr)+'</td><td>'+fc(c.bi)+'</td><td style="color:var(--red);font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
+      '<div class="card"><div class="ch"><span class="ct">📋 All Cases</span></div><div class="tw"><table><thead><tr><th>Account #</th><th>DOI</th><th>Status</th><th>Grade</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
+        cases.map(function(c){return '<tr><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+fd(c.dol)+'</td><td>'+sb(c.st)+'</td><td>'+gb(c.gr)+'</td><td>'+fc(c.bi)+'</td><td style="color:var(--red);font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
         '</tbody></table></div></div>'+
       '<div class="card"><div class="ch"><span class="ct">💳 Payments</span></div><div class="tw">'+
         (pays.length?'<table><thead><tr><th>Pay Date</th><th>Status</th><th>Charged</th><th>Paid</th></tr></thead><tbody>'+
