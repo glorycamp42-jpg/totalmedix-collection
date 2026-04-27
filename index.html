@@ -2645,7 +2645,8 @@ function rPatients(){
     '<div class="pat-grid">'+pats.map(function(p){
       var label=p.name||p.pid||'(no name)';
       var color=clr(label);
-      var sub=[p.pid?('🆔 '+p.pid):'', p.phone?('📞 '+p.phone):'', p.lo].filter(Boolean).join(' · ');
+      // PID is the real account #. Show "Acct # PID" when there's a real name; just "PID" alone is the label
+      var sub=[p.pid?('Acct # '+p.pid):'', p.phone?('📞 '+p.phone):'', p.lo].filter(Boolean).join(' · ');
       return '<div class="pat-card" data-open-key="'+encodeURIComponent(p.key)+'">'+
         '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">'+
           '<div class="pat-av" style="background:'+color+'">'+ini(label)+'</div>'+
