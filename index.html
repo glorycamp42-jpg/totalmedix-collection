@@ -515,7 +515,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div id="pg-reports" class="pg">
         <div class="ph">
           <div><div class="pt">Reports</div><div class="ps">Analytics and performance</div></div>
-          <div class="ha"><button class="btn bs bsm" id="btn-rpt-print">🖨️ Print</button><button class="btn bg2 bsm" id="btn-rpt-email" style="margin-left:6px">📧 Email</button></div>
+          <div class="ha"><button class="btn bp bsm" id="btn-monthly-report" style="background:#7c3aed">📅 Monthly Report (AI)</button><button class="btn bs bsm" id="btn-rpt-print" style="margin-left:6px">🖨️ Print</button><button class="btn bg2 bsm" id="btn-rpt-email" style="margin-left:6px">📧 Email</button></div>
         </div>
         <!-- Report view tabs -->
         <div style="display:flex;gap:6px;margin-bottom:16px;background:var(--g100);padding:4px;border-radius:14px;width:fit-content">
@@ -3632,6 +3632,155 @@ function addMsg(text,cls){
   document.getElementById('ai-msgs').appendChild(el);
   document.getElementById('ai-msgs').scrollTop=99999;
 }
+// ── 📅 Monthly Performance Report ───────────────────────────────
+function generateMonthlyReport() {
+  // Default to last completed month
+  var now = new Date();
+  var defMonth = now.getMonth(); // 0-11; this month so far
+  var defYear = now.getFullYear();
+  if (now.getDate() < 8) {  // Within first week → suggest previous month
+    defMonth = defMonth - 1;
+    if (defMonth < 0) { defMonth = 11; defYear--; }
+  }
+  var monthInput = prompt('Generate Monthly Report\n\nEnter month and year (YYYY-MM format):', defYear + '-' + String(defMonth+1).padStart(2,'0'));
+  if (!monthInput || !/^\d{4}-\d{1,2}$/.test(monthInput)) { toast('Invalid format','⚠️'); return; }
+  var parts = monthInput.split('-');
+  var year = parseInt(parts[0]);
+  var month = parseInt(parts[1]) - 1;  // 0-indexed
+  var monthStart = new Date(year, month, 1).toISOString().slice(0,10);
+  var monthEnd = new Date(year, month+1, 0).toISOString().slice(0,10);
+  var monthLabel = new Date(year, month, 1).toLocaleDateString('en-US', {year:'numeric', month:'long'});
+  // Previous month for comparison
+  var prevMonth = month-1, prevYear = year;
+  if (prevMonth<0) { prevMonth=11; prevYear--; }
+  var prevStart = new Date(prevYear, prevMonth, 1).toISOString().slice(0,10);
+  var prevEnd = new Date(prevYear, prevMonth+1, 0).toISOString().slice(0,10);
+  var prevLabel = new Date(prevYear, prevMonth, 1).toLocaleDateString('en-US', {year:'numeric', month:'long'});
+
+  // Aggregate data
+  function sumPays(s,e){
+    return DB.pays.filter(function(p){return p.pd && p.pd>=s && p.pd<=e;});
+  }
+  var thisPays = sumPays(monthStart, monthEnd);
+  var prevPays = sumPays(prevStart, prevEnd);
+  var tCh = thisPays.reduce(function(a,p){return a+(p.ch||0);},0);
+  var tPd = thisPays.reduce(function(a,p){return a+(p.paid||0);},0);
+  var pCh = prevPays.reduce(function(a,p){return a+(p.ch||0);},0);
+  var pPd = prevPays.reduce(function(a,p){return a+(p.paid||0);},0);
+  var thisRate = tCh>0 ? (tPd/tCh*100) : 0;
+  var prevRate = pCh>0 ? (pPd/pCh*100) : 0;
+  var rateDelta = thisRate - prevRate;
+  // Top law offices by paid this month
+  var loMap={};
+  thisPays.forEach(function(p){ if(!loMap[p.lo||'(none)'])loMap[p.lo||'(none)']={cases:0,charged:0,paid:0}; var x=loMap[p.lo||'(none)']; x.cases++; x.charged+=(p.ch||0); x.paid+=(p.paid||0);});
+  var topLO = Object.keys(loMap).map(function(k){return Object.assign({lo:k}, loMap[k]);}).sort(function(a,b){return b.paid-a.paid;}).slice(0,10);
+  // Top patients by paid
+  var patMap={};
+  thisPays.forEach(function(p){ if(!patMap[p.pat||'(none)'])patMap[p.pat||'(none)']={paid:0,charged:0,acct:p.acct}; patMap[p.pat||'(none)'].paid+=(p.paid||0); patMap[p.pat||'(none)'].charged+=(p.ch||0);});
+  var topPat = Object.keys(patMap).map(function(k){return Object.assign({pat:k}, patMap[k]);}).sort(function(a,b){return b.paid-a.paid;}).slice(0,10);
+  // Clinic type breakdown
+  var ctMap={Pain:{paid:0,charged:0,count:0}, Chiro:{paid:0,charged:0,count:0}, MRI:{paid:0,charged:0,count:0}};
+  thisPays.forEach(function(p){var k=p.ct||'Pain'; if(!ctMap[k])ctMap[k]={paid:0,charged:0,count:0}; ctMap[k].paid+=(p.paid||0); ctMap[k].charged+=(p.ch||0); ctMap[k].count++;});
+  // Pipeline snapshot
+  var stCounts = cfpcStatusCounts();
+  // Stats payload for AI
+  var stats = {
+    period: monthLabel,
+    payment_count: thisPays.length,
+    total_charged: Math.round(tCh),
+    total_paid: Math.round(tPd),
+    collection_rate_pct: Number(thisRate.toFixed(1)),
+    vs_previous_month: {
+      label: prevLabel,
+      paid: Math.round(pPd),
+      rate_pct: Number(prevRate.toFixed(1)),
+      rate_delta_pct: Number(rateDelta.toFixed(1)),
+      paid_delta: Math.round(tPd - pPd)
+    },
+    top_law_offices: topLO,
+    top_patients: topPat,
+    clinic_breakdown: ctMap,
+    pipeline_snapshot: stCounts,
+    kpi_goal_rate: DB.kpi.collectionRate,
+    kpi_goal_monthly: DB.kpi.monthlyTarget,
+    kpi_target_met: tPd >= DB.kpi.monthlyTarget,
+    rate_target_met: thisRate >= DB.kpi.collectionRate
+  };
+  // Open the print window now (so popup blocker doesn't block it after async)
+  var win = window.open('', '_blank', 'width=900,height=1100');
+  if (!win) { toast('Popup blocked — allow popups for this site', '⚠️'); return; }
+  win.document.write(
+    '<html><head><title>Monthly Report — '+monthLabel+'</title>'+
+    '<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:780px;margin:0 auto;padding:40px;color:#1f2937;line-height:1.6;background:#fff}'+
+    'h1{font-size:24px;font-weight:800;margin:0;color:#1f2937}.sub{color:#6b7280;font-size:13px;margin-top:4px}'+
+    '.brand{background:linear-gradient(135deg,#7c3aed,#3b5bdb);color:#fff;padding:24px 28px;border-radius:14px;margin-bottom:24px}'+
+    '.brand h1{color:#fff}.brand .sub{color:rgba(255,255,255,.85)}'+
+    'h2{font-size:16px;margin:28px 0 12px;color:#1f2937;border-bottom:2px solid #e5e7eb;padding-bottom:6px}'+
+    'h3{font-size:14px;margin:18px 0 8px;color:#475569}'+
+    '.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}'+
+    '.kpi .k{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px}.kpi .l{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.5px}.kpi .v{font-size:22px;font-weight:800;color:#1f2937;margin-top:4px}.kpi .d{font-size:11px;margin-top:2px}.up{color:#059669}.dn{color:#dc2626}'+
+    'table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}'+
+    'th{background:#f8fafc;text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#6b7280;letter-spacing:.5px;border-bottom:2px solid #e5e7eb;font-weight:700}'+
+    'td{padding:8px 10px;border-bottom:1px solid #f1f5f9}td.r{text-align:right}td.g{color:#059669;font-weight:700}td.b{font-weight:700}'+
+    '.box{background:#fefce8;border-left:4px solid #facc15;padding:14px 16px;border-radius:8px;margin:14px 0;font-size:13px}'+
+    '.aibox{background:#faf5ff;border-left:4px solid #7c3aed;padding:14px 16px;border-radius:8px;margin:14px 0;font-size:13px;line-height:1.7}'+
+    '.footer{margin-top:40px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:10px;color:#94a3b8;text-align:center}'+
+    '@media print{body{padding:20px}.noprint{display:none}}'+
+    '.noprint{position:fixed;top:14px;right:14px;background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px;border:0;cursor:pointer;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.15)}'+
+    '</style></head><body>'+
+    '<button class="noprint" onclick="window.print()">🖨️ Print / Save as PDF</button>'+
+    '<div class="brand"><h1>'+(COMPANY.name||'TotalMedix')+'</h1><div class="sub">Monthly Performance Report · '+monthLabel+'</div></div>'+
+    '<h2>📊 Key Metrics</h2>'+
+    '<div class="kpi">'+
+      '<div class="k"><div class="l">Total Charged</div><div class="v">$'+(tCh).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>'+
+      '<div class="k"><div class="l">Total Collected</div><div class="v">$'+(tPd).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div class="d '+(tPd>=pPd?'up':'dn')+'">'+(tPd>=pPd?'▲':'▼')+' $'+Math.abs(tPd-pPd).toLocaleString('en-US',{maximumFractionDigits:0})+' vs '+prevLabel+'</div></div>'+
+      '<div class="k"><div class="l">Collection Rate</div><div class="v">'+thisRate.toFixed(1)+'%</div><div class="d '+(rateDelta>=0?'up':'dn')+'">'+(rateDelta>=0?'▲':'▼')+' '+Math.abs(rateDelta).toFixed(1)+' pts</div></div>'+
+      '<div class="k"><div class="l">Goal '+DB.kpi.collectionRate+'%</div><div class="v" style="color:'+(thisRate>=DB.kpi.collectionRate?'#059669':'#dc2626')+'">'+(thisRate>=DB.kpi.collectionRate?'✓ MET':'✗ MISS')+'</div></div>'+
+    '</div>'+
+    '<div id="ai-summary"><h2>🤖 Executive Summary</h2><div class="aibox"><em>Claude is composing the executive summary…</em></div></div>'+
+    '<h2>🏆 Top Law Offices (by collected this month)</h2>'+
+    '<table><thead><tr><th>Law Office</th><th class="r">Cases</th><th class="r">Charged</th><th class="r">Paid</th><th class="r">Rate</th></tr></thead><tbody>'+
+      (topLO.length?topLO.map(function(o){var r=o.charged>0?(o.paid/o.charged*100).toFixed(1):'—';return '<tr><td><strong>'+o.lo+'</strong></td><td class="r">'+o.cases+'</td><td class="r">$'+o.charged.toLocaleString('en-US',{maximumFractionDigits:0})+'</td><td class="r g">$'+o.paid.toLocaleString('en-US',{maximumFractionDigits:0})+'</td><td class="r">'+r+'%</td></tr>';}).join(''):'<tr><td colspan="5" style="text-align:center;color:#94a3b8">No payments in this period</td></tr>')+
+    '</tbody></table>'+
+    '<h2>👥 Top Patients (by collected)</h2>'+
+    '<table><thead><tr><th>Patient</th><th>Account #</th><th class="r">Charged</th><th class="r">Paid</th></tr></thead><tbody>'+
+      (topPat.length?topPat.map(function(p){return '<tr><td><strong>'+p.pat+'</strong></td><td>'+(p.acct||'—')+'</td><td class="r">$'+p.charged.toLocaleString('en-US',{maximumFractionDigits:0})+'</td><td class="r g">$'+p.paid.toLocaleString('en-US',{maximumFractionDigits:0})+'</td></tr>';}).join(''):'<tr><td colspan="4" style="text-align:center;color:#94a3b8">—</td></tr>')+
+    '</tbody></table>'+
+    '<h2>🏥 Clinic Type Breakdown</h2>'+
+    '<table><thead><tr><th>Clinic</th><th class="r">Payments</th><th class="r">Charged</th><th class="r">Paid</th><th class="r">Rate</th></tr></thead><tbody>'+
+      Object.keys(ctMap).map(function(k){var x=ctMap[k];var r=x.charged>0?(x.paid/x.charged*100).toFixed(1):'—';return '<tr><td><strong>'+k+'</strong></td><td class="r">'+x.count+'</td><td class="r">$'+x.charged.toLocaleString('en-US',{maximumFractionDigits:0})+'</td><td class="r g">$'+x.paid.toLocaleString('en-US',{maximumFractionDigits:0})+'</td><td class="r">'+r+'%</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<h2>🚦 CFPC Pipeline Snapshot (current)</h2>'+
+    '<table><thead><tr><th>Stage</th><th class="r">Cases</th></tr></thead><tbody>'+
+      Object.keys(stCounts).filter(function(k){return k!=='(none)';}).sort(function(a,b){return stCounts[b]-stCounts[a];}).slice(0,15).map(function(k){return '<tr><td>'+k+'</td><td class="r">'+stCounts[k].toLocaleString()+'</td></tr>';}).join('')+
+    '</tbody></table>'+
+    '<div id="ai-rec"><h2>💡 AI Recommendations for Next Month</h2><div class="aibox"><em>Claude is writing recommendations…</em></div></div>'+
+    '<div class="footer">Generated '+new Date().toLocaleString()+' · TotalMedix Collection Platform · Powered by Claude</div>'+
+    '</body></html>'
+  );
+  win.document.close();
+  // Now ask Claude to write the executive summary + recommendations
+  if (!S.aiKey) {
+    win.document.querySelector('#ai-summary .aibox').innerHTML = '<em style="color:#dc2626">Anthropic API key not set. Add one in Settings → 🔑 API Keys to get an AI-written summary.</em>';
+    win.document.querySelector('#ai-rec .aibox').innerHTML = '<em style="color:#dc2626">Same — needs API key.</em>';
+    return;
+  }
+  var sys = 'You are a senior medical-collections analyst writing the Executive Summary section of a monthly performance report. Use the JSON metrics provided to ground every claim. Write in confident professional English. 4-6 sentences max. Highlight: ① the headline number (rate vs goal, delta vs prev month), ② one positive trend, ③ one concern.';
+  callClaude(sys, 'Period: '+monthLabel+'\n\n```json\n'+JSON.stringify(stats,null,2)+'\n```\n\nWrite the Executive Summary now (no header, just the paragraph).', {maxTokens:600})
+    .then(function(text){
+      var html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+      win.document.querySelector('#ai-summary .aibox').innerHTML = html;
+    })
+    .catch(function(err){ win.document.querySelector('#ai-summary .aibox').innerHTML = '<em style="color:#dc2626">⚠️ '+err.message+'</em>'; });
+  var sysRec = 'You are a senior medical-collections strategist. Based on the monthly stats, recommend 3-5 specific actions the team should take NEXT month to improve. Cite numbers from the JSON. Format as numbered list with **bold action title** and one short justification each.';
+  callClaude(sysRec, 'Period: '+monthLabel+'\n\n```json\n'+JSON.stringify(stats,null,2)+'\n```\n\nWrite the recommendations as 3-5 numbered actions.', {maxTokens:1000})
+    .then(function(text){
+      var html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^(\d+)\.\s/gm,'<br><strong>$1.</strong> ').replace(/\n/g,'<br>');
+      win.document.querySelector('#ai-rec .aibox').innerHTML = html;
+    })
+    .catch(function(err){ win.document.querySelector('#ai-rec .aibox').innerHTML = '<em style="color:#dc2626">⚠️ '+err.message+'</em>'; });
+}
+
 // ── AI ④ Smart Search — natural language → filters ─────────────
 function aiSmartSearch() {
   var query = prompt('Describe what you want to find (natural language):\n\nExamples:\n  • Pain clinic patients with balance over $5000\n  • Cases born in the 1980s sent to litigation\n  • Bill Sent in 2024, Goodfellaw firm\n  • Cases with overdue follow-ups, grade A or B');
@@ -4103,6 +4252,8 @@ function bindAll(){
   var bRef=document.getElementById('btn-brief-refresh'); if(bRef) bRef.addEventListener('click', generateDailyBrief);
   // AI Smart Search (cases)
   var bSS=document.getElementById('btn-smart-search'); if(bSS) bSS.addEventListener('click', aiSmartSearch);
+  // AI Monthly Report (reports page)
+  var bMR=document.getElementById('btn-monthly-report'); if(bMR) bMR.addEventListener('click', generateMonthlyReport);
   document.getElementById('aq1').addEventListener('click',function(){document.getElementById('ai-input').value='Analyze my collection performance';sendAI();});
   document.getElementById('aq2').addEventListener('click',function(){document.getElementById('ai-input').value='Which cases need urgent follow-up?';sendAI();});
   document.getElementById('aq3').addEventListener('click',function(){document.getElementById('ai-input').value='Write follow-up messages for overdue cases';sendAI();});
