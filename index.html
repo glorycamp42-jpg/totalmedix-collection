@@ -29,8 +29,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rbtn.on{border-color:var(--accent);background:#eef2ff;color:var(--accent)}
 .lf{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
 .lf label{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em}
-.lf input{padding:10px 13px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;outline:none;font-family:inherit;color:var(--g800)}
+.lf input{padding:10px 13px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;outline:none;font-family:inherit;color:var(--g800);width:100%;box-sizing:border-box}
 .lf input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,91,219,.1)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:42px}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:18px;padding:6px 8px;color:var(--g500);line-height:1;border-radius:6px}
+.pw-toggle:hover{background:var(--g100);color:var(--g800)}
 .lbtn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;transition:.15s}
 .lbtn:hover{background:var(--accent2)}
 .lhint{text-align:center;font-size:12px;color:var(--g400);margin-top:10px}
@@ -315,7 +319,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <p>Medical Collection Management</p>
     </div>
     <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="you@totalmedix.com"></div>
-    <div class="lf"><label>Password</label><input type="password" id="l-pw" placeholder="••••••••"></div>
+    <div class="lf"><label>Password</label><div class="pw-wrap"><input type="password" id="l-pw" placeholder="••••••••" autocomplete="current-password"><button type="button" class="pw-toggle" id="l-pw-toggle" aria-label="Show password" title="Show password">👁</button></div></div>
     <div id="login-error" style="display:none;color:var(--red);font-size:13px;font-weight:600;margin-bottom:10px;text-align:center"></div>
     <button class="lbtn" id="login-btn">Sign in</button>
     <p class="lhint">Sign in with your TotalMedix account</p>
@@ -354,6 +358,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         <div class="ni" id="ni-reports">📊&nbsp; Reports</div>
     <div class="ni" id="ni-notices">📬&nbsp; Notices <span class="nb" id="nb-notices" style="display:none">0</span></div>
     <div class="ni" id="ni-agent">🤖&nbsp; AI Agent <span class="nb" id="nb-agent" style="background:#7c3aed;display:none">!</span></div>
+        <div class="ni" id="ni-duplicates">🔀&nbsp; Duplicates <span class="nb" id="nb-dup" style="background:#e53935;display:none">0</span></div>
         <div class="sb-sec">Admin</div>
         <div class="ni" id="ni-users">👥&nbsp; Users</div>
         <div class="ni" id="ni-settings">⚙️&nbsp; Settings</div>
@@ -557,6 +562,27 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 
       </div> <!-- end pg-reports -->
 
+      <!-- ══ DUPLICATES ══ -->
+      <div id="pg-duplicates" class="pg">
+        <div class="ph">
+          <div><div class="pt">🔀 Duplicate Cases</div><div class="ps">Find and merge duplicate records</div></div>
+          <div class="ha">
+            <select class="fl" id="dup-mode" style="font-size:12px;padding:6px 10px">
+              <option value="name-dol">Patient Name + DOL</option>
+              <option value="phone-dol">Phone + DOL</option>
+              <option value="name-proc">Patient + Procedure (±7d)</option>
+            </select>
+            <button class="btn bp bsm" id="btn-dup-scan">🔍 Scan</button>
+          </div>
+        </div>
+        <div id="dup-summary" style="padding:12px 16px;font-size:13px;color:var(--g600)"></div>
+        <div id="dup-results" style="padding:0 12px"></div>
+        <div id="dup-history" style="padding:16px 12px;border-top:1px solid var(--g100);margin-top:20px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px">📜 Recent Merges</div>
+          <div id="dup-hist-list" style="font-size:12px;color:var(--g600)"></div>
+        </div>
+      </div>
+
       <div id="pg-users" class="pg">
         <div class="ph">
           <div><div class="pt">User Management</div><div class="ps">Manage team accounts</div></div>
@@ -638,6 +664,87 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
               </div>
               <div style="margin-top:16px;background:var(--accent-light);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--accent)">
                 ℹ️ This information appears on all notice letters and reports.
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 3-Clinic Email Sender Profiles ── -->
+          <div class="card" style="margin-top:16px">
+            <div class="ch">
+              <span class="ct">🏥 Clinic Email Profiles (Pain · Chiro · MRI)</span>
+              <button class="btn bp bsm" id="btn-save-all-clinics">Save All</button>
+            </div>
+            <div class="cb">
+              <div style="background:var(--g50);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--g600)">
+                Each clinic acts as a separate billing entity. When you send an invoice for a case, the email uses the profile that matches the case's clinic type.
+              </div>
+              <div class="tabs" id="cp-tabs" style="margin-bottom:14px">
+                <div class="tab on" data-cpt="Pain">🩺 Pain Management</div>
+                <div class="tab" data-cpt="Chiro">🦴 Chiropractic</div>
+                <div class="tab" data-cpt="MRI">🧲 MRI Imaging</div>
+              </div>
+              <div id="cp-form-Pain" class="cp-form">
+                <div class="fg">
+                  <div class="fd full"><label>Display Name</label><input data-cf="display_name" placeholder="e.g. TotalMedix Pain Management"></div>
+                  <div class="fd full"><label>Legal Name</label><input data-cf="legal_name" placeholder="e.g. TotalMedix Pain Management LLC"></div>
+                  <div class="fd full"><label>Address Line 1</label><input data-cf="address_line1"></div>
+                  <div class="fd full"><label>Address Line 2 (optional)</label><input data-cf="address_line2"></div>
+                  <div class="fd"><label>City</label><input data-cf="city"></div>
+                  <div class="fd"><label>State</label><input data-cf="state" maxlength="2"></div>
+                  <div class="fd"><label>ZIP</label><input data-cf="zip"></div>
+                  <div class="fd"><label>Phone</label><input data-cf="phone"></div>
+                  <div class="fd"><label>Fax</label><input data-cf="fax"></div>
+                  <div class="fd"><label>Billing Email (From:)</label><input data-cf="email" type="email"></div>
+                  <div class="fd"><label>Website</label><input data-cf="website" placeholder="https://..."></div>
+                  <div class="fd"><label>NPI</label><input data-cf="npi"></div>
+                  <div class="fd"><label>Tax ID (EIN)</label><input data-cf="tax_id"></div>
+                  <div class="fd"><label>Brand Color</label><input data-cf="brand_color" type="color" value="#3b5bdb"></div>
+                  <div class="fd full"><label>Logo URL (optional)</label><input data-cf="logo_url" placeholder="https://..."></div>
+                  <div class="fd full"><label>Email Signature Block</label><textarea data-cf="signature" rows="3" placeholder="e.g. TotalMedix Pain Management — Billing Department"></textarea></div>
+                </div>
+                <button class="btn bp bsm" data-save-cp="Pain" style="margin-top:12px">Save Pain Profile</button>
+              </div>
+              <div id="cp-form-Chiro" class="cp-form" style="display:none">
+                <div class="fg">
+                  <div class="fd full"><label>Display Name</label><input data-cf="display_name"></div>
+                  <div class="fd full"><label>Legal Name</label><input data-cf="legal_name"></div>
+                  <div class="fd full"><label>Address Line 1</label><input data-cf="address_line1"></div>
+                  <div class="fd full"><label>Address Line 2 (optional)</label><input data-cf="address_line2"></div>
+                  <div class="fd"><label>City</label><input data-cf="city"></div>
+                  <div class="fd"><label>State</label><input data-cf="state" maxlength="2"></div>
+                  <div class="fd"><label>ZIP</label><input data-cf="zip"></div>
+                  <div class="fd"><label>Phone</label><input data-cf="phone"></div>
+                  <div class="fd"><label>Fax</label><input data-cf="fax"></div>
+                  <div class="fd"><label>Billing Email (From:)</label><input data-cf="email" type="email"></div>
+                  <div class="fd"><label>Website</label><input data-cf="website"></div>
+                  <div class="fd"><label>NPI</label><input data-cf="npi"></div>
+                  <div class="fd"><label>Tax ID (EIN)</label><input data-cf="tax_id"></div>
+                  <div class="fd"><label>Brand Color</label><input data-cf="brand_color" type="color" value="#3b5bdb"></div>
+                  <div class="fd full"><label>Logo URL (optional)</label><input data-cf="logo_url"></div>
+                  <div class="fd full"><label>Email Signature Block</label><textarea data-cf="signature" rows="3"></textarea></div>
+                </div>
+                <button class="btn bp bsm" data-save-cp="Chiro" style="margin-top:12px">Save Chiro Profile</button>
+              </div>
+              <div id="cp-form-MRI" class="cp-form" style="display:none">
+                <div class="fg">
+                  <div class="fd full"><label>Display Name</label><input data-cf="display_name"></div>
+                  <div class="fd full"><label>Legal Name</label><input data-cf="legal_name"></div>
+                  <div class="fd full"><label>Address Line 1</label><input data-cf="address_line1"></div>
+                  <div class="fd full"><label>Address Line 2 (optional)</label><input data-cf="address_line2"></div>
+                  <div class="fd"><label>City</label><input data-cf="city"></div>
+                  <div class="fd"><label>State</label><input data-cf="state" maxlength="2"></div>
+                  <div class="fd"><label>ZIP</label><input data-cf="zip"></div>
+                  <div class="fd"><label>Phone</label><input data-cf="phone"></div>
+                  <div class="fd"><label>Fax</label><input data-cf="fax"></div>
+                  <div class="fd"><label>Billing Email (From:)</label><input data-cf="email" type="email"></div>
+                  <div class="fd"><label>Website</label><input data-cf="website"></div>
+                  <div class="fd"><label>NPI</label><input data-cf="npi"></div>
+                  <div class="fd"><label>Tax ID (EIN)</label><input data-cf="tax_id"></div>
+                  <div class="fd"><label>Brand Color</label><input data-cf="brand_color" type="color" value="#3b5bdb"></div>
+                  <div class="fd full"><label>Logo URL (optional)</label><input data-cf="logo_url"></div>
+                  <div class="fd full"><label>Email Signature Block</label><textarea data-cf="signature" rows="3"></textarea></div>
+                </div>
+                <button class="btn bp bsm" data-save-cp="MRI" style="margin-top:12px">Save MRI Profile</button>
               </div>
             </div>
           </div>
@@ -1096,6 +1203,36 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
   </div>
 </div>
 
+<!-- Phase 2: Email Preview Modal -->
+<div class="mb" id="m-email-preview">
+  <div class="modal" style="max-width:760px;height:88vh;display:flex;flex-direction:column">
+    <div class="mh">
+      <span class="mtt" id="m-ep-title">Email Preview</span>
+      <button class="mx" id="mx-ep">×</button>
+    </div>
+    <div class="mbd" style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase">Clinic:</span>
+        <span id="ep-clinic" class="bdg" style="font-size:12px"></span>
+        <span style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;margin-left:8px">From:</span>
+        <span id="ep-from" style="font-size:12px;color:var(--g700);font-family:monospace"></span>
+      </div>
+      <div class="fd"><label>To</label><input id="ep-to" type="email" placeholder="recipient@lawfirm.com"></div>
+      <div class="fd"><label>Subject</label><input id="ep-subject"></div>
+      <div class="fd" style="flex:1;display:flex;flex-direction:column">
+        <label>Preview (HTML rendered)</label>
+        <iframe id="ep-iframe" style="flex:1;min-height:340px;border:1px solid var(--g200);border-radius:10px;background:#fff" sandbox=""></iframe>
+      </div>
+    </div>
+    <div class="mft" style="gap:6px;flex-wrap:wrap">
+      <button class="btn bs" id="mx2-ep">Close</button>
+      <button class="btn bs" id="ep-copy-html">📋 Copy HTML</button>
+      <button class="btn bs" id="ep-copy-text">📋 Copy Text</button>
+      <button class="btn bp" id="ep-open-mail">✉️ Open in Mail App</button>
+    </div>
+  </div>
+</div>
+
 <div class="mb" id="m-file-preview">
   <div class="modal" style="max-width:900px;height:85vh;display:flex;flex-direction:column">
     <div class="mh"><span class="mtt" id="m-fp-title">File Preview</span><div style="display:flex;gap:6px;align-items:center"><a class="btn bs bsm" id="fp-download" href="#" download style="text-decoration:none">↓ Download</a><button class="mx" id="mx-fp">×</button></div></div>
@@ -1296,7 +1433,7 @@ function loadFromSupabase() {
                 phone:r.phone||'',dob:r.dob||null,sex:r.sex||'',
                 location:r.location||'',study:r.study_date||null,
                 refmd:r.referring_md||'',lien:parseFloat(r.lien)||0,
-                proc:r.procedure||''};
+                proc:r.procedure||'',merged_into:r.merged_into||null};
       });
     }
     if (dbPays.length) {
@@ -1481,6 +1618,9 @@ var DB = {
   ],
   acts:{},
   kpi:{collectionRate:40,monthlyTarget:500000,avgDays:60,resolutionRate:70},
+  // Phase 2: clinic email profiles + clinic-aware templates (loaded lazily from Supabase)
+  clinics:{Pain:null, Chiro:null, MRI:null},
+  emailTemplates:{},
   nid:{pay:11,case:9,fu:7,file:3,user:4,act:1}
 };
 
@@ -1556,7 +1696,249 @@ function updFUBadge(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────
-var PAGES=['dashboard','payments','cases','casedetail','patients','patprofile','followups','files','reports','notices','agent','users','settings'];
+var PAGES=['dashboard','payments','cases','casedetail','patients','patprofile','followups','files','reports','notices','agent','duplicates','users','settings'];
+// ── PHASE 1-B: DUPLICATE MERGE ──────────────────────────────
+var DUP_STATE = { candidates: [], history: [], mode: 'name-dol' };
+
+function normPat(s){
+  if(!s) return '';
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+}
+function normPhone(s){
+  if(!s) return '';
+  return String(s).replace(/\D/g,'');
+}
+function dolBucket(d){
+  // bucket DOL by week (7 days) for fuzzy match
+  if(!d) return '';
+  var t = new Date(d).getTime();
+  if(isNaN(t)) return '';
+  return Math.floor(t/(7*24*3600*1000));
+}
+function procKey(s){
+  if(!s) return '';
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'').slice(0,20);
+}
+
+function scanDuplicates(mode){
+  var groups = {};
+  var cases = DB.cases.filter(function(c){ return !c.merged_into; });
+  cases.forEach(function(c){
+    var key = null;
+    if(mode==='name-dol'){
+      if(!c.pat || !c.dol) return;
+      key = normPat(c.pat) + '|' + c.dol;
+    } else if(mode==='phone-dol'){
+      if(!c.phone || !c.dol) return;
+      var ph = normPhone(c.phone);
+      if(ph.length < 7) return;
+      key = ph + '|' + c.dol;
+    } else if(mode==='name-proc'){
+      if(!c.pat || !c.dol) return;
+      key = normPat(c.pat) + '|' + procKey(c.proc) + '|' + dolBucket(c.dol);
+    }
+    if(!key) return;
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(c);
+  });
+  var dups = [];
+  Object.keys(groups).forEach(function(k){
+    if(groups[k].length >= 2){
+      // sort by id so oldest (lowest id) is "winner" default
+      groups[k].sort(function(a,b){ return a.id - b.id; });
+      dups.push({ key:k, cases:groups[k] });
+    }
+  });
+  return dups;
+}
+
+function rDuplicates(){
+  var mode = (document.getElementById('dup-mode')||{}).value || 'name-dol';
+  DUP_STATE.mode = mode;
+  // Render summary skeleton
+  document.getElementById('dup-summary').innerHTML = 'Click <strong>Scan</strong> to search for duplicates.';
+  document.getElementById('dup-results').innerHTML = '';
+  rDupHistory();
+}
+
+function runDupScan(){
+  var mode = document.getElementById('dup-mode').value;
+  DUP_STATE.mode = mode;
+  document.getElementById('dup-summary').innerHTML = '⏳ Scanning ' + DB.cases.length + ' cases…';
+  document.getElementById('dup-results').innerHTML = '';
+  setTimeout(function(){
+    var groups = scanDuplicates(mode);
+    DUP_STATE.candidates = groups;
+    var totalDupCases = groups.reduce(function(s,g){ return s + g.cases.length; }, 0);
+    var modeLabel = {'name-dol':'Patient Name + DOL','phone-dol':'Phone + DOL','name-proc':'Patient + Procedure (±7d)'}[mode];
+    document.getElementById('dup-summary').innerHTML = '<strong>' + groups.length + '</strong> duplicate group' + (groups.length===1?'':'s') + ' found (' + totalDupCases + ' cases total) · mode: <strong>' + modeLabel + '</strong>';
+    renderDupGroups(groups);
+    var badge = document.getElementById('nb-dup');
+    if(badge){ if(groups.length>0){ badge.style.display=''; badge.textContent = groups.length; } else { badge.style.display='none'; } }
+  }, 30);
+}
+
+function renderDupGroups(groups){
+  if(!groups.length){
+    document.getElementById('dup-results').innerHTML = '<div class="empty" style="padding:40px 0"><div class="ei">✨</div><div class="et">No duplicates found</div></div>';
+    return;
+  }
+  var html = groups.slice(0,100).map(function(g, gi){
+    var rows = g.cases.map(function(c){
+      var actCount = (DB.acts && DB.acts[c.id]) ? DB.acts[c.id].length : 0;
+      var fuCount = DB.fus.filter(function(f){ return f.cid===c.id; }).length;
+      var payCount = DB.pays.filter(function(p){ return p.acct===c.acct; }).length;
+      return '<tr><td style="padding:6px 10px"><strong>#'+c.id+'</strong></td>' +
+             '<td style="padding:6px 10px">'+(c.acct||'')+'</td>' +
+             '<td style="padding:6px 10px">'+(c.pat||'')+'</td>' +
+             '<td style="padding:6px 10px">'+(c.phone||'')+'</td>' +
+             '<td style="padding:6px 10px">'+(c.dol||'')+'</td>' +
+             '<td style="padding:6px 10px">'+(c.lo||'')+'</td>' +
+             '<td style="padding:6px 10px;font-size:11px;color:var(--g500)">A:'+actCount+' F:'+fuCount+' P:'+payCount+'</td></tr>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:12px;padding:0">' +
+           '<div style="padding:10px 14px;background:var(--g50);border-bottom:1px solid var(--g100);display:flex;justify-content:space-between;align-items:center">' +
+           '<div style="font-size:12px;color:var(--g600)">Group #' + (gi+1) + ' · <strong>' + g.cases.length + '</strong> cases</div>' +
+           '<button class="btn bp bsm" onclick="openMergeModal(' + gi + ')">Review →</button>' +
+           '</div>' +
+           '<table style="width:100%;font-size:12px"><thead style="background:var(--g50)"><tr>' +
+           '<th style="padding:6px 10px;text-align:left">ID</th><th style="padding:6px 10px;text-align:left">Account</th>' +
+           '<th style="padding:6px 10px;text-align:left">Patient</th><th style="padding:6px 10px;text-align:left">Phone</th>' +
+           '<th style="padding:6px 10px;text-align:left">DOL</th><th style="padding:6px 10px;text-align:left">Law Office</th>' +
+           '<th style="padding:6px 10px;text-align:left">Counts</th>' +
+           '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }).join('');
+  if(groups.length > 100) html += '<div style="text-align:center;padding:16px;color:var(--g500);font-size:12px">Showing first 100 of ' + groups.length + ' groups</div>';
+  document.getElementById('dup-results').innerHTML = html;
+}
+
+function openMergeModal(gi){
+  var g = DUP_STATE.candidates[gi];
+  if(!g) return;
+  // For now, support pairwise merge — show first two
+  var left = g.cases[0];
+  var right = g.cases[1];
+  showMergeCompare(left, right, gi);
+}
+
+function fmtCaseCard(c){
+  var actCount = (DB.acts && DB.acts[c.id]) ? DB.acts[c.id].length : 0;
+  var fuCount = DB.fus.filter(function(f){ return f.cid===c.id; }).length;
+  var payCount = DB.pays.filter(function(p){ return p.acct===c.acct; }).length;
+  var payTotal = DB.pays.filter(function(p){ return p.acct===c.acct; }).reduce(function(s,p){return s+(p.paid||0);}, 0);
+  return '<div style="background:var(--g50);border-radius:8px;padding:12px;font-size:12px">' +
+    '<div style="font-weight:700;margin-bottom:8px">Case #' + c.id + '</div>' +
+    '<div style="display:grid;grid-template-columns:80px 1fr;gap:4px 8px">' +
+    '<div style="color:var(--g500)">Account</div><div>' + (c.acct||'—') + '</div>' +
+    '<div style="color:var(--g500)">Patient</div><div>' + (c.pat||'—') + '</div>' +
+    '<div style="color:var(--g500)">Phone</div><div>' + (c.phone||'—') + '</div>' +
+    '<div style="color:var(--g500)">DOB</div><div>' + (c.dob||'—') + '</div>' +
+    '<div style="color:var(--g500)">DOL</div><div>' + (c.dol||'—') + '</div>' +
+    '<div style="color:var(--g500)">Law Office</div><div>' + (c.lo||'—') + '</div>' +
+    '<div style="color:var(--g500)">Provider</div><div>' + (c.prov||'—') + '</div>' +
+    '<div style="color:var(--g500)">Procedure</div><div>' + (c.proc||'—') + '</div>' +
+    '<div style="color:var(--g500)">Status</div><div>' + (c.st||'—') + '</div>' +
+    '<div style="color:var(--g500)">Billed</div><div>$' + (c.bi||0).toFixed(2) + '</div>' +
+    '<div style="color:var(--g500)">Balance</div><div>$' + (c.bal||0).toFixed(2) + '</div>' +
+    '<div style="color:var(--g500)">Notes</div><div style="max-height:60px;overflow-y:auto;font-size:11px">' + (c.notes||'—') + '</div>' +
+    '</div>' +
+    '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--g100);font-size:11px">' +
+    '<strong>' + actCount + '</strong> activities · ' +
+    '<strong>' + fuCount + '</strong> follow-ups · ' +
+    '<strong>' + payCount + '</strong> payments ($' + payTotal.toFixed(2) + ')' +
+    '</div></div>';
+}
+
+function showMergeCompare(left, right, gi){
+  var ov = document.createElement('div');
+  ov.className = 'modal-ov';
+  ov.id = 'merge-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow-y:auto">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--g100);display:flex;justify-content:space-between;align-items:center">' +
+    '<div style="font-weight:700;font-size:16px">Merge Candidates</div>' +
+    '<button onclick="closeMergeModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--g500)">×</button>' +
+    '</div>' +
+    '<div style="padding:20px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+    '<div><div style="text-align:center;margin-bottom:8px;font-weight:600;color:#0ea472">← LEFT (Keep)</div>' + fmtCaseCard(left) + '</div>' +
+    '<div><div style="text-align:center;margin-bottom:8px;font-weight:600;color:#e53935">RIGHT (Merge into left) →</div>' + fmtCaseCard(right) + '</div>' +
+    '</div>' +
+    '<div style="margin-top:16px;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">' +
+    '⚠️ Merging will transfer all activities, follow-ups, payments, and files from the loser to the winner. The loser case will be marked as <strong>Merged</strong> and hidden from the Cases list. This can be undone within 24 hours.' +
+    '</div>' +
+    '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">' +
+    '<button class="btn bs bsm" onclick="closeMergeModal()">Cancel</button>' +
+    '<button class="btn bs bsm" onclick="doMerge(' + right.id + ',' + left.id + ',' + gi + ')" style="color:#e53935">↩ Keep Right (merge Left into Right)</button>' +
+    '<button class="btn bp bsm" onclick="doMerge(' + left.id + ',' + right.id + ',' + gi + ')">→ Keep Left (merge Right into Left)</button>' +
+    '</div>' +
+    '</div></div>';
+  document.body.appendChild(ov);
+}
+
+function closeMergeModal(){
+  var m = document.getElementById('merge-modal');
+  if(m) m.remove();
+}
+
+function doMerge(winnerId, loserId, gi){
+  if(!confirm('Merge case #' + loserId + ' into case #' + winnerId + '?\n\nThis cannot be easily undone.')) return;
+  var btn = event.target;
+  btn.disabled = true; btn.textContent = 'Merging…';
+  // Call Supabase RPC
+  var url = SUPA_URL + '/rest/v1/rpc/merge_cases';
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ p_winner_id: winnerId, p_loser_id: loserId, p_reason: 'manual-ui', p_merged_by: (SESSION && SESSION.email) || 'ui' })
+  }).then(function(r){
+    if(!r.ok) return r.text().then(function(t){ throw new Error(t); });
+    return r.json();
+  }).then(function(res){
+    closeMergeModal();
+    toast('Merged ✓ (' + (res.moved ? (res.moved.activities + ' acts, ' + res.moved.followups + ' FUs) moved') : 'done') + ')', '✅');
+    // Update local DB
+    var loser = DB.cases.find(function(c){ return c.id===loserId; });
+    if(loser){ loser.merged_into = winnerId; loser.st = 'Merged'; }
+    // Re-assign activities locally
+    if(DB.acts && DB.acts[loserId]){
+      if(!DB.acts[winnerId]) DB.acts[winnerId] = [];
+      DB.acts[winnerId] = DB.acts[winnerId].concat(DB.acts[loserId]);
+      delete DB.acts[loserId];
+    }
+    // Re-assign follow-ups
+    DB.fus.forEach(function(f){ if(f.cid===loserId) f.cid = winnerId; });
+    // Log history
+    DUP_STATE.history.unshift({ winner:winnerId, loser:loserId, at:new Date().toISOString(), moved:res.moved });
+    // Re-scan to refresh
+    runDupScan();
+  }).catch(function(e){
+    btn.disabled = false; btn.textContent = 'Failed - retry';
+    alert('Merge failed: ' + e.message);
+  });
+}
+
+function rDupHistory(){
+  var el = document.getElementById('dup-hist-list');
+  if(!el) return;
+  // Load recent merges from Supabase
+  SB.get('case_merges', 'order=merged_at.desc&limit=10').then(function(rows){
+    if(!rows || !rows.length){ el.innerHTML = '<em style="color:var(--g500)">No merges yet</em>'; return; }
+    el.innerHTML = rows.map(function(m){
+      var dt = new Date(m.merged_at).toLocaleString();
+      return '<div style="padding:6px 0;border-bottom:1px solid var(--g100)">' +
+             '#' + m.loser_case_id + ' → #' + m.winner_case_id + ' · ' +
+             'A:' + (m.activity_count||0) + ' F:' + (m.followup_count||0) + ' P:' + (m.payment_count||0) + ' · ' +
+             '<span style="color:var(--g500)">' + dt + ' by ' + (m.merged_by||'?') + '</span>' +
+             '</div>';
+    }).join('');
+  }).catch(function(){ el.innerHTML = '<em style="color:var(--g500)">Unable to load history (run migration first)</em>'; });
+}
+
 function go(pg){
   PAGES.forEach(function(p){
     var el=document.getElementById('pg-'+p);
@@ -1577,6 +1959,7 @@ function go(pg){
   if(pg==='reports')    rReport('all');
   if(pg==='notices')    rNotices();
   if(pg==='agent')      rAgent();
+  if(pg==='duplicates') rDuplicates();
   if(pg==='patients')   rPatients();
   if(pg==='users')      rUsers();
   if(pg==='settings')   rSettings();
@@ -1683,6 +2066,7 @@ function rPay(){
 // ── CASES ────────────────────────────────────────────────────
 function rCase(){
   var data=DB.cases.filter(function(c){
+    if(c.merged_into) return false;
     var q=S.caseQ.toLowerCase();
     var m=!q||[c.lo,c.acct,c.pat,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});
     var cMatch=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;
@@ -1870,20 +2254,8 @@ function printCaseDetail(){
 
 function emailCaseDetail(){
   var c=DB.cases.find(function(x){return x.id===S.curCase;}); if(!c)return;
-  var pays=DB.pays.filter(function(p){return p.acct===c.acct;});
-  var tp=pays.reduce(function(s,p){return s+(p.paid||0);},0);
-  var cr=c.bi>0?Math.round(tp/c.bi*100):0;
-  var subj='Case Report: '+(c.pat||'Unknown')+' — Acct #'+(c.acct||'');
-  var body='CASE REPORT\n\nPatient: '+(c.pat||'Unknown')+'\nAccount #: '+(c.acct||'—')+
-    '\nLaw Office: '+(c.lo||'—')+'\nProvider: '+(c.prov||'—')+
-    '\nStatus: '+(c.st||'—')+'\nGrade: '+(c.gr||'N/A')+
-    '\nDOL: '+fd(c.dol)+
-    '\n\nBilled: '+fc(c.bi)+'\nBalance: '+fc(c.bal)+'\nCollected: '+fc(tp)+'\nCollection Rate: '+cr+'%'+
-    '\n\n--- PAYMENTS ('+pays.length+') ---\n'+
-    (pays.length?pays.map(function(p){return fd(p.pd)+' | '+(p.cs||'—')+' | Charged: '+fc(p.ch)+' | Paid: '+fc(p.paid);}).join('\n'):'No payments')+
-    (c.notes?'\n\nNotes: '+c.notes:'')+
-    '\n\n— TotalMedix Collection';
-  window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
+  // Phase 2: clinic-aware HTML email preview (auto-selects Pain/Chiro/MRI profile from c.ct)
+  openInvoiceEmail(c, {key:'invoice'});
 }
 
 function printListPage(type){
@@ -2874,18 +3246,34 @@ function saveUser(){
   var id=S.eid.user;
   var pw=document.getElementById('uf-pw').value;
   var ct=document.getElementById('uf-ct').value||null;
-  var o={name:document.getElementById('uf-name').value,email:document.getElementById('uf-email').value,password:pw,role:document.getElementById('uf-role').value,clinic_type:ct,st:document.getElementById('uf-st').value,color:clr(document.getElementById('uf-name').value)};
+  var emailRaw=(document.getElementById('uf-email').value||'').trim().toLowerCase();
+  var o={name:(document.getElementById('uf-name').value||'').trim(),email:emailRaw,password:pw,role:document.getElementById('uf-role').value,clinic_type:ct,st:document.getElementById('uf-st').value,color:clr(document.getElementById('uf-name').value)};
   if(!o.name||!o.email||!pw){toast('Name, email and password are required','⚠️');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)){toast('Please enter a valid email address','⚠️');return;}
+  // Client-side duplicate check (skip current user when editing)
+  var dup=DB.users.find(function(u){return (u.email||'').toLowerCase()===o.email && u.id!==id;});
+  if(dup){toast('Email already in use by '+(dup.name||dup.email),'⚠️');return;}
   var sbData={name:o.name,email:o.email,password:o.password,role:o.role,clinic_type:o.clinic_type,status:o.st};
+  function explain(err){
+    var msg=(err&&err.message)||'';
+    if(/duplicate key|already exists|23505/i.test(msg)){
+      if(/email/i.test(msg)) return 'Email already in use — try a different one';
+      return 'Duplicate value — this record already exists';
+    }
+    if(/violates row-level security|permission denied|42501/i.test(msg)) return 'Permission denied — check Supabase RLS policy';
+    if(/network|failed to fetch/i.test(msg)) return 'Network error — check connection';
+    if(msg.length>0 && msg.length<160) return msg;
+    return 'Save failed';
+  }
   if(id){
     supaFetch('app_users?id=eq.'+id,{method:'PATCH',body:sbData}).then(function(){
       Object.assign(DB.users.find(function(u){return u.id===id;}),o);toast('Updated','✅');closeModal('m-user');rUsers();
-    }).catch(function(){toast('Save failed','❌');});
+    }).catch(function(err){toast(explain(err),'❌');});
   }else{
     supaFetch('app_users',{method:'POST',body:sbData,prefer:'return=representation'}).then(function(r){
       if(r&&r[0])o.id=r[0].id; else o.id=DB.nid.user++;
       DB.users.push(o);toast('Added','✅');closeModal('m-user');rUsers();
-    }).catch(function(){toast('Save failed','❌');});
+    }).catch(function(err){toast(explain(err),'❌');});
   }
 }
 function saveKPI(){
@@ -2948,6 +3336,27 @@ function aiAnalyzeCase(id){
 
 // ── BIND ALL EVENTS ──────────────────────────────────────────
 function bindAll(){
+  // Password show/hide toggle (login screen)
+  var pwTog=document.getElementById('l-pw-toggle');
+  if(pwTog){
+    pwTog.addEventListener('click',function(){
+      var inp=document.getElementById('l-pw');
+      if(!inp) return;
+      var isPw=(inp.type==='password');
+      inp.type=isPw?'text':'password';
+      pwTog.textContent=isPw?'🙈':'👁';
+      pwTog.setAttribute('aria-label',isPw?'Hide password':'Show password');
+      pwTog.setAttribute('title',isPw?'Hide password':'Show password');
+      inp.focus();
+    });
+  }
+  // Enter key to submit login
+  ['l-email','l-pw'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault();var b=document.getElementById('login-btn');if(b)b.click();}
+    });
+  });
   // Login
   document.getElementById('login-btn').addEventListener('click',function(){
     var email=document.getElementById('l-email').value.trim();
@@ -3021,6 +3430,11 @@ function bindAll(){
   if(dashCt)dashCt.addEventListener('change',function(){S.ct=this.value;rDash();});
   document.getElementById('btn-add-pay').addEventListener('click',function(){openModal('pay',null);});
   document.getElementById('btn-print-dash').addEventListener('click',function(){printDashboard();});
+  // Phase 1-B: Duplicates nav + Scan
+  var niDup = document.getElementById('ni-duplicates');
+  if(niDup) niDup.addEventListener('click', function(){ go('duplicates'); });
+  var btnDupScan = document.getElementById('btn-dup-scan');
+  if(btnDupScan) btnDupScan.addEventListener('click', runDupScan);
 
   // Payments
   document.getElementById('btn-add-pay2').addEventListener('click',function(){openModal('pay',null);});
@@ -4073,6 +4487,220 @@ function saveClinicInfo() {
   toast('Clinic info saved', '🏥');
 }
 
+// ── Phase 2: 3-Clinic Email Profiles ──────────────────────────
+var CLINIC_FIELDS = ['display_name','legal_name','address_line1','address_line2','city','state','zip','phone','fax','email','website','npi','tax_id','brand_color','logo_url','signature'];
+
+function loadClinicProfiles() {
+  return supaFetch('clinic_profiles?select=*&order=clinic_type.asc',{method:'GET'})
+    .then(function(rows){
+      (rows||[]).forEach(function(r){
+        if(r && r.clinic_type) DB.clinics[r.clinic_type] = r;
+      });
+      ['Pain','Chiro','MRI'].forEach(fillClinicForm);
+    })
+    .catch(function(err){
+      console.warn('clinic_profiles load failed (run phase2_clinic_email.sql):', err.message);
+    });
+}
+
+function fillClinicForm(ct) {
+  var form = document.getElementById('cp-form-'+ct);
+  if(!form) return;
+  var data = DB.clinics[ct] || {};
+  form.querySelectorAll('[data-cf]').forEach(function(el){
+    var key = el.dataset.cf;
+    var v = data[key];
+    if(el.type==='color') el.value = v || '#3b5bdb';
+    else el.value = (v==null?'':v);
+  });
+}
+
+function readClinicForm(ct) {
+  var form = document.getElementById('cp-form-'+ct);
+  if(!form) return null;
+  var out = {clinic_type: ct};
+  form.querySelectorAll('[data-cf]').forEach(function(el){
+    var key = el.dataset.cf;
+    out[key] = (el.value||'').trim() || null;
+  });
+  return out;
+}
+
+function saveClinicProfile(ct) {
+  var data = readClinicForm(ct);
+  if(!data) return;
+  if(!data.display_name){ toast('Display name is required','⚠️'); return; }
+  // UPSERT via Prefer: resolution=merge-duplicates on the unique clinic_type column
+  return supaFetch('clinic_profiles?on_conflict=clinic_type',{
+    method:'POST',
+    body:data,
+    prefer:'return=representation,resolution=merge-duplicates'
+  }).then(function(r){
+    if(r && r[0]) DB.clinics[ct] = r[0];
+    toast(ct+' profile saved','🏥');
+  }).catch(function(err){
+    var msg=(err&&err.message)||'';
+    toast('Save failed: '+(msg.length<140?msg:'see console'),'❌');
+  });
+}
+
+function switchClinicTab(ct) {
+  document.querySelectorAll('#cp-tabs .tab').forEach(function(el){
+    el.classList.toggle('on', el.dataset.cpt===ct);
+  });
+  ['Pain','Chiro','MRI'].forEach(function(c){
+    var f = document.getElementById('cp-form-'+c);
+    if(f) f.style.display = (c===ct?'':'none');
+  });
+}
+
+function saveAllClinicProfiles() {
+  return Promise.all(['Pain','Chiro','MRI'].map(saveClinicProfile))
+    .then(function(){ toast('All 3 profiles saved','✅'); });
+}
+
+// ── Phase 2: Email Templates + Builder ────────────────────────
+function loadEmailTemplate(ct, key) {
+  // returns Promise resolving to {subject, body_html} (uses cache)
+  var cacheKey = ct+'_'+key;
+  if (DB.emailTemplates[cacheKey]) return Promise.resolve(DB.emailTemplates[cacheKey]);
+  var qs = 'clinic_type=eq.'+encodeURIComponent(ct)+'&template_key=eq.'+encodeURIComponent(key)+'&select=subject,body_html&limit=1';
+  return supaFetch('email_templates?'+qs,{method:'GET'})
+    .then(function(rows){
+      var t = (rows&&rows[0]) || defaultEmailTemplate(ct, key);
+      DB.emailTemplates[cacheKey] = t;
+      return t;
+    })
+    .catch(function(){ return defaultEmailTemplate(ct, key); });
+}
+
+function defaultEmailTemplate(ct, key) {
+  // fallback if Supabase row missing — same as SQL seed
+  var subj = 'Invoice from {{clinic_name}} — Account {{account}}';
+  var body = '<p>Dear Counsel,</p>'+
+    '<p>Re: services rendered to your client <strong>{{patient}}</strong> (DOL {{dol}}).</p>'+
+    '<p><strong>Account:</strong> {{account}}<br><strong>Provider:</strong> {{provider}}<br><strong>Billed:</strong> ${{billed}}<br><strong>Balance Due:</strong> ${{balance}}</p>'+
+    '<p>Sincerely,<br>{{signature}}<br>{{clinic_address}}<br>{{clinic_phone}} · {{clinic_email}}</p>';
+  return {subject:subj, body_html:body};
+}
+
+function clinicProfileFor(ct) {
+  // Returns the clinic profile object for a case's clinic type, or a sensible fallback
+  var c = DB.clinics[ct];
+  if (c) return c;
+  return {
+    clinic_type: ct||'General',
+    display_name: COMPANY.name||'TotalMedix',
+    address_line1: COMPANY.address||'',
+    phone: COMPANY.phone||'',
+    email: COMPANY.email||'billing@totalmedix.com',
+    signature: (COMPANY.name||'TotalMedix') + ' — Billing Department',
+    brand_color: '#3b5bdb'
+  };
+}
+
+function fillTemplate(tmpl, vars) {
+  return (tmpl||'').replace(/\{\{(\w+)\}\}/g, function(m,k){
+    return (vars[k]==null) ? '' : String(vars[k]);
+  });
+}
+
+function fmtMoney(n) {
+  var v = parseFloat(n)||0;
+  return v.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function buildClinicAddress(c) {
+  var line2 = [c.city, c.state, c.zip].filter(Boolean).join(', ').replace(/, ([A-Z]{2}), /, ', $1 ');
+  return [c.address_line1, c.address_line2, line2].filter(Boolean).join('<br>');
+}
+
+function buildEmailVars(caseObj, clinic) {
+  return {
+    patient:        caseObj.pat || '',
+    account:        caseObj.acct || '',
+    dol:            caseObj.dol || '',
+    provider:       caseObj.prov || '',
+    billed:         fmtMoney(caseObj.bi),
+    balance:        fmtMoney(caseObj.bal),
+    law_office:     caseObj.lo || '',
+    clinic_name:    clinic.display_name || '',
+    clinic_address: buildClinicAddress(clinic),
+    clinic_phone:   clinic.phone || '',
+    clinic_email:   clinic.email || '',
+    clinic_website: clinic.website || '',
+    signature:      clinic.signature || (clinic.display_name+' Billing'),
+    today:          new Date().toISOString().slice(0,10)
+  };
+}
+
+function wrapEmailHtml(innerHtml, clinic) {
+  var brand = clinic.brand_color || '#3b5bdb';
+  var logo = clinic.logo_url
+    ? '<img src="'+clinic.logo_url+'" alt="" style="max-height:46px;vertical-align:middle">'
+    : '<span style="font-weight:800;font-size:18px;color:#fff;letter-spacing:.3px">'+(clinic.display_name||'TotalMedix')+'</span>';
+  return '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;max-width:640px;margin:0 auto;background:#f8fafc;padding:0">'+
+    '<div style="background:'+brand+';padding:18px 24px;border-radius:8px 8px 0 0">'+logo+'</div>'+
+    '<div style="background:#fff;padding:24px;border:1px solid #e5e7eb;border-top:0;font-size:14px;line-height:1.6">'+innerHtml+'</div>'+
+    '<div style="padding:14px 24px;font-size:11px;color:#6b7280;text-align:center">This is a billing communication from '+(clinic.display_name||'TotalMedix')+'. If received in error, please disregard.</div>'+
+    '</div>';
+}
+
+function htmlToPlain(html) {
+  return html
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/p>/gi,'\n\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ')
+    .replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<')
+    .replace(/&gt;/g,'>')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+
+function openInvoiceEmail(caseObj, opts) {
+  opts = opts || {};
+  var key = opts.key || 'invoice';
+  var clinic = clinicProfileFor(caseObj.ct);
+  loadEmailTemplate(caseObj.ct||'Pain', key).then(function(tmpl){
+    var vars = buildEmailVars(caseObj, clinic);
+    var subject = fillTemplate(tmpl.subject, vars);
+    var bodyInner = fillTemplate(tmpl.body_html, vars);
+    var fullHtml = wrapEmailHtml(bodyInner, clinic);
+    var plain = htmlToPlain(bodyInner);
+
+    document.getElementById('m-ep-title').textContent = '✉️ '+(caseObj.pat||'Case')+' — '+(clinic.display_name||'');
+    document.getElementById('ep-clinic').textContent = clinic.display_name+' ('+(caseObj.ct||'?')+')';
+    document.getElementById('ep-clinic').style.background = clinic.brand_color||'#3b5bdb';
+    document.getElementById('ep-clinic').style.color = '#fff';
+    document.getElementById('ep-from').textContent = clinic.email || '(set in Settings → Clinic Info)';
+    document.getElementById('ep-to').value = opts.to || '';
+    document.getElementById('ep-subject').value = subject;
+    var iframe = document.getElementById('ep-iframe');
+    iframe.srcdoc = fullHtml;
+    // Stash for action buttons
+    window._epState = {clinic:clinic, html:fullHtml, plain:plain, subject:subject};
+    openModal('email-preview');
+  });
+}
+
+function epOpenMail() {
+  var s = window._epState; if(!s) return;
+  var to = (document.getElementById('ep-to').value||'').trim();
+  var subject = document.getElementById('ep-subject').value;
+  var url = 'mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(s.plain);
+  window.open(url);
+}
+
+function epCopy(text, label) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ toast(label+' copied','📋'); });
+  } else {
+    var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast(label+' copied','📋');}catch(e){toast('Copy failed','❌');}document.body.removeChild(ta);
+  }
+}
+
 // ── Template editor ───────────────────────────────────────────
 function loadTemplate(stage) {
   var t = TEMPLATES[stage];
@@ -4133,6 +4761,26 @@ function rBillingCodes() {
       if (!confirm('Delete this billing code?')) return;
       BILLING_CODES = BILLING_CODES.filter(function(c){return c.id!==parseInt(el.dataset.delBc);});
       rBillingCodes();
+      toast('Billing code deleted','🗑️');
+    });
+  });
+  tb.querySelectorAll('[data-edit-bc]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var bcId = parseInt(el.dataset.editBc);
+      var bc = BILLING_CODES.find(function(c){return c.id===bcId;});
+      if (!bc) { toast('Code not found','❌'); return; }
+      var code = prompt('CPT Code:', bc.code); if (code===null) return;
+      var desc = prompt('Description:', bc.desc); if (desc===null) return;
+      var cat  = prompt('Category (Evaluation / Pain Mgmt / MRI / Chiro / Therapy / Other):', bc.cat); if (cat===null) return;
+      var chargeStr = prompt('Default Charge ($):', String(bc.charge)); if (chargeStr===null) return;
+      var charge = parseFloat(chargeStr);
+      if (!code.trim() || !desc.trim()) { toast('Code and description required','⚠️'); return; }
+      bc.code = code.trim();
+      bc.desc = desc.trim();
+      bc.cat  = (cat||'Other').trim();
+      bc.charge = isNaN(charge) ? bc.charge : charge;
+      rBillingCodes();
+      toast('Billing code updated','✏️');
     });
   });
 }
@@ -4140,9 +4788,9 @@ function rBillingCodes() {
 function addBillingCode() {
   var code = prompt('CPT Code:'); if (!code) return;
   var desc = prompt('Description:'); if (!desc) return;
-  var cat  = prompt('Category (Evaluation/Pain Mgmt/MRI/Chiro/Therapy):') || 'Other';
+  var cat  = prompt('Category (Evaluation / Pain Mgmt / MRI / Chiro / Therapy / Other):') || 'Other';
   var charge = parseFloat(prompt('Default Charge ($):')) || 0;
-  BILLING_CODES.push({id:BILLING_NID++,code:code,desc:desc,cat:cat,charge:charge});
+  BILLING_CODES.push({id:BILLING_NID++,code:code.trim(),desc:desc.trim(),cat:cat.trim(),charge:charge});
   rBillingCodes();
   toast('Billing code added','💡');
 }
@@ -4273,7 +4921,7 @@ function switchSettingsTab(tab) {
   if (tabEl) tabEl.classList.add('on');
 
   if (tab==='users')     rSettingsUsers();
-  if (tab==='clinic')    loadClinicFields();
+  if (tab==='clinic')    { loadClinicFields(); loadClinicProfiles(); }
   if (tab==='templates') loadTemplate(document.getElementById('template-select')?.value||'60');
   if (tab==='billing')   rBillingCodes();
   if (tab==='schedule')  loadScheduleFields();
@@ -4315,6 +4963,28 @@ function bindSettingsEvents() {
   // Clinic
   var btnClinic = document.getElementById('btn-save-clinic');
   if (btnClinic) btnClinic.addEventListener('click', saveClinicInfo);
+
+  // Clinic Profiles (3-clinic email sender identity)
+  document.querySelectorAll('#cp-tabs .tab').forEach(function(t){
+    t.addEventListener('click', function(){ switchClinicTab(t.dataset.cpt); });
+  });
+  document.querySelectorAll('[data-save-cp]').forEach(function(b){
+    b.addEventListener('click', function(){ saveClinicProfile(b.dataset.saveCp); });
+  });
+  var btnSaveAll = document.getElementById('btn-save-all-clinics');
+  if (btnSaveAll) btnSaveAll.addEventListener('click', saveAllClinicProfiles);
+
+  // Phase 2: Email Preview modal
+  ['mx-ep','mx2-ep'].forEach(function(id){
+    var b = document.getElementById(id);
+    if (b) b.addEventListener('click', function(){ closeModal('email-preview'); });
+  });
+  var epOpen = document.getElementById('ep-open-mail');
+  if (epOpen) epOpen.addEventListener('click', epOpenMail);
+  var epCH = document.getElementById('ep-copy-html');
+  if (epCH) epCH.addEventListener('click', function(){ epCopy(window._epState ? window._epState.html : '', 'HTML'); });
+  var epCT = document.getElementById('ep-copy-text');
+  if (epCT) epCT.addEventListener('click', function(){ epCopy(window._epState ? window._epState.plain : '', 'Text'); });
 
   // Templates
   var tmplSel = document.getElementById('template-select');
