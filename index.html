@@ -2829,7 +2829,8 @@ function openBulkFU(){
   // Reset preview
   document.getElementById('bfu-preview').innerHTML='';
   document.getElementById('bfu-create-btn').disabled=true;
-  openModal('bulk-fu');
+  // openModal() doesn't know 'bulk-fu' type, open directly
+  document.getElementById('m-bulk-fu').classList.add('open');
 }
 
 function bfuApplyPreset(){
@@ -5562,7 +5563,7 @@ function openInvoiceEmail(caseObj, opts) {
     iframe.srcdoc = fullHtml;
     // Stash for action buttons
     window._epState = {clinic:clinic, html:fullHtml, plain:plain, subject:subject};
-    openModal('email-preview');
+    document.getElementById('m-email-preview').classList.add('open');
   });
 }
 
