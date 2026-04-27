@@ -2922,7 +2922,7 @@ function bfuCreate(){
       status: 'pending', due_date: dueStr, notes: 'Bulk-generated '+today()
     };
   });
-  closeModal('bulk-fu');
+  closeModal('m-bulk-fu');
   toast('Creating '+rows.length+' follow-ups...', '🔄');
   // Batch INSERT in chunks of 100
   var chunkSize=100, ok=0, fail=0;
@@ -4337,7 +4337,7 @@ function bindAll(){
   document.getElementById('btn-gen-fu').addEventListener('click',genFU);
   // Bulk Follow-up generator
   var bBfu=document.getElementById('btn-bulk-fu'); if(bBfu) bBfu.addEventListener('click', openBulkFU);
-  ['mx-bfu','mx2-bfu'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){closeModal('bulk-fu');});});
+  ['mx-bfu','mx2-bfu'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){closeModal('m-bulk-fu');});});
   var bfPre=document.getElementById('bfu-preset'); if(bfPre) bfPre.addEventListener('change', bfuApplyPreset);
   var bfPrev=document.getElementById('bfu-preview-btn'); if(bfPrev) bfPrev.addEventListener('click', bfuPreview);
   var bfCre=document.getElementById('bfu-create-btn'); if(bfCre) bfCre.addEventListener('click', bfuCreate);
@@ -5859,7 +5859,7 @@ function bindSettingsEvents() {
   // Phase 2: Email Preview modal
   ['mx-ep','mx2-ep'].forEach(function(id){
     var b = document.getElementById(id);
-    if (b) b.addEventListener('click', function(){ closeModal('email-preview'); });
+    if (b) b.addEventListener('click', function(){ closeModal('m-email-preview'); });
   });
   var epOpen = document.getElementById('ep-open-mail');
   if (epOpen) epOpen.addEventListener('click', epOpenMail);
