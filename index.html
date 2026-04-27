@@ -385,6 +385,18 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         </div>
         <div id="kpi-alerts"></div>
         <div class="metrics" id="d-metrics"></div>
+        <div class="card" style="margin-bottom:18px;border-left:4px solid #7c3aed">
+          <div class="ch">
+            <span class="ct">🤖 AI Daily Brief</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn bs bsm" id="btn-brief-refresh" title="Re-generate">🔄</button>
+              <button class="btn bp bsm" id="btn-brief-run">✨ Generate</button>
+            </div>
+          </div>
+          <div class="cb" id="d-brief" style="font-size:13px;line-height:1.6;color:var(--g700);min-height:60px">
+            <div style="color:var(--g500);font-style:italic">Click "Generate" — Claude will scan today's pipeline and surface the 5 most urgent items, plus a quick health snapshot. (Requires Anthropic API key in Settings → API Keys.)</div>
+          </div>
+        </div>
         <div id="d-cfpc-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px"></div>
         <div class="g2">
           <div class="card"><div class="ch"><span class="ct">📊 Payments by Law Office</span></div><div class="cb" id="d-bar"></div></div>
@@ -421,6 +433,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         </div>
         <div class="tb">
           <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search by name, PID, phone, DOB, DOL, doctor, procedure, location, notes... (multi-word OK)"></div>
+          <button class="btn bs bsm" id="btn-smart-search" title="Ask AI to find cases by natural language" style="background:#faf5ff;border-color:#e9d5ff;color:#7c3aed">✨ Smart Search</button>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
           <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="coldest">❄️ Coldest Contact</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
@@ -2250,6 +2263,8 @@ function openCD(id){
           '<button style="background:rgba(124,58,237,.4);border:1px solid rgba(124,58,237,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" data-ai-case="'+c.id+'">🤖 AI Analyze</button>'+
           '<button style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-print">🖨️ Print</button>'+
           '<button style="background:rgba(14,164,114,.4);border:1px solid rgba(14,164,114,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-email">📧 Email</button>'+
+          '<button style="background:rgba(124,58,237,.4);border:1px solid rgba(124,58,237,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-ai-compose">✨ AI Compose</button>'+
+          '<button style="background:rgba(245,158,11,.4);border:1px solid rgba(245,158,11,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-ai-next">🤖 Next Action</button>'+
         '</div>'+
       '</div>'+
       '<div class="dstats">'+
@@ -2334,6 +2349,92 @@ function bindCDEvents(){
   if(cdPrint)cdPrint.addEventListener('click',function(){printCaseDetail();});
   var cdEmail=document.getElementById('cd-email');
   if(cdEmail)cdEmail.addEventListener('click',function(){emailCaseDetail();});
+  var cdCompose=document.getElementById('cd-ai-compose');
+  if(cdCompose)cdCompose.addEventListener('click',function(){aiComposeMessage(S.curCase);});
+  var cdNext=document.getElementById('cd-ai-next');
+  if(cdNext)cdNext.addEventListener('click',function(){aiNextAction(S.curCase);});
+}
+
+// ── AI ② Compose Email/Text ─────────────────────────────────
+function aiComposeMessage(caseId) {
+  var c = DB.cases.find(function(x){return x.id===caseId;}); if(!c) return;
+  // Prompt user for tone + channel
+  var tone = prompt('Tone? (1=Friendly reminder, 2=Firm follow-up, 3=Final notice before collections, 4=Settlement inquiry)\n\nEnter 1, 2, 3, or 4:', '2');
+  if (!tone) return;
+  var toneMap={'1':'friendly courteous reminder','2':'firm professional follow-up','3':'final notice clearly stating consequences before sending to collections','4':'settlement inquiry — invite negotiation'};
+  var toneLabel = toneMap[tone] || toneMap['2'];
+  var channel = prompt('Channel? (1=Email to attorney, 2=Email to patient, 3=Text/SMS to patient, 4=Phone call script)', '1');
+  if (!channel) return;
+  var chanMap={'1':'an email addressed to the attorney handling the case','2':'an email addressed to the patient','3':'a short SMS text message to the patient (under 320 chars, no markdown)','4':'a brief phone call script for staff to read when calling the patient'};
+  var chanLabel = chanMap[channel] || chanMap['1'];
+  // Show modal-like preview area inside CD body
+  var previewDiv = document.getElementById('cd-ai-output') || (function(){
+    var d = document.createElement('div');
+    d.id = 'cd-ai-output';
+    d.style.cssText = 'background:#faf5ff;border:1px solid #e9d5ff;border-left:4px solid #7c3aed;border-radius:12px;padding:18px 20px;margin-top:14px';
+    document.getElementById('cd-body').appendChild(d);
+    return d;
+  })();
+  previewDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--g600);font-size:13px"><div style="width:14px;height:14px;border:2px solid var(--g300);border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite"></div> Claude is drafting your message…</div>';
+  var snippet = aiCaseSnippet(c);
+  // Find clinic profile to use as sender identity
+  var clinic = (typeof clinicProfileFor==='function') ? clinicProfileFor(c.ct) : {display_name:'TotalMedix', email:'billing@totalmedix.com', phone:''};
+  var sys = 'You are a medical billing communications expert. Write professional collections messages that are factually grounded and never hallucinate amounts or dates. Use the case data and clinic identity provided. Write in a '+toneLabel+' tone. Format the output as: SUBJECT line first, then a blank line, then the body. For SMS or phone scripts, just output the body (no subject).';
+  var userPrompt = '## Case data\n```json\n'+JSON.stringify(snippet,null,2)+'\n```\n\n## Sender (clinic identity)\n```json\n'+JSON.stringify({name:clinic.display_name,email:clinic.email,phone:clinic.phone,address:clinic.address_line1,signature:clinic.signature},null,2)+'\n```\n\n## Task\nWrite '+chanLabel+' regarding the outstanding balance. Reference the patient name, account number, DOI, and balance. Sign off with the clinic name.\n\nKeep it concise (email = under 180 words, SMS = under 320 chars, phone script = under 100 words).';
+  callClaude(sys, userPrompt, {maxTokens:1200})
+    .then(function(text){
+      var safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      previewDiv.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
+          '<span style="font-weight:700;font-size:14px;color:#5b21b6">✨ AI-drafted '+(['','Friendly Reminder','Firm Follow-up','Final Notice','Settlement Inquiry'][parseInt(tone)]||'Message')+' · '+(['','Attorney Email','Patient Email','Patient SMS','Phone Script'][parseInt(channel)]||'Email')+'</span>'+
+          '<div style="display:flex;gap:6px">'+
+            '<button class="btn bs bsm" onclick="navigator.clipboard.writeText(this.parentElement.parentElement.parentElement.querySelector(\'pre\').innerText);toast(\'Copied\',\'📋\')">📋 Copy</button>'+
+            '<button class="btn bp bsm" onclick="aiComposeMessage('+c.id+')">🔄 Regenerate</button>'+
+          '</div>'+
+        '</div>'+
+        '<pre style="white-space:pre-wrap;font-family:-apple-system,Segoe UI,sans-serif;font-size:13px;line-height:1.6;color:var(--g800);background:#fff;padding:14px 16px;border-radius:8px;border:1px solid var(--g200);margin:0">'+safe+'</pre>'+
+        '<div style="margin-top:8px;font-size:10px;color:var(--g400);text-align:right">Claude Sonnet 4.6 · '+new Date().toLocaleTimeString()+'</div>';
+    })
+    .catch(function(err){
+      previewDiv.innerHTML = '<div style="color:var(--red)">⚠️ '+err.message+'</div>';
+    });
+}
+
+// ── AI ⑤ Next Action ────────────────────────────────────────
+function aiNextAction(caseId) {
+  var c = DB.cases.find(function(x){return x.id===caseId;}); if(!c) return;
+  var previewDiv = document.getElementById('cd-ai-next-output') || (function(){
+    var d = document.createElement('div');
+    d.id = 'cd-ai-next-output';
+    d.style.cssText = 'background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f59e0b;border-radius:12px;padding:18px 20px;margin-top:14px';
+    document.getElementById('cd-body').appendChild(d);
+    return d;
+  })();
+  previewDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--g600);font-size:13px"><div style="width:14px;height:14px;border:2px solid var(--g300);border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite"></div> Claude is reviewing this case…</div>';
+  var snippet = aiCaseSnippet(c);
+  var sol = calcSOL(c.dol);
+  var lc = lastContactDays(c.id);
+  var acts = (DB.acts[c.id]||[]).slice(-5).map(function(a){return {date:a.date,type:a.type,outcome:a.outcome,text:(a.text||'').slice(0,200)};});
+  var sys = 'You are a senior medical-collections strategist at TotalMedix. Recommend the next 3 concrete actions for the team to take on this case. Be specific and pragmatic. Cite the data (SOL days, balance, last contact) when justifying. Reply in compact markdown.';
+  var userPrompt = '## Case\n```json\n'+JSON.stringify(snippet,null,2)+'\n```\n\n## SOL: '+(sol?sol.daysLeft+' days remaining':'unknown')+'\n## Last contact: '+(lc==null?'never logged':lc+' days ago')+'\n\n## Last 5 activities\n```json\n'+JSON.stringify(acts,null,2)+'\n```\n\n## Task\nRecommend the **3 most impactful next actions** to take on this case THIS WEEK. For each:\n- Action title (verb-led, e.g. "Send firm follow-up to attorney")\n- Why now (1 sentence, cite data)\n- How (1 short concrete instruction)\n\nUse this exact format:\n### 1. [Title]\n**Why:** ...\n**How:** ...\n\n### 2. [Title]\n... etc';
+  callClaude(sys, userPrompt, {maxTokens:1200})
+    .then(function(text){
+      var html = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/^### (.+)$/gm,'<div style="margin-top:12px;font-weight:700;font-size:14px;color:#92400e">$1</div>')
+        .replace(/\n/g,'<br>');
+      previewDiv.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+          '<span style="font-weight:700;font-size:14px;color:#92400e">🤖 Recommended Next Actions</span>'+
+          '<button class="btn bs bsm" onclick="aiNextAction('+c.id+')">🔄 Refresh</button>'+
+        '</div>'+
+        '<div style="font-size:13px;line-height:1.6;color:var(--g800)">'+html+'</div>'+
+        '<div style="margin-top:8px;font-size:10px;color:var(--g400);text-align:right">Claude Sonnet 4.6 · '+new Date().toLocaleTimeString()+'</div>';
+    })
+    .catch(function(err){
+      previewDiv.innerHTML = '<div style="color:var(--red)">⚠️ '+err.message+'</div>';
+    });
 }
 
 function getPrintStyles(){
@@ -3531,30 +3632,184 @@ function addMsg(text,cls){
   document.getElementById('ai-msgs').appendChild(el);
   document.getElementById('ai-msgs').scrollTop=99999;
 }
+// ── AI ④ Smart Search — natural language → filters ─────────────
+function aiSmartSearch() {
+  var query = prompt('Describe what you want to find (natural language):\n\nExamples:\n  • Pain clinic patients with balance over $5000\n  • Cases born in the 1980s sent to litigation\n  • Bill Sent in 2024, Goodfellaw firm\n  • Cases with overdue follow-ups, grade A or B');
+  if (!query || !query.trim()) return;
+  toast('Asking Claude to plan your search...', '✨');
+  var sys = 'You translate natural-language queries into structured search filters for a medical-collections database. Reply ONLY with valid JSON (no markdown fences). Allowed fields:\n- q: free-text keywords (the page already does multi-keyword AND across patient_name, cfpc_pid, phone, dob, dol, law_office, provider, procedure, location, notes, sex, status, status_cfpc, grade, clinic_type)\n- clinicType: "Pain"|"Chiro"|"MRI"|"" (filter by clinic)\n- status: "Active"|"Pending"|"Settled"|"Closed"|"" (our internal status)\n- statusCfpc: one of the CFPC status names exactly: "Bill Sent","Sent to collections","Litigation","Liberty Mutual Case","Settled, Payment Pending","Paid","Disregard","Dropped","Scheduled","Schedule Needed","Follow Up Schedule Needed","Follow Up Report Pending","Need Auth for Injection","Need Auth for Surgery","Injection Schedule Needed","Injection Report Pending","Surgery Schedule Needed","Surgery Report Pending","Mri Pending","Xray Pending","EmgNcv Study Pending","IC Report Pending","BI Pending","ACT Scan Pending","Unsigned Liens"\n- solFilter: "expired"|"critical"|"urgent"|"warn"|"" (SOL urgency)\n\nIf the query mentions things like "born in the 1980s", put "198" in q (date strings include human-friendly variants automatically). Return JSON like {"q":"198 Pain","clinicType":"Pain","status":"","statusCfpc":"","solFilter":""}. Empty string means no filter on that axis.';
+  callClaude(sys, query, {maxTokens:400, model:'claude-haiku-4-5-20251001'})
+    .then(function(text){
+      // Strip code fences if present
+      var clean = text.replace(/```json\s*|\s*```/g,'').trim();
+      var plan;
+      try { plan = JSON.parse(clean); } catch(e){ throw new Error('Could not parse AI response: '+clean.slice(0,100)); }
+      // Apply filters
+      S.caseQ = plan.q || '';
+      S.clinicType = '';  // user-level role override stays separate; this filter is local
+      S.ct = plan.clinicType || '';
+      S.caseSt = plan.status || '';
+      S.caseStCfpc = plan.statusCfpc || '';
+      S.caseSolF = plan.solFilter || '';
+      // Reflect in UI inputs
+      var qIn = document.getElementById('case-q'); if (qIn) qIn.value = S.caseQ;
+      var ctSel = document.getElementById('case-ct-filter'); if (ctSel) ctSel.value = S.ct;
+      var stSel = document.getElementById('case-st-filter'); if (stSel) stSel.value = S.caseSt;
+      var solSel = document.getElementById('case-sol-filter'); if (solSel) solSel.value = S.caseSolF;
+      go('cases');
+      rCase();
+      var summary = Object.keys(plan).filter(function(k){return plan[k];}).map(function(k){return k+'='+plan[k];}).join(', ');
+      toast('AI applied filters: '+(summary||'none'),'✨');
+    })
+    .catch(function(err){
+      toast('Smart search failed: '+err.message,'⚠️');
+    });
+}
+
+// ── AI ① Daily Brief ──────────────────────────────────────────
+function generateDailyBrief() {
+  var el = document.getElementById('d-brief');
+  if (!el) return;
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--g500)"><div style="width:14px;height:14px;border:2px solid var(--g300);border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite"></div> Claude is analyzing today\'s pipeline…</div>';
+  // Build hot-list candidates: SOL urgent / coldest contact / largest balance
+  var ctx = aiDataContext();
+  var active = DB.cases.filter(function(c){return !c.merged_into;});
+  var todayD = new Date(today());
+  function solDays(c){var s=calcSOL(c.dol);return s?s.daysLeft:99999;}
+  function lcDays(id){var d=lastContactDays(id);return d==null?99999:d;}
+  var candidates = active
+    .map(function(c){
+      var sol = solDays(c);
+      var lc = lcDays(c.id);
+      // Score: smaller SOL + colder contact + larger balance + active CFPC stage = higher priority
+      var critical = sol<=90 || lc>=60 || (c.bal>=10000 && c.stCfpc==='Bill Sent');
+      var score = (sol<=0?1000:Math.max(0,200-sol)) + Math.min(lc,180) + Math.log(1+(c.bal||0));
+      return critical ? {c:c, sol:sol, lc:lc, score:score} : null;
+    })
+    .filter(Boolean)
+    .sort(function(a,b){return b.score-a.score;})
+    .slice(0,15);
+  var hotList = candidates.map(function(x){return aiCaseSnippet(x.c);});
+  var sys = 'You are a medical-collections analyst at TotalMedix. Reply in concise English. Use clear sections with emoji headers. Never invent data — base every claim on the JSON provided. When citing a case, write Patient name + Acct # + balance.';
+  var userPrompt = 'Today is '+ctx.today+'.\n\n## Pipeline Snapshot (JSON)\n```json\n'+JSON.stringify(ctx,null,2)+'\n```\n\n## Top 15 candidate hot cases (JSON)\n```json\n'+JSON.stringify(hotList,null,2)+'\n```\n\n## Task\nProduce a Daily Brief with three sections:\n1. **🔥 Top 5 to do today** — pick the most urgent 5 from the candidates, explain WHY each (SOL, balance, stage, last contact). One line each.\n2. **📊 Pulse** — collection rate vs goal, overdue follow-ups, any CFPC stage spike worth flagging. 2-3 sentences.\n3. **💡 Suggested Next Move** — one concrete action the team should take today.\n\nKeep total under 250 words. Use bold for case names and amounts.';
+  callClaude(sys, userPrompt, {maxTokens:1500})
+    .then(function(text){
+      // Convert simple markdown to HTML
+      var html = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/^### (.+)$/gm,'<h4 style="margin:12px 0 4px;font-size:14px">$1</h4>')
+        .replace(/^## (.+)$/gm,'<h3 style="margin:14px 0 6px;font-size:15px">$1</h3>')
+        .replace(/^# (.+)$/gm,'<h2 style="margin:16px 0 8px;font-size:16px">$1</h2>')
+        .replace(/\n/g,'<br>');
+      el.innerHTML = '<div>'+html+'</div><div style="margin-top:10px;font-size:10px;color:var(--g400);text-align:right">Generated '+new Date().toLocaleTimeString()+' · Claude Sonnet 4.6</div>';
+    })
+    .catch(function(err){
+      el.innerHTML = '<div style="color:var(--red)">⚠️ '+err.message+'</div>'+(err.message.indexOf('API key')>=0 ? '<div style="margin-top:6px;font-size:12px"><a href="#" onclick="go(\'settings\');return false;" style="color:var(--accent)">→ Set Anthropic key in Settings → API Keys</a></div>' : '');
+    });
+}
+
+// ── Central Anthropic API caller ──────────────────────────────
+// Returns plain text reply. Throws clean errors for missing key / API errors.
+function callClaude(systemPrompt, userPrompt, opts) {
+  opts = opts || {};
+  if (!S.aiKey) {
+    return Promise.reject(new Error('Anthropic API key not set. Settings → API Keys.'));
+  }
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': S.aiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model: opts.model || 'claude-sonnet-4-6',
+      max_tokens: opts.maxTokens || 1500,
+      system: systemPrompt,
+      messages: [{role:'user', content:userPrompt}]
+    })
+  }).then(function(r){return r.json();}).then(function(d){
+    if (d && d.error) throw new Error(d.error.message || 'API error');
+    var text = (d.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').trim();
+    if (!text) throw new Error('Empty response from Claude');
+    return text;
+  });
+}
+
+// Build a compact data summary for AI prompts (avoids token bloat)
+function aiDataContext() {
+  var active = DB.cases.filter(function(c){return !c.merged_into;});
+  var stCounts = {}; active.forEach(function(c){var s=c.stCfpc||'(none)'; stCounts[s]=(stCounts[s]||0)+1;});
+  var ctCounts = {}; active.forEach(function(c){var s=c.ct||'(none)'; ctCounts[s]=(ctCounts[s]||0)+1;});
+  var totalBilled = active.reduce(function(s,c){return s+(c.bi||0);},0);
+  var totalBalance = active.reduce(function(s,c){return s+(c.bal||0);},0);
+  var totalPaid = DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
+  var collectionRate = totalBilled>0 ? (totalPaid/totalBilled*100).toFixed(1) : 0;
+  var overdueFUs = DB.fus.filter(function(f){return f.st==='pending' && f.due<today();});
+  return {
+    today: today(),
+    cases_active: active.length,
+    cases_merged: DB.cases.length - active.length,
+    total_billed: totalBilled,
+    total_paid: totalPaid,
+    total_balance: totalBalance,
+    collection_rate_pct: collectionRate,
+    overdue_followups: overdueFUs.length,
+    cfpc_status_counts: stCounts,
+    clinic_type_counts: ctCounts,
+    kpi_goal_collection_rate: DB.kpi.collectionRate,
+    kpi_goal_monthly_target: DB.kpi.monthlyTarget
+  };
+}
+
+// Build a compact case object for AI (strips fields it doesn't need)
+function aiCaseSnippet(c) {
+  return {
+    id: c.id, pid: c.cfpc_pid, acct: c.acct, patient: c.pat, dob: c.dob, phone: c.phone,
+    law_office: c.lo, provider: c.prov, procedure: c.proc, doi: c.dol,
+    clinic_type: c.ct, status: c.st, cfpc_status: c.stCfpc,
+    grade: c.gr, billed: c.bi, balance: c.bal,
+    referring_md: c.refmd, location: c.location, study_date: c.study,
+    notes: (c.notes||'').slice(0,500)
+  };
+}
+
 function sendAI(){
   var input=document.getElementById('ai-input');
   var q=input.value.trim();if(!q)return;
   addMsg(q,'u');input.value='';
   document.getElementById('ai-quick').style.display='none';
-  var P=DB.pays,tCh=P.reduce(function(s,p){return s+(p.ch||0);},0),tPd=P.reduce(function(s,p){return s+(p.paid||0);},0);
-  var rate=tCh>0?(tPd/tCh*100):0;
-  var ov=DB.fus.filter(function(f){return f.st==='pending'&&f.due<today();}).length;
-  var ql=q.toLowerCase();
-  var res;
-  if(ql.indexOf('collection')>=0||ql.indexOf('analyz')>=0||ql.indexOf('performance')>=0){
-    var top=DB.cases.filter(function(c){return c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,3);
-    res='<strong>📊 Collection Performance</strong><br><br>• Total charged: <strong>'+fc(tCh)+'</strong><br>• Collected: <strong>'+fc(tPd)+'</strong><br>• Rate: <strong>'+rate.toFixed(1)+'%</strong> '+(rate>=DB.kpi.collectionRate?'✅ Above goal':'⚠️ Below '+DB.kpi.collectionRate+'% goal')+'<br>• Overdue follow-ups: <strong>'+ov+'</strong><br><br><strong>Top balances:</strong><br>'+top.map(function(c,i){return (i+1)+'. '+c.pat+' — '+fc(c.bal);}).join('<br>');
-  } else if(ql.indexOf('urgent')>=0||ql.indexOf('priority')>=0){
-    var hp=DB.fus.filter(function(f){return f.st==='pending'&&f.pri==='high';});
-    res='<strong>🔥 High Priority ('+hp.length+')</strong><br><br>'+hp.slice(0,5).map(function(f,i){return (i+1)+'. <strong>'+f.pat+'</strong><br>   Balance: '+fc(f.bal)+' · Due: '+fd(f.due);}).join('<br><br>');
-  } else if(ql.indexOf('follow')>=0||ql.indexOf('message')>=0||ql.indexOf('write')>=0){
-    res='<strong>✉️ Follow-up Email Template</strong><br><br>Subject: Outstanding Balance — Action Required<br><br>Dear [Attorney],<br><br>This is a follow-up regarding your client\'s outstanding medical balance of <strong>$[AMOUNT]</strong> (Account: [ACCT #]).<br><br>Please contact us at your earliest convenience to arrange payment.<br><br>Best regards,<br>TotalMedix Team';
-  } else if(ql.indexOf('billing')>=0||ql.indexOf('code')>=0){
-    res='<strong>💡 Pain Management Billing Codes</strong><br><br>• <strong>99213</strong> — Office visit, moderate complexity<br>• <strong>99214</strong> — Office visit, high complexity<br>• <strong>64483</strong> — Epidural steroid injection<br>• <strong>64490</strong> — Facet joint injection<br>• <strong>97110</strong> — Therapeutic exercise<br>• <strong>72148</strong> — MRI lumbar spine';
-  } else {
-    res='I can help with:<br><br>• <strong>📊 Collection analysis</strong><br>• <strong>🔥 Urgent/priority cases</strong><br>• <strong>✉️ Follow-up messages</strong><br>• <strong>💡 Billing codes</strong><br><br><em>Add your Anthropic API key in Settings for full Claude AI.</em>';
+  // If no API key, fall back to canned responses (legacy demo behavior)
+  if (!S.aiKey) {
+    var fallback='I can help once an Anthropic API key is set.<br><br><strong>How to enable:</strong><br>1. Go to <em>Settings → 🔑 API Keys</em><br>2. Paste your <code>sk-ant-...</code> key<br>3. Save<br><br>Then ask me anything about collections, cases, follow-ups, or billing trends.';
+    setTimeout(function(){addMsg(fallback,'b');},400);
+    return;
   }
-  setTimeout(function(){addMsg(res,'b');},600);
+  // Show typing indicator
+  var typingId='typing-'+Date.now();
+  addMsg('<span id="'+typingId+'" style="display:inline-flex;align-items:center;gap:6px;color:var(--g500)"><span style="width:8px;height:8px;border:2px solid var(--g300);border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite"></span> thinking…</span>','b');
+  // Build a richer context: live stats + recent activities + current case if user is on one
+  var ctx = aiDataContext();
+  var top10balances = DB.cases.filter(function(c){return !c.merged_into && c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10).map(aiCaseSnippet);
+  var recentFUs = DB.fus.filter(function(f){return f.st==='pending';}).sort(function(a,b){return (a.due||'').localeCompare(b.due||'');}).slice(0,10).map(function(f){return {patient:f.pat, due:f.due, action:f.act, priority:f.pri, balance:f.bal};});
+  var currentCase = S.curCase ? aiCaseSnippet(DB.cases.find(function(x){return x.id===S.curCase;})||{}) : null;
+  var sys = 'You are a medical-collections analyst at TotalMedix. Reply in concise English (or Korean if user asks in Korean). Use markdown: **bold** for names/amounts, bullet lists where helpful, emoji headers like 📊 🔥 ✉️. Always ground answers in the JSON provided — if data is missing say so. Cite cases by Patient + Acct # + balance.';
+  var userPrompt = '## Question\n'+q+'\n\n## Live pipeline snapshot\n```json\n'+JSON.stringify(ctx,null,2)+'\n```\n\n## Top 10 outstanding balances\n```json\n'+JSON.stringify(top10balances,null,2)+'\n```\n\n## Pending follow-ups (top 10)\n```json\n'+JSON.stringify(recentFUs,null,2)+'\n```\n'+(currentCase?'\n## User is currently viewing this case\n```json\n'+JSON.stringify(currentCase,null,2)+'\n```\n':'')+'\nKeep the answer under 200 words unless the user explicitly asks for more.';
+  callClaude(sys, userPrompt, {maxTokens:1500})
+    .then(function(text){
+      var html = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/`([^`]+)`/g,'<code style="background:var(--g100);padding:1px 4px;border-radius:3px;font-size:12px">$1</code>')
+        .replace(/^\* (.+)$/gm,'• $1')
+        .replace(/\n/g,'<br>');
+      var t = document.getElementById(typingId); if(t) t.parentElement.innerHTML = html;
+    })
+    .catch(function(err){
+      var t = document.getElementById(typingId); if(t) t.parentElement.innerHTML = '<span style="color:var(--red)">⚠️ '+err.message+'</span>';
+    });
 }
 function aiAnalyzeCase(id){
   var c=DB.cases.find(function(x){return x.id===id;});if(!c)return;
@@ -3802,6 +4057,11 @@ function bindAll(){
   document.getElementById('ai-x').addEventListener('click',function(){document.getElementById('ai-panel').classList.remove('open');});
   document.getElementById('ai-send').addEventListener('click',sendAI);
   document.getElementById('ai-input').addEventListener('keydown',function(e){if(e.key==='Enter')sendAI();});
+  // AI Daily Brief (dashboard)
+  var bRun=document.getElementById('btn-brief-run'); if(bRun) bRun.addEventListener('click', generateDailyBrief);
+  var bRef=document.getElementById('btn-brief-refresh'); if(bRef) bRef.addEventListener('click', generateDailyBrief);
+  // AI Smart Search (cases)
+  var bSS=document.getElementById('btn-smart-search'); if(bSS) bSS.addEventListener('click', aiSmartSearch);
   document.getElementById('aq1').addEventListener('click',function(){document.getElementById('ai-input').value='Analyze my collection performance';sendAI();});
   document.getElementById('aq2').addEventListener('click',function(){document.getElementById('ai-input').value='Which cases need urgent follow-up?';sendAI();});
   document.getElementById('aq3').addEventListener('click',function(){document.getElementById('ai-input').value='Write follow-up messages for overdue cases';sendAI();});
