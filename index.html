@@ -1433,7 +1433,8 @@ function loadFromSupabase() {
                 phone:r.phone||'',dob:r.dob||null,sex:r.sex||'',
                 location:r.location||'',study:r.study_date||null,
                 refmd:r.referring_md||'',lien:parseFloat(r.lien)||0,
-                proc:r.procedure||'',merged_into:r.merged_into||null};
+                proc:r.procedure||'',merged_into:r.merged_into||null,
+                cfpc_pid:r.cfpc_pid||null};
       });
     }
     if (dbPays.length) {
@@ -2602,52 +2603,75 @@ function delFile(id){
 function rPatients(){
   var q=S.patQ.toLowerCase();
   var ctF=S.patCt||'';
-  var seen={},pats=[];
+  // Group by cfpc_pid (preferred) or patient name (legacy fallback)
+  var groups={};  // key -> {key, pid, name, phone, lo, cases:[c,...]}
   DB.cases.forEach(function(c){
-    if(!c.pat)return;
+    if(c.merged_into)return;
     if(S.clinicType&&c.ct!==S.clinicType)return;
     if(ctF&&c.ct!==ctF)return;
-    if(q&&![c.pat,c.lo,c.acct,c.prov].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;}))return;
-    if(!seen[c.pat]){
-      seen[c.pat]=true;
-      var filt=function(x){return x.pat===c.pat&&(!S.clinicType||x.ct===S.clinicType)&&(!ctF||x.ct===ctF);};
-      var cs=DB.cases.filter(filt);
-      var latestDol=cs.reduce(function(m,x){return x.dol&&x.dol>m?x.dol:m;},'');
-      pats.push({name:c.pat,cases:cs.length,bi:cs.reduce(function(s,x){return s+(x.bi||0);},0),bal:cs.reduce(function(s,x){return s+(x.bal||0);},0),lo:c.lo,dol:latestDol});
+    var key=c.cfpc_pid||c.pat||('id-'+c.id);
+    if(q){
+      var hay=[c.pat,c.lo,c.acct,c.prov,c.cfpc_pid,c.phone].filter(Boolean).join(' ').toLowerCase();
+      if(hay.indexOf(q)<0)return;
     }
+    if(!groups[key]){
+      groups[key]={key:key, pid:c.cfpc_pid||'', name:c.pat||'', phone:c.phone||'', lo:c.lo||'', ct:c.ct||'', cases:[]};
+    }
+    var g=groups[key];
+    g.cases.push(c);
+    if(!g.name && c.pat) g.name=c.pat;
+    if(!g.phone && c.phone) g.phone=c.phone;
+    if(!g.lo && c.lo) g.lo=c.lo;
+  });
+  var pats=Object.keys(groups).map(function(k){
+    var g=groups[k];
+    g.casesCount=g.cases.length;
+    g.bi=g.cases.reduce(function(s,x){return s+(x.bi||0);},0);
+    g.bal=g.cases.reduce(function(s,x){return s+(x.bal||0);},0);
+    g.dol=g.cases.reduce(function(m,x){return x.dol&&x.dol>m?x.dol:m;},'');
+    return g;
   });
   // Sort
   var sort=S.patSort||'';
-  if(sort==='name-asc') pats.sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
-  else if(sort==='name-desc') pats.sort(function(a,b){return (b.name||'').localeCompare(a.name||'');});
+  if(sort==='name-asc') pats.sort(function(a,b){return (a.name||a.pid||'').localeCompare(b.name||b.pid||'');});
+  else if(sort==='name-desc') pats.sort(function(a,b){return (b.name||b.pid||'').localeCompare(a.name||a.pid||'');});
   else if(sort==='bal-desc') pats.sort(function(a,b){return b.bal-a.bal;});
   else if(sort==='bal-asc') pats.sort(function(a,b){return a.bal-b.bal;});
-  else if(sort==='cases-desc') pats.sort(function(a,b){return b.cases-a.cases;});
+  else if(sort==='cases-desc') pats.sort(function(a,b){return b.casesCount-a.casesCount;});
   else if(sort==='bi-desc') pats.sort(function(a,b){return b.bi-a.bi;});
   var rc=document.getElementById('pat-rc');
   if(rc)rc.textContent=pats.length+' patients';
   document.getElementById('pat-grid').innerHTML=pats.length?
     '<div class="pat-grid">'+pats.map(function(p){
-      var color=clr(p.name);
-      return '<div class="pat-card" data-open-pat="'+encodeURIComponent(p.name)+'">'+
+      var label=p.name||p.pid||'(no name)';
+      var color=clr(label);
+      var sub=[p.pid?('🆔 '+p.pid):'', p.phone?('📞 '+p.phone):'', p.lo].filter(Boolean).join(' · ');
+      return '<div class="pat-card" data-open-key="'+encodeURIComponent(p.key)+'">'+
         '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">'+
-          '<div class="pat-av" style="background:'+color+'">'+ini(p.name)+'</div>'+
-          '<div><div style="font-size:15px;font-weight:700;color:var(--g900)">'+p.name+'</div><div style="font-size:12px;color:var(--g500);margin-top:2px">'+p.lo+'</div></div>'+
+          '<div class="pat-av" style="background:'+color+'">'+ini(label)+'</div>'+
+          '<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:700;color:var(--g900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+label+'</div><div style="font-size:11px;color:var(--g500);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(sub||'—')+'</div></div>'+
         '</div>'+
         '<div class="pat-stats">'+
-          '<div><div class="pst-l">Cases</div><div class="pst-v">'+p.cases+'</div></div>'+
+          '<div><div class="pst-l">Cases</div><div class="pst-v">'+p.casesCount+'</div></div>'+
           '<div><div class="pst-l">Billed</div><div class="pst-v" style="font-size:13px">'+fc(p.bi)+'</div></div>'+
           '<div><div class="pst-l">Balance</div><div class="pst-v" style="font-size:13px;color:var(--red)">'+fc(p.bal)+'</div></div>'+
         '</div>'+
       '</div>';
     }).join('')+'</div>':
     '<div class="empty"><div class="ei">🧑‍⚕️</div><div class="et">No patients found</div></div>';
-  document.querySelectorAll('[data-open-pat]').forEach(function(el){el.addEventListener('click',function(){openPatProfile(decodeURIComponent(el.dataset.openPat));});});
+  document.querySelectorAll('[data-open-key]').forEach(function(el){el.addEventListener('click',function(){openPatProfile(decodeURIComponent(el.dataset.openKey));});});
 }
 
-function openPatProfile(name){
-  var cases=DB.cases.filter(function(c){return c.pat===name;});
-  var pays=DB.pays.filter(function(p){return p.pat===name;});
+function openPatProfile(key){
+  // key may be cfpc_pid OR patient name OR 'id-<n>' fallback
+  var cases=DB.cases.filter(function(c){
+    if(c.merged_into) return false;
+    return (c.cfpc_pid && c.cfpc_pid===key) || (c.pat && c.pat===key) || ('id-'+c.id===key);
+  });
+  // Determine display name from this group
+  var first=cases[0]||{};
+  var name=first.pat || first.cfpc_pid || key;
+  var pays=DB.pays.filter(function(p){return p.pat && first.pat && p.pat===first.pat;});
   var tbi=cases.reduce(function(s,c){return s+(c.bi||0);},0);
   var tpd=pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var tbal=cases.reduce(function(s,c){return s+(c.bal||0);},0);
