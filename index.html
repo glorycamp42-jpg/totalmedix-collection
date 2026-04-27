@@ -5532,17 +5532,33 @@ function bindSettingsEvents() {
   var btnSaveSched = document.getElementById('btn-save-schedule');
   if (btnSaveSched) btnSaveSched.addEventListener('click', saveSchedule);
 
-  // API keys
+  // API keys — also persist in localStorage so it survives reloads
   var btnSaveAI = document.getElementById('btn-save-ai');
   if (btnSaveAI) btnSaveAI.addEventListener('click', function(){
     var k = document.getElementById('ai-key-input').value.trim();
     if (k) {
       S.aiKey = k;
+      try { localStorage.setItem('tmx_ai_key', k); } catch(e){}
       var statusEl = document.getElementById('ai-key-status');
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ API key saved</span>';
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ API key saved (persisted)</span>';
       toast('API key saved','🤖');
+    } else {
+      try { localStorage.removeItem('tmx_ai_key'); } catch(e){}
+      S.aiKey = '';
+      toast('Enter a valid key','⚠️');
     }
   });
+  // On boot, restore key from localStorage and prefill the input
+  try {
+    var savedKey = localStorage.getItem('tmx_ai_key');
+    if (savedKey) {
+      S.aiKey = savedKey;
+      var inp = document.getElementById('ai-key-input');
+      if (inp) inp.value = savedKey;
+      var statusEl2 = document.getElementById('ai-key-status');
+      if (statusEl2) statusEl2.innerHTML = '<span style="color:var(--green)">✅ API key loaded from local storage</span>';
+    }
+  } catch(e){}
 
   var btnSaveSupa = document.getElementById('btn-save-supa');
   if (btnSaveSupa) btnSaveSupa.addEventListener('click', saveSupabaseKeys);
