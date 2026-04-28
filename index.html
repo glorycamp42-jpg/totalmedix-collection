@@ -6174,33 +6174,58 @@ function bindSettingsEvents() {
   var btnSaveSched = document.getElementById('btn-save-schedule');
   if (btnSaveSched) btnSaveSched.addEventListener('click', saveSchedule);
 
-  // API keys — also persist in localStorage so it survives reloads
+  // API keys — save to BOTH localStorage (instant) AND Supabase (cross-PC)
   var btnSaveAI = document.getElementById('btn-save-ai');
   if (btnSaveAI) btnSaveAI.addEventListener('click', function(){
     var k = document.getElementById('ai-key-input').value.trim();
+    var statusEl = document.getElementById('ai-key-status');
     if (k) {
       S.aiKey = k;
       try { localStorage.setItem('tmx_ai_key', k); } catch(e){}
-      var statusEl = document.getElementById('ai-key-status');
-      if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ API key saved (persisted)</span>';
-      toast('API key saved','🤖');
+      // Save to cloud (Supabase app_config) so other PCs / users can use it
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--g500)">⏳ Saving to cloud...</span>';
+      supaFetch('app_config?on_conflict=key',{
+        method:'POST',
+        body:{key:'anthropic_api_key', value:k, updated_by:(S.user&&S.user.email)||'unknown'},
+        prefer:'return=minimal,resolution=merge-duplicates'
+      }).then(function(){
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ Saved to cloud — works on all PCs</span>';
+        toast('API key saved (cloud + local)','🤖');
+      }).catch(function(err){
+        if (statusEl) statusEl.innerHTML = '<span style="color:#d97706">⚠ Saved locally only (cloud failed: '+(err.message||'').slice(0,80)+')</span>';
+        toast('Saved locally only — run phase7_app_config.sql','⚠️');
+      });
     } else {
       try { localStorage.removeItem('tmx_ai_key'); } catch(e){}
       S.aiKey = '';
       toast('Enter a valid key','⚠️');
     }
   });
-  // On boot, restore key from localStorage and prefill the input
-  try {
-    var savedKey = localStorage.getItem('tmx_ai_key');
-    if (savedKey) {
-      S.aiKey = savedKey;
-      var inp = document.getElementById('ai-key-input');
-      if (inp) inp.value = savedKey;
-      var statusEl2 = document.getElementById('ai-key-status');
-      if (statusEl2) statusEl2.innerHTML = '<span style="color:var(--green)">✅ API key loaded from local storage</span>';
-    }
-  } catch(e){}
+  // On boot: try CLOUD first, fall back to localStorage
+  (async function loadAiKey(){
+    var inp = document.getElementById('ai-key-input');
+    var statusEl2 = document.getElementById('ai-key-status');
+    // 1. Check cloud
+    try {
+      var rows = await supaFetch('app_config?key=eq.anthropic_api_key&select=value',{method:'GET'});
+      if (rows && rows[0] && rows[0].value) {
+        S.aiKey = rows[0].value;
+        try { localStorage.setItem('tmx_ai_key', rows[0].value); } catch(e){}
+        if (inp) inp.value = rows[0].value;
+        if (statusEl2) statusEl2.innerHTML = '<span style="color:var(--green)">✅ API key loaded from cloud (synced across all PCs)</span>';
+        return;
+      }
+    } catch(e) { /* cloud unavailable, fall through */ }
+    // 2. Fall back to localStorage
+    try {
+      var savedKey = localStorage.getItem('tmx_ai_key');
+      if (savedKey) {
+        S.aiKey = savedKey;
+        if (inp) inp.value = savedKey;
+        if (statusEl2) statusEl2.innerHTML = '<span style="color:var(--green)">✅ API key loaded from local storage</span>';
+      }
+    } catch(e){}
+  })();
 
   var btnSaveSupa = document.getElementById('btn-save-supa');
   if (btnSaveSupa) btnSaveSupa.addEventListener('click', saveSupabaseKeys);
