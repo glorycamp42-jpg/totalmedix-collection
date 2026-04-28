@@ -6123,7 +6123,7 @@ function saveSupabaseKeys() {
 // ── Bind all settings events ──────────────────────────────────
 function bindSettingsEvents() {
   // Tab buttons
-  ['users','clinic','templates','billing','schedule','api','kpi','export'].forEach(function(tab) {
+  ['users','clinic','templates','billing','cfpcsync','schedule','api','kpi','export'].forEach(function(tab) {
     var el = document.getElementById('stab-'+tab);
     if (el) el.addEventListener('click', function(){ switchSettingsTab(tab); });
   });
