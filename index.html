@@ -1220,6 +1220,37 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
   </div>
 </div>
 
+<!-- Settle Case Modal -->
+<div class="mb" id="m-settle">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mtt">🤝 Settle Case</span><button class="mx" id="mx-settle">×</button></div>
+    <div class="mbd">
+      <div id="settle-header" style="background:var(--g50);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px"></div>
+      <div class="fg">
+        <div class="fd full"><label>Settlement Amount ($) — what you accepted</label><input type="number" id="settle-amt" step="0.01" min="0" placeholder="e.g. 2000.00"></div>
+        <div class="fd full" id="settle-calc" style="background:#dbeafe;border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:13px;display:none"></div>
+        <div class="fd full"><label>Reason</label>
+          <select id="settle-reason">
+            <option value="lien_reduction">Lien reduction agreed (변호사 협상)</option>
+            <option value="hardship">Patient hardship</option>
+            <option value="bad_faith">Bad faith / litigation risk</option>
+            <option value="quick_settlement">Quick settlement</option>
+            <option value="insurance_limit">Insurance limit</option>
+            <option value="aging">Aging / write-off</option>
+            <option value="other">Other (write below)</option>
+          </select>
+        </div>
+        <div class="fd full"><label>Settlement Date</label><input type="date" id="settle-date"></div>
+        <div class="fd full"><label>Notes (optional)</label><textarea id="settle-notes" rows="3" placeholder="e.g. Per attorney call 4/27, agreed to $2,000 final"></textarea></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn bs" id="mx2-settle">Cancel</button>
+      <button class="btn bp" id="settle-save" style="background:#0ea472">✅ Settle Case</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bulk Follow-up Modal -->
 <div class="mb" id="m-bulk-fu">
   <div class="modal" style="max-width:720px">
@@ -1509,7 +1540,11 @@ function loadFromSupabase() {
                 refmd:r.referring_md||'',lien:parseFloat(r.lien)||0,
                 proc:r.procedure||'',merged_into:r.merged_into||null,
                 cfpc_pid:r.cfpc_pid||null,master_id:r.master_id||null,
-                stCfpc:r.status_cfpc||null};
+                stCfpc:r.status_cfpc||null,
+                settleAmt:r.settlement_amount?parseFloat(r.settlement_amount):null,
+                settleDate:r.settlement_date||null,
+                settleReason:r.settlement_reason||null,
+                settleNotes:r.settlement_notes||null};
       });
     }
     if (dbPays.length) {
@@ -2045,6 +2080,22 @@ function go(pg){
 // ── DASHBOARD ────────────────────────────────────────────────
 function rDash(){
   var _dn=new Date();var _days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];var _months=['January','February','March','April','May','June','July','August','September','October','November','December'];document.getElementById('d-date').textContent=_days[_dn.getDay()]+', '+_months[_dn.getMonth()]+' '+_dn.getDate()+', '+_dn.getFullYear();
+  // 🤝 Settlement summary (this month)
+  (function(){
+    var t=today(); var monthStart=t.slice(0,7)+'-01';
+    var settled=DB.cases.filter(function(c){return c.settleDate && c.settleDate>=monthStart;});
+    var recovered=settled.reduce(function(s,c){return s+(c.settleAmt||0);},0);
+    var billed=settled.reduce(function(s,c){return s+(c.bi||0);},0);
+    var writeoff=billed-recovered;
+    var rate=billed>0?(recovered/billed*100).toFixed(1):'—';
+    var brief=document.getElementById('d-brief');
+    if (brief && settled.length>0) {
+      var existingTile=document.getElementById('d-settle-tile');
+      var tileHtml='<div id="d-settle-tile" style="background:#fff;border:1px solid var(--g200);border-left:4px solid #0ea472;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:var(--g500);font-weight:700;text-transform:uppercase">🤝 Settled This Month</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+settled.length+' cases · Recovered '+fc(recovered)+'</div></div><div style="font-size:12px;color:var(--g600);text-align:right">Original Billed: <strong>'+fc(billed)+'</strong><br>Write-off: <strong style="color:#dc2626">'+fc(writeoff)+'</strong> · Recovery: <strong style="color:#059669">'+rate+'%</strong></div></div>';
+      if (existingTile) existingTile.outerHTML = tileHtml;
+      else brief.parentElement.insertAdjacentHTML('beforebegin', tileHtml);
+    }
+  })();
   // CFPC Status Tiles — quick pulse on the pipeline
   var cfpcTiles=document.getElementById('d-cfpc-tiles');
   if (cfpcTiles) {
@@ -2324,6 +2375,7 @@ function openCD(id){
           '<button style="background:rgba(14,164,114,.4);border:1px solid rgba(14,164,114,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-email">📧 Email</button>'+
           '<button style="background:rgba(124,58,237,.4);border:1px solid rgba(124,58,237,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-ai-compose">✨ AI Compose</button>'+
           '<button style="background:rgba(245,158,11,.4);border:1px solid rgba(245,158,11,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-ai-next">🤖 Next Action</button>'+
+          (c.settleAmt!=null?'':('<button style="background:rgba(14,164,114,.45);border:1px solid rgba(14,164,114,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" id="cd-settle">🤝 Settle Case</button>'))+
         '</div>'+
       '</div>'+
       '<div class="dstats">'+
@@ -2412,6 +2464,8 @@ function bindCDEvents(){
   if(cdCompose)cdCompose.addEventListener('click',function(){aiComposeMessage(S.curCase);});
   var cdNext=document.getElementById('cd-ai-next');
   if(cdNext)cdNext.addEventListener('click',function(){aiNextAction(S.curCase);});
+  var cdSettle=document.getElementById('cd-settle');
+  if(cdSettle)cdSettle.addEventListener('click',function(){openSettleModal(S.curCase);});
 }
 
 // ── AI ② Compose Email/Text ─────────────────────────────────
@@ -3824,7 +3878,104 @@ function addMsg(text,cls){
   document.getElementById('ai-msgs').appendChild(el);
   document.getElementById('ai-msgs').scrollTop=99999;
 }
-// ── 📅 Monthly Performance Report ───────────────────────────────
+// ── 🤝 Settle Case ─────────────────────────────────────────────
+var SETTLE_REASON_LABEL = {
+  lien_reduction:    'Lien reduction',
+  hardship:          'Patient hardship',
+  bad_faith:         'Bad faith / litigation',
+  quick_settlement:  'Quick settlement',
+  insurance_limit:   'Insurance limit',
+  aging:             'Aging / write-off',
+  other:             'Other'
+};
+function openSettleModal(caseId) {
+  var c = DB.cases.find(function(x){return x.id===caseId;}); if(!c) return;
+  if (c.settleAmt!=null) { toast('Case already settled at $'+c.settleAmt,'ℹ️'); return; }
+  S.eid.settle = caseId;
+  document.getElementById('settle-header').innerHTML =
+    '<strong>'+(c.pat||'(no name)')+'</strong> · Acct # '+(c.acct||c.cfpc_pid||'—')+' · '+(c.lo||'—')+'<br>'+
+    '<span style="color:var(--g500)">Original Billed: <strong style="color:var(--g900)">'+fc(c.bi)+'</strong> · '+
+    'Current Balance: <strong style="color:var(--red)">'+fc(c.bal)+'</strong></span>';
+  document.getElementById('settle-amt').value = '';
+  document.getElementById('settle-reason').value = 'lien_reduction';
+  document.getElementById('settle-date').value = today();
+  document.getElementById('settle-notes').value = '';
+  document.getElementById('settle-calc').style.display = 'none';
+  document.getElementById('m-settle').classList.add('open');
+  // Live calculation as user types
+  var amtIn = document.getElementById('settle-amt');
+  amtIn.oninput = function(){
+    var amt = parseFloat(amtIn.value)||0;
+    var billed = c.bi||0;
+    var calcDiv = document.getElementById('settle-calc');
+    if (amt>0 && billed>0) {
+      var writeoff = billed - amt;
+      var rate = (amt/billed*100);
+      var color = rate>=70 ? '#059669' : rate>=40 ? '#d97706' : '#dc2626';
+      calcDiv.innerHTML = '→ Write-off: <strong>'+fc(writeoff)+'</strong> &nbsp;·&nbsp; Recovery rate: <strong style="color:'+color+'">'+rate.toFixed(1)+'%</strong>';
+      calcDiv.style.display = 'block';
+    } else { calcDiv.style.display = 'none'; }
+  };
+}
+function saveSettlement() {
+  var caseId = S.eid.settle;
+  var c = DB.cases.find(function(x){return x.id===caseId;}); if(!c) return;
+  var amt = parseFloat(document.getElementById('settle-amt').value);
+  if (!amt || amt<=0) { toast('Enter a valid settlement amount','⚠️'); return; }
+  if (amt > (c.bi||0)*1.5) { if(!confirm('Settlement amount is greater than original billed. Continue?')) return; }
+  var reason = document.getElementById('settle-reason').value;
+  var sdate = document.getElementById('settle-date').value || today();
+  var notes = (document.getElementById('settle-notes').value||'').trim();
+  var writeoff = (c.bi||0) - amt;
+  var rate = (c.bi>0) ? (amt/c.bi*100).toFixed(1) : 0;
+  var summary = '💰 Settled at '+fc(amt)+' ('+rate+'%) · Write-off '+fc(writeoff)+' · '+SETTLE_REASON_LABEL[reason];
+  closeModal('m-settle');
+  toast('Settling case…','🤝');
+  // 1. PATCH cases row
+  var caseUpdate = {
+    settlement_amount: amt,
+    settlement_date:   sdate,
+    settlement_reason: reason,
+    settlement_notes:  notes || null,
+    balance:           0,
+    status:            'Settled'
+  };
+  supaFetch('cases?id=eq.'+c.id, {method:'PATCH', body: caseUpdate, prefer:'return=minimal'})
+    .then(function(){
+      // local update
+      c.settleAmt=amt; c.settleDate=sdate; c.settleReason=reason; c.settleNotes=notes;
+      c.bal=0; c.st='Settled';
+      // 2. Insert payment row
+      return supaFetch('payments',{method:'POST', body:{
+        law_office: c.lo, account_num: c.acct, patient_name: c.pat, provider: c.prov,
+        date_of_loss: c.dol, pay_date: sdate, check_status: 'cleared',
+        clinic_type: c.ct, charged: c.bi||0, paid: amt
+      }, prefer:'return=representation'});
+    })
+    .then(function(payRows){
+      if (payRows && payRows[0]) {
+        DB.pays.unshift({id:payRows[0].id, lo:c.lo, acct:c.acct, pat:c.pat, prov:c.prov, dol:c.dol, pd:sdate, cs:'cleared', ct:c.ct, ch:c.bi||0, paid:amt});
+      }
+      // 3. Insert activity log
+      return supaFetch('activities',{method:'POST', body:{
+        case_id: c.id, activity_type: 'payment', text: summary+(notes?'\n\nNotes: '+notes:''),
+        created_by: (S.user&&S.user.name)||'system', outcome: 'settled'
+      }, prefer:'return=representation'});
+    })
+    .then(function(actRows){
+      if (actRows && actRows[0]) {
+        if(!DB.acts[c.id]) DB.acts[c.id] = [];
+        DB.acts[c.id].push({id:actRows[0].id, type:'payment', text:summary+(notes?'\n\nNotes: '+notes:''), date:today(), by:(S.user&&S.user.name)||'system', outcome:'settled'});
+      }
+      toast('Settled at '+fc(amt)+' ('+rate+'%)','✅');
+      // Re-open case detail to refresh
+      if (S.curCase===c.id) openCD(c.id);
+      rCase();
+    })
+    .catch(function(err){
+      toast('Settle failed: '+(err.message||'see console'),'❌');
+    });
+}
 function generateMonthlyReport() {
   // Default to last completed month
   var now = new Date();
@@ -4493,6 +4644,9 @@ function bindAll(){
   document.getElementById('ai-x').addEventListener('click',function(){document.getElementById('ai-panel').classList.remove('open');});
   document.getElementById('ai-send').addEventListener('click',sendAI);
   document.getElementById('ai-input').addEventListener('keydown',function(e){if(e.key==='Enter')sendAI();});
+  // 🤝 Settle Case modal
+  ['mx-settle','mx2-settle'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){closeModal('m-settle');});});
+  var bSv=document.getElementById('settle-save'); if(bSv) bSv.addEventListener('click', saveSettlement);
   // AI Daily Brief (dashboard)
   var bRun=document.getElementById('btn-brief-run'); if(bRun) bRun.addEventListener('click', generateDailyBrief);
   var bRef=document.getElementById('btn-brief-refresh'); if(bRef) bRef.addEventListener('click', generateDailyBrief);
