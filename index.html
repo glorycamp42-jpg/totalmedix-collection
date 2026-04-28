@@ -390,6 +390,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
             <span class="ct">🤖 AI Daily Brief</span>
             <div style="display:flex;gap:6px">
               <button class="btn bs bsm" id="btn-brief-refresh" title="Re-generate">🔄</button>
+              <button class="btn bs bsm" id="btn-brief-email" title="Send to my email">📧 Email Me</button>
               <button class="btn bp bsm" id="btn-brief-run">✨ Generate</button>
             </div>
           </div>
@@ -4006,6 +4007,50 @@ function aiSmartSearch() {
     });
 }
 
+// ── 📧 Daily Brief — Email Me ────────────────────────────────
+function emailDailyBrief() {
+  var briefEl = document.getElementById('d-brief');
+  if (!briefEl) return;
+  var text = (briefEl.innerText || '').trim();
+  // Heuristic: if user hasn't generated, the placeholder text starts with "Click"
+  if (!text || text.startsWith('Click') || text.indexOf('Generate') < 80 && text.length < 100) {
+    if (!confirm('No brief generated yet. Generate one now and then open mail?')) return;
+    generateDailyBrief();
+    // Wait a bit then re-attempt (simple polling)
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      var t=(document.getElementById('d-brief').innerText||'').trim();
+      // Check it's a real generated brief, not loading state
+      if (t.length>200 && t.indexOf('Top') >= 0) { clearInterval(iv); _doEmailDailyBrief(); }
+      else if (tries>40) { clearInterval(iv); toast('Brief generation taking too long; try again','⚠️'); }
+    }, 1500);
+    return;
+  }
+  _doEmailDailyBrief();
+}
+function _doEmailDailyBrief() {
+  var briefEl = document.getElementById('d-brief');
+  var text = (briefEl.innerText || '').trim();
+  // Strip the "Generated …" footer line
+  text = text.replace(/Generated [\d:APM ]+ ·.*$/m, '').trim();
+  var to = (S.user && S.user.email) || '';
+  var subject = 'TotalMedix Daily Brief — ' + new Date().toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
+  var body = text + '\n\n---\nGenerated from TotalMedix Collection at ' + new Date().toLocaleString() + '\n' + (location.origin||'');
+  var url = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  // mailto URLs have a length cap (~2000 chars on some clients) — guard
+  if (url.length > 8000) {
+    // Fallback: copy to clipboard + open empty mailto
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(body).then(function(){ toast('Brief too long for mailto. Copied to clipboard — paste into your email','📋'); });
+    }
+    window.open('mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject));
+  } else {
+    window.open(url);
+    toast('Mail draft opened — review and Send','📧');
+  }
+}
+
 // ── AI ① Daily Brief ──────────────────────────────────────────
 function generateDailyBrief() {
   var el = document.getElementById('d-brief');
@@ -4451,6 +4496,7 @@ function bindAll(){
   // AI Daily Brief (dashboard)
   var bRun=document.getElementById('btn-brief-run'); if(bRun) bRun.addEventListener('click', generateDailyBrief);
   var bRef=document.getElementById('btn-brief-refresh'); if(bRef) bRef.addEventListener('click', generateDailyBrief);
+  var bEm=document.getElementById('btn-brief-email'); if(bEm) bEm.addEventListener('click', emailDailyBrief);
   // AI Smart Search (cases)
   var bSS=document.getElementById('btn-smart-search'); if(bSS) bSS.addEventListener('click', aiSmartSearch);
   // AI Monthly Report (reports page)
