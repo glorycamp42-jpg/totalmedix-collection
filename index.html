@@ -3593,11 +3593,19 @@ function rReport(preset){
   // Pay table
   var sp=pays.slice().sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');});
   document.getElementById('rpt-paycount').textContent=sp.length+' records';
+  // Helper: normalize a name for fuzzy matching (case-insensitive, comma/whitespace agnostic)
+  function _normNm(s){
+    if (!s) return '';
+    return String(s).toLowerCase().replace(/[,.()]/g,' ').split(/\s+/).filter(function(w){return w&&!/^(jr|sr|ii|iii|iv|mr|mrs|ms|dr)$/.test(w);}).sort().join(' ');
+  }
   document.getElementById('rpt-paytb').innerHTML=sp.length?sp.map(function(p){
-    // Find matching case by account_num so the patient name links to case detail
-    var matchedCase = p.acct ? DB.cases.find(function(c){return c.acct===p.acct;}) : null;
+    // Find matching case: 1) by account_num, 2) by exact patient name, 3) by normalized name
+    var matchedCase = null;
+    if (p.acct) matchedCase = DB.cases.find(function(c){return c.acct===p.acct;});
+    if (!matchedCase && p.pat) matchedCase = DB.cases.find(function(c){return c.pat===p.pat;});
     if (!matchedCase && p.pat) {
-      matchedCase = DB.cases.find(function(c){return c.pat===p.pat;});
+      var pNorm = _normNm(p.pat);
+      if (pNorm) matchedCase = DB.cases.find(function(c){return _normNm(c.pat)===pNorm;});
     }
     var patCell;
     if (matchedCase) {
