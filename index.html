@@ -3593,23 +3593,27 @@ function rReport(preset){
   // Pay table
   var sp=pays.slice().sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');});
   document.getElementById('rpt-paycount').textContent=sp.length+' records';
-  // Helper: normalize a name for fuzzy matching (case-insensitive, comma/whitespace agnostic)
+  // Build lookup maps ONCE for fast O(1) case matching by acct / patient name / normalized name
   function _normNm(s){
     if (!s) return '';
     return String(s).toLowerCase().replace(/[,.()]/g,' ').split(/\s+/).filter(function(w){return w&&!/^(jr|sr|ii|iii|iv|mr|mrs|ms|dr)$/.test(w);}).sort().join(' ');
   }
-  document.getElementById('rpt-paytb').innerHTML=sp.length?sp.map(function(p){
-    // Find matching case: 1) by account_num, 2) by exact patient name, 3) by normalized name
-    var matchedCase = null;
-    if (p.acct) matchedCase = DB.cases.find(function(c){return c.acct===p.acct;});
-    if (!matchedCase && p.pat) matchedCase = DB.cases.find(function(c){return c.pat===p.pat;});
-    if (!matchedCase && p.pat) {
-      var pNorm = _normNm(p.pat);
-      if (pNorm) matchedCase = DB.cases.find(function(c){return _normNm(c.pat)===pNorm;});
+  var _acctMap = {}, _patMap = {}, _normMap = {};
+  for (var _i=0; _i<DB.cases.length; _i++) {
+    var _c = DB.cases[_i];
+    if (_c.acct && !_acctMap[_c.acct]) _acctMap[_c.acct] = _c.id;
+    if (_c.pat && !_patMap[_c.pat]) _patMap[_c.pat] = _c.id;
+    if (_c.pat) {
+      var _n = _normNm(_c.pat);
+      if (_n && !_normMap[_n]) _normMap[_n] = _c.id;
     }
+  }
+  document.getElementById('rpt-paytb').innerHTML=sp.length?sp.map(function(p){
+    // Find matching case ID via pre-built lookup maps (O(1))
+    var caseId = (p.acct && _acctMap[p.acct]) || (p.pat && _patMap[p.pat]) || (p.pat && _normMap[_normNm(p.pat)]) || null;
     var patCell;
-    if (matchedCase) {
-      patCell = '<td style="font-weight:500"><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700;text-decoration:none" onclick="openCD('+matchedCase.id+')" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">'+(p.pat||'—')+' ↗</a></td>';
+    if (caseId) {
+      patCell = '<td style="font-weight:500"><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700;text-decoration:none" onclick="openCD('+caseId+')" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">'+(p.pat||'—')+' ↗</a></td>';
     } else {
       patCell = '<td style="font-weight:500">'+(p.pat||'—')+'</td>';
     }
