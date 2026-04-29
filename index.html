@@ -2389,9 +2389,22 @@ function rCase(){
   else if(sort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'');});
   else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
   document.getElementById('case-rc').textContent=data.length+' records';
-  document.getElementById('case-tb').innerHTML=data.length?data.map(function(c){
+  // ── PERF: paginate to keep UI snappy with 8000+ cases ──
+  if (typeof S.caseLimit !== 'number') S.caseLimit = 200;
+  var view = data.slice(0, S.caseLimit);
+  document.getElementById('case-tb').innerHTML=view.length?view.map(function(c){
     return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
   }).join(''):'<tr><td colspan="16"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
+  // Append a "Load more" footer row if there are more records
+  if (data.length > S.caseLimit) {
+    var remaining = data.length - S.caseLimit;
+    var loadMoreHtml = '<tr id="case-load-more-row"><td colspan="16" style="text-align:center;padding:14px;background:#f8fafc"><button id="case-load-more" style="background:#3b5bdb;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">▼ Load '+Math.min(remaining,500)+' more (showing '+S.caseLimit+' of '+data.length+')</button> &nbsp; <button id="case-load-all" style="background:#fff;border:1px solid var(--g300);color:var(--g600);padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Load all</button></td></tr>';
+    document.getElementById('case-tb').insertAdjacentHTML('beforeend', loadMoreHtml);
+    var lm = document.getElementById('case-load-more');
+    if (lm) lm.addEventListener('click', function(){ S.caseLimit += 500; rCase(); });
+    var la = document.getElementById('case-load-all');
+    if (la) la.addEventListener('click', function(){ S.caseLimit = data.length; rCase(); });
+  }
 }
 
 function openCD(id){
@@ -3175,8 +3188,16 @@ function rPatients(){
   else if(sort==='bi-desc') pats.sort(function(a,b){return b.bi-a.bi;});
   var rc=document.getElementById('pat-rc');
   if(rc)rc.textContent=pats.length+' patients';
-  document.getElementById('pat-grid').innerHTML=pats.length?
-    '<div class="pat-grid">'+pats.map(function(p){
+  // ── PERF: paginate to keep UI snappy with thousands of patient cards ──
+  if (typeof S.patLimit !== 'number') S.patLimit = 200;
+  var patsView = pats.slice(0, S.patLimit);
+  var moreHtml = '';
+  if (pats.length > S.patLimit) {
+    var rem = pats.length - S.patLimit;
+    moreHtml = '<div style="grid-column:1/-1;text-align:center;padding:18px"><button id="pat-load-more" style="background:#3b5bdb;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">▼ Load '+Math.min(rem,500)+' more (showing '+S.patLimit+' of '+pats.length+')</button> &nbsp; <button id="pat-load-all" style="background:#fff;border:1px solid var(--g300);color:var(--g600);padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Load all</button></div>';
+  }
+  document.getElementById('pat-grid').innerHTML=patsView.length?
+    '<div class="pat-grid">'+patsView.map(function(p){
       var label=p.name||p.pid||'(no name)';
       var color=clr(label);
       // Sub-line shows acct, phone, law office. Multi-PID/phone = same person across accidents
@@ -3197,9 +3218,13 @@ function rPatients(){
           '<div><div class="pst-l">Balance</div><div class="pst-v" style="font-size:13px;color:var(--red)">'+fc(p.bal)+'</div></div>'+
         '</div>'+
       '</div>';
-    }).join('')+'</div>':
+    }).join('')+moreHtml+'</div>':
     '<div class="empty"><div class="ei">🧑‍⚕️</div><div class="et">No patients found</div></div>';
   document.querySelectorAll('[data-open-key]').forEach(function(el){el.addEventListener('click',function(){openPatProfile(decodeURIComponent(el.dataset.openKey));});});
+  var plm=document.getElementById('pat-load-more');
+  if (plm) plm.addEventListener('click', function(){ S.patLimit += 500; rPatients(); });
+  var pla=document.getElementById('pat-load-all');
+  if (pla) pla.addEventListener('click', function(){ S.patLimit = pats.length; rPatients(); });
 }
 
 function openPatProfile(key){
