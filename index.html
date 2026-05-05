@@ -558,9 +558,8 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 
           <!-- ══ LAW OFFICE ANALYSIS ══ -->
           <div id="rview-lawoffice-content" style="display:none">
-            <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
               <div class="sw" style="min-width:260px"><span class="si">🔍</span><input id="lo-search" placeholder="Search law office..."></div>
-              <select class="fl" id="lo-month-filter"><option value="">All Time</option></select>
               <select class="fl" id="lo-sort">
                 <option value="balance">Sort: Outstanding Balance</option>
                 <option value="cases">Sort: Most Cases</option>
@@ -568,6 +567,31 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
                 <option value="paid">Sort: Total Paid</option>
               </select>
               <span class="rc" id="lo-count"></span>
+            </div>
+            <!-- Date range filter + actions -->
+            <div style="background:#f8fafc;border:1px solid var(--g200);border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="font-size:12px;font-weight:800;color:var(--g700);display:flex;align-items:center;gap:5px">📅 Period:</div>
+              <input type="date" id="lo-date-from" style="font-size:12px;padding:6px 10px;border:1px solid var(--g300);border-radius:6px" placeholder="From">
+              <span style="color:var(--g400)">→</span>
+              <input type="date" id="lo-date-to" style="font-size:12px;padding:6px 10px;border:1px solid var(--g300);border-radius:6px" placeholder="To">
+              <select class="fl" id="lo-quick-range" style="font-size:12px">
+                <option value="">— Quick Range —</option>
+                <option value="this-month">This Month</option>
+                <option value="last-month">Last Month</option>
+                <option value="this-year">This Year</option>
+                <option value="last-year">Last Year</option>
+                <option value="last-12">Last 12 Months</option>
+                <option value="last-3y">Last 3 Years</option>
+                <option value="all">All Time</option>
+              </select>
+              <button id="lo-apply-range" style="background:#3b5bdb;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Apply</button>
+              <button id="lo-reset-range" style="background:#fff;border:1px solid var(--g300);color:var(--g600);padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Reset</button>
+              <span id="lo-range-label" style="font-size:11px;color:var(--g500);margin-left:6px"></span>
+              <div style="margin-left:auto;display:flex;gap:6px">
+                <button id="lo-list-print" style="background:#0f1e4a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">🖨️ Print</button>
+                <button id="lo-list-pdf" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">📄 Save PDF</button>
+                <button id="lo-list-email" style="background:#0ea472;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">📧 Email</button>
+              </div>
             </div>
             <div class="metrics" style="grid-template-columns:repeat(4,1fr)" id="lo-summary-cards"></div>
             <div id="lo-grid" style="margin-top:4px"></div>
@@ -6589,7 +6613,8 @@ openPatProfile = function(name) {
 
 var LO_STATE = {
   search: '',
-  month: '',
+  from: '',
+  to: '',
   sort: 'balance',
   viewing: null, // currently viewed law office name
 };
@@ -6609,28 +6634,54 @@ function switchReportView(view, el) {
   }
 }
 
+function _loRangeLabel(){
+  if (!LO_STATE.from && !LO_STATE.to) return 'All time';
+  return (LO_STATE.from?fd(LO_STATE.from):'…') + ' → ' + (LO_STATE.to?fd(LO_STATE.to):'…');
+}
+
 function initLOFilters() {
-  // Populate month filter from payment data
-  var months = {};
-  DB.pays.forEach(function(p) {
-    if (!p.pd) return;
-    var d = new Date(p.pd + 'T00:00:00');
-    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    var lbl = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()] + ' ' + d.getFullYear();
-    months[key] = lbl;
-  });
+  var fromInp = document.getElementById('lo-date-from');
+  var toInp   = document.getElementById('lo-date-to');
+  var quick   = document.getElementById('lo-quick-range');
+  var apply   = document.getElementById('lo-apply-range');
+  var reset   = document.getElementById('lo-reset-range');
+  var lbl     = document.getElementById('lo-range-label');
+  if (fromInp) fromInp.value = LO_STATE.from || '';
+  if (toInp)   toInp.value   = LO_STATE.to   || '';
+  if (lbl)     lbl.textContent = _loRangeLabel();
 
-  var sel = document.getElementById('lo-month-filter');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">All Time</option>' +
-    Object.keys(months).sort().reverse().map(function(k) {
-      return '<option value="'+k+'">'+months[k]+'</option>';
-    }).join('');
-
-  // Bind events once
-  if (!sel._bound) {
-    sel._bound = true;
-    sel.addEventListener('change', function(){ LO_STATE.month = this.value; rLawOffices(); });
+  if (apply && !apply._bound) {
+    apply._bound = true;
+    apply.addEventListener('click', function(){
+      LO_STATE.from = fromInp.value || '';
+      LO_STATE.to   = toInp.value   || '';
+      if (lbl) lbl.textContent = _loRangeLabel();
+      rLawOffices();
+    });
+    reset.addEventListener('click', function(){
+      LO_STATE.from=''; LO_STATE.to='';
+      if (fromInp) fromInp.value=''; if (toInp) toInp.value='';
+      if (quick) quick.value='';
+      if (lbl) lbl.textContent = _loRangeLabel();
+      rLawOffices();
+    });
+    quick.addEventListener('change', function(){
+      var v=this.value, n=new Date(), s='', e='';
+      function ymd(d){return d.toISOString().slice(0,10);}
+      if (v==='this-month') { s=ymd(new Date(n.getFullYear(),n.getMonth(),1)); e=ymd(n); }
+      else if (v==='last-month') { s=ymd(new Date(n.getFullYear(),n.getMonth()-1,1)); e=ymd(new Date(n.getFullYear(),n.getMonth(),0)); }
+      else if (v==='this-year') { s=ymd(new Date(n.getFullYear(),0,1)); e=ymd(n); }
+      else if (v==='last-year') { s=ymd(new Date(n.getFullYear()-1,0,1)); e=ymd(new Date(n.getFullYear()-1,11,31)); }
+      else if (v==='last-12') { var d=new Date(n); d.setMonth(d.getMonth()-12); s=ymd(d); e=ymd(n); }
+      else if (v==='last-3y') { var d3=new Date(n); d3.setFullYear(d3.getFullYear()-3); s=ymd(d3); e=ymd(n); }
+      else if (v==='all') { s=''; e=''; }
+      if (v) {
+        LO_STATE.from=s; LO_STATE.to=e;
+        if (fromInp) fromInp.value=s; if (toInp) toInp.value=e;
+        if (lbl) lbl.textContent = _loRangeLabel();
+        rLawOffices();
+      }
+    });
     document.getElementById('lo-sort').addEventListener('change', function(){ LO_STATE.sort = this.value; rLawOffices(); });
     document.getElementById('lo-search').addEventListener('input', function(){ LO_STATE.search = this.value.toLowerCase(); rLawOffices(); });
     document.getElementById('lo-detail-back').addEventListener('click', function(){
@@ -6638,16 +6689,99 @@ function initLOFilters() {
       document.getElementById('lo-grid').style.display = 'block';
       document.getElementById('lo-summary-cards').style.display = 'grid';
     });
+    // List-level Print / Save PDF / Email
+    document.getElementById('lo-list-print').addEventListener('click', function(){ printLOList(false); });
+    document.getElementById('lo-list-pdf').addEventListener('click',   function(){ printLOList(true);  });
+    document.getElementById('lo-list-email').addEventListener('click', function(){ emailLOList(); });
   }
 }
 
 function getFilteredPaysForLO() {
+  if (!LO_STATE.from && !LO_STATE.to) return DB.pays;
   return DB.pays.filter(function(p) {
-    if (!LO_STATE.month) return true;
     if (!p.pd) return false;
-    var d = new Date(p.pd + 'T00:00:00');
-    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    return key === LO_STATE.month;
+    if (LO_STATE.from && p.pd < LO_STATE.from) return false;
+    if (LO_STATE.to   && p.pd > LO_STATE.to  ) return false;
+    return true;
+  });
+}
+
+function printLOList(pdfMode){
+  var data = buildLOData();
+  var rangeLabel = _loRangeLabel();
+  var totalCh = data.reduce(function(s,lo){return s+lo.charged;},0);
+  var totalPd = data.reduce(function(s,lo){return s+lo.paid;},0);
+  var totalBal = totalCh - totalPd;
+  var rate = totalCh>0 ? (totalPd/totalCh*100).toFixed(1) : '0.0';
+  var win = window.open('','_blank','width=900,height=900');
+  win.document.write('<html><head><title>'+(pdfMode?'PDF — ':'')+'Law Office Analysis — '+rangeLabel+'</title>'+
+    '<style>'+getPrintStyles()+'</style></head><body>'+
+    (pdfMode?'<div style="background:#fef3c7;border:1px solid #f59e0b;color:#78350f;padding:10px 14px;margin-bottom:14px;border-radius:8px;font-size:13px"><strong>📄 Save as PDF:</strong> In the print dialog, select <strong>"Save as PDF"</strong> as the destination, then click Save.</div>':'')+
+    '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div><div class="info">Tel: '+COMPANY.phone+' &bull; Fax: '+COMPANY.fax+' &bull; '+COMPANY.email+'</div></div>'+
+    '<div class="title">Law Office Analysis</div>'+
+    '<div class="subtitle">Period: '+rangeLabel+' &bull; '+data.length+' law offices</div>'+
+    '<div class="meta">'+
+      '<div><div class="l">Total Charged</div><div class="v">'+fc(totalCh)+'</div></div>'+
+      '<div><div class="l">Collected</div><div class="v g">'+fc(totalPd)+'</div></div>'+
+      '<div><div class="l">Outstanding</div><div class="v r">'+fc(totalBal)+'</div></div>'+
+      '<div><div class="l">Collection Rate</div><div class="v" style="color:'+(parseFloat(rate)>=40?'#0ea472':'#dc2626')+'">'+rate+'%</div></div>'+
+    '</div>'+
+    '<h2>Law Offices ('+data.length+')</h2>'+
+    (data.length?'<table><thead><tr><th>#</th><th>Law Office</th><th>Cases</th><th>Pays</th><th>Charged</th><th>Paid</th><th>Outstanding</th><th>Rate</th><th>Grade</th></tr></thead><tbody>'+
+      data.map(function(lo,i){return '<tr><td>'+(i+1)+'</td><td style="font-weight:700">'+lo.name+'</td><td>'+lo.caseCount+'</td><td>'+lo.pays.length+'</td><td>'+fc(lo.charged)+'</td><td class="g" style="font-weight:700">'+fc(lo.paid)+'</td><td class="r" style="font-weight:700">'+fc(lo.balance)+'</td><td>'+lo.rate.toFixed(1)+'%</td><td>'+lo.grade+'</td></tr>';}).join('')+
+    '</tbody></table>':'<p style="color:#bbb;text-align:center;padding:16px">No data in period.</p>')+
+    '<div class="footer">'+COMPANY.name+' &bull; Law Office Analysis &bull; Generated '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+    '<div class="conf">CONFIDENTIAL — This document contains privileged information intended only for authorized personnel.</div>'+
+    '</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},400);
+}
+
+function emailLOList(){
+  var data = buildLOData();
+  var rangeLabel = _loRangeLabel();
+  var totalCh = data.reduce(function(s,lo){return s+lo.charged;},0);
+  var totalPd = data.reduce(function(s,lo){return s+lo.paid;},0);
+  var totalBal = totalCh - totalPd;
+  var rate = totalCh>0 ? (totalPd/totalCh*100).toFixed(1) : '0.0';
+  var subj='Law Office Analysis — '+rangeLabel+' — Outstanding '+fc(totalBal);
+  var body='LAW OFFICE ANALYSIS\n\nPeriod: '+rangeLabel+'\n'+data.length+' law offices\n\n'+
+    'Total Charged:    '+fc(totalCh)+'\n'+
+    'Total Collected:  '+fc(totalPd)+'\n'+
+    'Outstanding:      '+fc(totalBal)+'\n'+
+    'Collection Rate:  '+rate+'%\n\n'+
+    '--- LAW OFFICES ---\n'+
+    (data.length?data.map(function(lo,i){return (i+1)+'. '+lo.name+' | '+lo.caseCount+' cases | Charged: '+fc(lo.charged)+' | Paid: '+fc(lo.paid)+' | Outstanding: '+fc(lo.balance)+' | '+lo.rate.toFixed(1)+'% | Grade '+lo.grade;}).join('\n'):'No data in period')+
+    '\n\n— '+(typeof COMPANY!=='undefined'&&COMPANY.name?COMPANY.name:'TotalMedix Collection');
+  var existing=document.getElementById('lo-list-email-modal'); if(existing)existing.remove();
+  var modal=document.createElement('div');
+  modal.id='lo-list-email-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px';
+  modal.innerHTML=
+    '<div style="background:#fff;border-radius:14px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+      '<div style="padding:18px 22px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between"><div style="font-weight:800;font-size:15px">📧 Email Law Office Analysis</div><button id="llm-close" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--g500)">×</button></div>'+
+      '<div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">'+
+        '<div class="fd"><label>To</label><input type="email" id="llm-to" placeholder="recipient@email.com"></div>'+
+        '<div class="fd"><label>CC (optional)</label><input type="email" id="llm-cc"></div>'+
+        '<div class="fd"><label>Subject</label><input type="text" id="llm-subj" value="'+subj.replace(/"/g,'&quot;')+'"></div>'+
+        '<div class="fd"><label>Body</label><textarea id="llm-body" rows="14" style="font-family:ui-monospace,monospace;font-size:12px;white-space:pre">'+body.replace(/</g,'&lt;')+'</textarea></div>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end"><button id="llm-cancel" style="background:var(--g100);color:var(--g700);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Cancel</button><button id="llm-send" style="background:#0ea472;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Send via Email Client</button></div>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+  function close(){modal.remove();}
+  document.getElementById('llm-close').addEventListener('click',close);
+  document.getElementById('llm-cancel').addEventListener('click',close);
+  modal.addEventListener('click',function(e){if(e.target===modal)close();});
+  document.getElementById('llm-send').addEventListener('click',function(){
+    var to=document.getElementById('llm-to').value.trim();
+    var cc=document.getElementById('llm-cc').value.trim();
+    var s=document.getElementById('llm-subj').value;
+    var b=document.getElementById('llm-body').value;
+    var url='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(s)+'&body='+encodeURIComponent(b);
+    if(cc)url+='&cc='+encodeURIComponent(cc);
+    window.open(url,'_blank');
+    close();
   });
 }
 
