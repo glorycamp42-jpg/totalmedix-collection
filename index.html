@@ -418,6 +418,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="sw"><span class="si">🔍</span><input id="pay-q" placeholder="Search by patient, acct #, law office, doctor, DOL, pay date... (multi-word OK)"></div>
           <select class="fl" id="pay-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="pay-st-filter"><option value="">All Status</option><option value="received">Received</option><option value="pending">Pending</option><option value="cleared">Cleared</option><option value="returned">Returned</option></select>
+          <select class="fl" id="pay-sort"><option value="">Default</option><option value="pd-desc">Pay Date Newest</option><option value="pd-asc">Pay Date Oldest</option><option value="pat-asc">Patient A-Z</option><option value="pat-desc">Patient Z-A</option><option value="lo-asc">Law Office A-Z</option><option value="lo-desc">Law Office Z-A</option><option value="ch-desc">Charged High→Low</option><option value="paid-desc">Paid High→Low</option></select>
           <span class="rc" id="pay-rc"></span>
         </div>
         <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Provider</th><th>DOL</th><th>Pay Date</th><th>Clinic</th><th>Status</th><th>Charged</th><th>Paid</th><th></th></tr></thead><tbody id="pay-tb"></tbody></table></div>
@@ -437,7 +438,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <button class="btn bs bsm" id="btn-smart-search" title="Ask AI to find cases by natural language" style="background:#faf5ff;border-color:#e9d5ff;color:#7c3aed">✨ Smart Search</button>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
           <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
-          <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="coldest">❄️ Coldest Contact</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="lo-asc">Law Office A-Z</option></select>
+          <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="coldest">❄️ Coldest Contact</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="pat-desc">Patient Z-A</option><option value="lo-asc">Law Office A-Z</option><option value="lo-desc">Law Office Z-A</option></select>
           <select class="fl" id="case-sol-filter" title="SOL urgency filter"><option value="">All SOL</option><option value="expired">❌ Expired</option><option value="critical">🚨 ≤30 days</option><option value="urgent">🔴 ≤90 days</option><option value="warn">⚠️ ≤180 days</option></select>
           <span class="rc" id="case-rc"></span>
         </div>
@@ -565,6 +566,8 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
                 <option value="cases">Sort: Most Cases</option>
                 <option value="rate">Sort: Collection Rate</option>
                 <option value="paid">Sort: Total Paid</option>
+                <option value="name-asc">Sort: Name (A → Z)</option>
+                <option value="name-desc">Sort: Name (Z → A)</option>
               </select>
               <span class="rc" id="lo-count"></span>
             </div>
@@ -1804,7 +1807,7 @@ var S = {
   role:'admin', clinicType:null, user:null,
   fuTab:'pending', fuPri:'',
   payQ:'', paySt:'',
-  caseQ:'', caseSt:'', caseStCfpc:'', caseSort:'', patCt:'', patSort:'',
+  caseQ:'', caseSt:'', caseStCfpc:'', caseSort:'', patCt:'', patSort:'', paySort:'',
   fileQ:'', fileCat:'',
   fuQ:'', patQ:'', ct:'',
   rptStart:null, rptEnd:null,
@@ -2350,6 +2353,16 @@ function rPay(){
     var cMatch=S.clinicType?p.ct===S.clinicType:!S.ct||p.ct===S.ct;
     return (!S.paySt||p.cs===S.paySt)&&cMatch;
   });
+  // Sort
+  var psort=S.paySort||'';
+  if(psort==='pd-desc')      data.sort(function(a,b){return (b.pd||'').localeCompare(a.pd||'');});
+  else if(psort==='pd-asc')  data.sort(function(a,b){return (a.pd||'').localeCompare(b.pd||'');});
+  else if(psort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'', undefined, {sensitivity:'base'});});
+  else if(psort==='pat-desc')data.sort(function(a,b){return (b.pat||'').localeCompare(a.pat||'', undefined, {sensitivity:'base'});});
+  else if(psort==='lo-asc')  data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'', undefined, {sensitivity:'base'});});
+  else if(psort==='lo-desc') data.sort(function(a,b){return (b.lo||'').localeCompare(a.lo||'', undefined, {sensitivity:'base'});});
+  else if(psort==='ch-desc') data.sort(function(a,b){return (b.ch||0)-(a.ch||0);});
+  else if(psort==='paid-desc') data.sort(function(a,b){return (b.paid||0)-(a.paid||0);});
   document.getElementById('pay-rc').textContent=data.length+' records';
   document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
     var hasChk=p.chkFrontPath||p.chkBackPath;
@@ -2410,8 +2423,10 @@ function rCase(){
   if(sort==='coldest') data.sort(function(a,b){var da=lastContactDays(a.id);var db=lastContactDays(b.id);if(da===null&&db===null)return 0;if(da===null)return -1;if(db===null)return 1;return db-da;});
   else if(sort==='dol-desc') data.sort(function(a,b){return (b.dol||'').localeCompare(a.dol||'');});
   else if(sort==='dol-asc') data.sort(function(a,b){return (a.dol||'').localeCompare(b.dol||'');});
-  else if(sort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'');});
-  else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'');});
+  else if(sort==='pat-asc') data.sort(function(a,b){return (a.pat||'').localeCompare(b.pat||'', undefined, {sensitivity:'base'});});
+  else if(sort==='pat-desc') data.sort(function(a,b){return (b.pat||'').localeCompare(a.pat||'', undefined, {sensitivity:'base'});});
+  else if(sort==='lo-asc') data.sort(function(a,b){return (a.lo||'').localeCompare(b.lo||'', undefined, {sensitivity:'base'});});
+  else if(sort==='lo-desc') data.sort(function(a,b){return (b.lo||'').localeCompare(a.lo||'', undefined, {sensitivity:'base'});});
   document.getElementById('case-rc').textContent=data.length+' records';
   // ── PERF: paginate to keep UI snappy with 8000+ cases ──
   if (typeof S.caseLimit !== 'number') S.caseLimit = 200;
@@ -4756,6 +4771,8 @@ function bindAll(){
   document.getElementById('pay-st-filter').addEventListener('change',function(){S.paySt=this.value;rPay();});
   var payCt=document.getElementById('pay-ct-filter');
   if(payCt)payCt.addEventListener('change',function(){S.ct=this.value;rPay();});
+  var paySort=document.getElementById('pay-sort');
+  if(paySort)paySort.addEventListener('change',function(){S.paySort=this.value;rPay();});
 
   // Cases
   document.getElementById('btn-add-case').addEventListener('click',function(){openModal('case',null);});
@@ -6862,9 +6879,11 @@ function buildLOData() {
 
   // Sort
   result.sort(function(a,b) {
-    if (LO_STATE.sort === 'cases')   return b.caseCount - a.caseCount;
-    if (LO_STATE.sort === 'rate')    return b.rate - a.rate;
-    if (LO_STATE.sort === 'paid')    return b.paid - a.paid;
+    if (LO_STATE.sort === 'cases')     return b.caseCount - a.caseCount;
+    if (LO_STATE.sort === 'rate')      return b.rate - a.rate;
+    if (LO_STATE.sort === 'paid')      return b.paid - a.paid;
+    if (LO_STATE.sort === 'name-asc')  return (a.name||'').localeCompare(b.name||'', undefined, {sensitivity:'base'});
+    if (LO_STATE.sort === 'name-desc') return (b.name||'').localeCompare(a.name||'', undefined, {sensitivity:'base'});
     return b.balance - a.balance; // default: balance
   });
 
@@ -6883,9 +6902,11 @@ function rLawOffices() {
 
   // Re-sort after summary
   data.sort(function(a,b) {
-    if (LO_STATE.sort === 'cases')   return b.caseCount - a.caseCount;
-    if (LO_STATE.sort === 'rate')    return b.rate - a.rate;
-    if (LO_STATE.sort === 'paid')    return b.paid - a.paid;
+    if (LO_STATE.sort === 'cases')     return b.caseCount - a.caseCount;
+    if (LO_STATE.sort === 'rate')      return b.rate - a.rate;
+    if (LO_STATE.sort === 'paid')      return b.paid - a.paid;
+    if (LO_STATE.sort === 'name-asc')  return (a.name||'').localeCompare(b.name||'', undefined, {sensitivity:'base'});
+    if (LO_STATE.sort === 'name-desc') return (b.name||'').localeCompare(a.name||'', undefined, {sensitivity:'base'});
     return b.balance - a.balance;
   });
 
