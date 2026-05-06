@@ -850,32 +850,76 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
               <span class="ct">🔄 CFPC Sync — Pull New Cases Daily</span>
             </div>
             <div class="cb">
-              <div style="background:#dbeafe;border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;line-height:1.7">
-                <strong style="color:var(--accent);font-size:14px">📋 매일 1클릭으로 CFPC에서 새 케이스 가져오기</strong><br>
-                <ol style="margin:8px 0 0 18px;padding:0">
-                  <li>아래 <strong>Bookmark Bar에 추가</strong> (한 번만)</li>
-                  <li>매일: CFPC에 로그인 → Date 필터 적용 → <strong>Search</strong> 클릭</li>
-                  <li>결과 페이지에서 북마크 클릭 → 자동으로 새 PID만 추가</li>
+              <!-- ⚠️ 중요 경고 -->
+              <div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;line-height:1.7">
+                <strong style="color:#92400e;font-size:14px">⚠️ 이 기능은 cfpcinc.com 페이지에서만 작동합니다</strong><br>
+                <span style="color:#78350f">아래 보라색 버튼을 <strong>현재 페이지에서 클릭하면 안 됩니다</strong>. 반드시 1단계에 따라 북마크 바에 드래그한 뒤, cfpcinc.com 검색 결과 페이지에서 그 북마크를 클릭해야 합니다.</span>
+              </div>
+
+              <!-- STEP 1: 북마크 추가 (1번만) -->
+              <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:18px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <span style="background:#0284c7;color:#fff;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</span>
+                  <strong style="font-size:15px;color:#0c4a6e">처음 1번만: 북마크 바에 추가</strong>
+                </div>
+                <ol style="margin:6px 0 12px 38px;padding:0;font-size:13px;color:var(--g700);line-height:1.8">
+                  <li>Chrome 북마크 바가 안 보이면 <kbd style="background:#fff;border:1px solid var(--g300);border-radius:4px;padding:2px 6px;font-size:11px">Ctrl + Shift + B</kbd></li>
+                  <li>아래 보라색 버튼을 <strong style="color:#7c3aed">마우스로 잡고 → 북마크 바로 드래그</strong></li>
+                </ol>
+                <div style="margin-left:38px">
+                  <a id="sync-bookmarklet" href="#" draggable="true" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 20px;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px;cursor:grab;user-select:none;box-shadow:0 4px 12px rgba(124,58,237,.3)" title="이 버튼을 북마크 바로 드래그하세요">🔄 TotalMedix CFPC Sync</a>
+                  <div style="font-size:11px;color:var(--g500);margin-top:6px">↑ 클릭이 아니라 <strong>드래그&드롭</strong>해서 북마크 바에 올려놓으세요</div>
+                </div>
+              </div>
+
+              <!-- STEP 2: cfpcinc.com 열기 -->
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <span style="background:#0ea472;color:#fff;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">2</span>
+                  <strong style="font-size:15px;color:#14532d">매일: CFPC 사이트 열고 검색 실행</strong>
+                </div>
+                <ol style="margin:6px 0 12px 38px;padding:0;font-size:13px;color:var(--g700);line-height:1.8">
+                  <li>아래 버튼으로 cfpcinc.com 새 탭에서 열기</li>
+                  <li>로그인 → Date 필터 설정 (예: 어제~오늘) → <strong>Search</strong> 클릭</li>
+                  <li>검색 결과 테이블이 화면에 보이는 상태가 되어야 함</li>
+                </ol>
+                <div style="margin-left:38px">
+                  <a href="https://www.cfpcinc.com/" target="_blank" rel="noopener" style="display:inline-block;background:#0ea472;color:#fff;padding:10px 18px;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px">🌐 CFPC 사이트 열기 (새 탭)</a>
+                </div>
+              </div>
+
+              <!-- STEP 3: 북마크 클릭 -->
+              <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:12px;padding:18px;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <span style="background:#a855f7;color:#fff;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">3</span>
+                  <strong style="font-size:15px;color:#581c87">cfpcinc.com 검색 결과 페이지에서 북마크 클릭</strong>
+                </div>
+                <ol style="margin:6px 0 0 38px;padding:0;font-size:13px;color:var(--g700);line-height:1.8">
+                  <li>cfpcinc.com 결과 페이지가 떠 있는 상태에서</li>
+                  <li>북마크 바의 <strong style="color:#7c3aed">"🔄 TotalMedix CFPC Sync"</strong> 클릭</li>
+                  <li>"N new PIDs found. Add to TotalMedix?" 확인창 → <strong>OK</strong></li>
+                  <li>완료 알림 뜸: "OK Added: N / Failed: 0"</li>
                 </ol>
               </div>
-              <div style="margin-bottom:14px">
-                <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">방법 1 (추천): Bookmark</div>
-                <p style="font-size:13px;color:var(--g600);margin:0 0 8px">아래 보라색 링크를 <strong>북마크 바에 드래그&드롭</strong>하세요.</p>
-                <a id="sync-bookmarklet" href="#" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 18px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">🔄 TotalMedix CFPC Sync</a>
-              </div>
+
+              <!-- 방법 2: 콘솔 붙여넣기 (대안) -->
+              <details style="margin-top:18px;padding-top:14px;border-top:1px solid var(--g200)">
+                <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--g600);user-select:none">▶ 대안 방법: 코드 복사 + 콘솔 붙여넣기 (북마크 안 될 때)</summary>
+                <div style="padding:14px 0 0 18px">
+                  <p style="font-size:13px;color:var(--g600);margin:0 0 8px">cfpcinc.com 검색 결과 페이지에서 <kbd style="background:#fff;border:1px solid var(--g300);border-radius:4px;padding:2px 6px;font-size:11px">F12</kbd> → <strong>Console</strong> 탭 → 붙여넣기 → Enter</p>
+                  <p style="font-size:12px;color:#dc2626;margin:0 0 8px;background:#fef2f2;padding:8px 10px;border-radius:6px;border-left:3px solid #dc2626">⚠️ Chrome이 "Allow paste" 경고를 띄우면, Console에 <code style="background:#fff;padding:1px 4px;border-radius:3px">allow pasting</code> 입력하고 Enter → 그 다음 코드 붙여넣기</p>
+                  <button class="btn bp bsm" id="btn-copy-sync-code">📋 Sync 코드 복사</button>
+                </div>
+              </details>
+
+              <!-- 사용 팁 -->
               <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--g200)">
-                <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">방법 2: 코드 복사 + 콘솔 붙여넣기</div>
-                <p style="font-size:13px;color:var(--g600);margin:0 0 8px">CFPC 검색 결과 페이지에서 <strong>F12 → Console</strong> → 붙여넣기 → Enter</p>
-                <button class="btn bp bsm" id="btn-copy-sync-code">📋 Copy Sync Code</button>
-              </div>
-              <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--g200)">
-                <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">사용 팁</div>
+                <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💡 자주 발생하는 문제</div>
                 <ul style="font-size:12px;color:var(--g600);margin:0;padding-left:18px;line-height:1.8">
-                  <li>CFPC에 매일 한 번 로그인 (세션 유지)</li>
-                  <li>Date 범위는 "지난 sync 후 ~ 오늘"로 설정 권장</li>
-                  <li>처음에 다 가져오려면 OR 옵션을 <code>*</code>로 설정 후 Search</li>
-                  <li>Sync 후 토스트로 "N new cases added" 표시</li>
-                  <li>이미 DB에 있는 PID는 자동 스킵 (중복 추가 안 됨)</li>
+                  <li><strong>"Open this on cfpcinc.com..." 알림</strong> → 지금 totalmedix 페이지에서 클릭한 것. cfpcinc.com 페이지로 이동 후 클릭</li>
+                  <li><strong>"No PIDs on this page"</strong> → cfpcinc.com에서 Search 안 누른 것. 검색 결과가 화면에 보여야 함</li>
+                  <li><strong>"All already in DB"</strong> → 이미 DB에 있는 PID. 새 케이스 없음 (중복 추가 안 됨)</li>
+                  <li>북마크 바 안 보임 → <kbd style="background:var(--g100);border:1px solid var(--g300);border-radius:3px;padding:1px 5px;font-size:10px">Ctrl+Shift+B</kbd></li>
                 </ul>
               </div>
             </div>
@@ -4100,18 +4144,21 @@ function buildCfpcSyncCode() {
   // This code runs ON cfpcinc.com after a Search has loaded results.
   // It diffs current page PIDs with DB and inserts new cases.
   return "(async function(){"+
-    "if(!location.hostname.endsWith('cfpcinc.com')){alert('Open this on cfpcinc.com after running Search');return;}"+
+    "if(!location.hostname.endsWith('cfpcinc.com')){alert('⚠️ 이 버튼은 cfpcinc.com 페이지에서만 작동합니다.\\n\\n사용법:\\n1) 새 탭에서 cfpcinc.com 열기\\n2) 로그인 → Search 클릭\\n3) 검색 결과 페이지에서 이 북마크 클릭');return;}"+
     "var u='https://pnnxkvqxfrebktxaloiw.supabase.co';var k='sb_publishable_UBlSo4cvTc56SrBviNJHqw_IrIeN6g_';"+
     "var h={apikey:k,Authorization:'Bearer '+k,'Content-Type':'application/json'};"+
+    "console.log('[TotalMedix Sync] Loading existing PIDs from DB...');"+
     "var dbP=new Set();for(var o=0;o<20000;o+=1000){var r=await fetch(u+'/rest/v1/cases?select=cfpc_pid&cfpc_pid=not.is.null&limit=1000&offset='+o,{headers:h});var rr=await r.json();for(var i=0;i<rr.length;i++)if(rr[i]&&rr[i].cfpc_pid)dbP.add(rr[i].cfpc_pid);if(rr.length<1000)break;}"+
+    "console.log('[TotalMedix Sync] DB has',dbP.size,'PIDs. Scanning page...');"+
     "var cP=new Set();document.querySelectorAll('td').forEach(function(td){var t=(td.textContent||'').trim();if(/^[A-Z]{1,3}\\d{2,}$/.test(t)&&t.length<=15)cP.add(t);});"+
-    "if(cP.size===0){alert('No PIDs on this page. Run Search first.');return;}"+
+    "console.log('[TotalMedix Sync] Page PIDs:',cP.size);"+
+    "if(cP.size===0){alert('⚠️ 이 페이지에서 PID를 찾을 수 없습니다.\\n\\ncfpcinc.com 검색 결과 페이지가 화면에 보이는지 확인하세요.\\n(Search 버튼을 누르고 결과 테이블이 떠 있어야 합니다)');return;}"+
     "var nP=[];cP.forEach(function(p){if(!dbP.has(p))nP.push(p);});"+
-    "if(!nP.length){alert(cP.size+' PIDs found, all already in DB.');return;}"+
-    "if(!confirm(nP.length+' new PIDs found.\\nAdd to TotalMedix?'))return;"+
+    "if(!nP.length){alert('✅ 페이지에서 '+cP.size+'개 PID 발견 — 모두 이미 DB에 있습니다.\\n새 케이스 없음.');return;}"+
+    "if(!confirm('🆕 새 PID '+nP.length+'개 발견!\\n\\nTotalMedix에 추가할까요?'))return;"+
     "var ok=0,bad=0,smp=[];"+
     "for(var i=0;i<nP.length;i++){var pid=nP[i];try{"+
-      "var sr=await fetch('http://www.cfpcinc.com/components/scripts/globalsearch.php?name='+encodeURIComponent(pid)+'&searchType=globalSearch',{credentials:'include'});"+
+      "var sr=await fetch('https://www.cfpcinc.com/components/scripts/globalsearch.php?name='+encodeURIComponent(pid)+'&searchType=globalSearch',{credentials:'include'});"+
       "var hh=await sr.text();var d=new DOMParser().parseFromString(hh,'text/html');var rec=null;"+
       "var trs=d.querySelectorAll('tr');for(var j=0;j<trs.length;j++){var tds=trs[j].querySelectorAll('td');"+
         "if(tds.length>=15&&(tds[4].textContent||'').trim()===pid){"+
@@ -4124,7 +4171,7 @@ function buildCfpcSyncCode() {
       "var ir=await fetch(u+'/rest/v1/cases',{method:'POST',headers:Object.assign({},h,{Prefer:'return=minimal'}),body:JSON.stringify(b)});"+
       "if(ir.ok){ok++;if(smp.length<5)smp.push(pid+' '+nme);}else bad++;"+
     "}catch(e){bad++;}}"+
-    "alert('TotalMedix Sync Complete!\\n\\nOK Added: '+ok+'\\nx Failed: '+bad+'\\n\\nFirst few:\\n'+smp.join('\\n'));"+
+    "alert('✅ TotalMedix Sync 완료!\\n\\n✓ 추가됨: '+ok+'개\\n✗ 실패: '+bad+'개\\n\\n추가된 케이스 일부:\\n'+smp.join('\\n'));"+
   "})();";
 }
 function setupCfpcSync() {
