@@ -6629,6 +6629,7 @@ function switchReportView(view, el) {
   document.getElementById('rview-lawoffice-content').style.display = view === 'lawoffice' ? 'block' : 'none';
 
   if (view === 'lawoffice') {
+    LO_STATE.viewing = null;  // always start on the list when switching into this tab
     initLOFilters();
     rLawOffices();
   }
@@ -6656,14 +6657,14 @@ function initLOFilters() {
       LO_STATE.from = fromInp.value || '';
       LO_STATE.to   = toInp.value   || '';
       if (lbl) lbl.textContent = _loRangeLabel();
-      rLawOffices();
+      refreshLOView();
     });
     reset.addEventListener('click', function(){
       LO_STATE.from=''; LO_STATE.to='';
       if (fromInp) fromInp.value=''; if (toInp) toInp.value='';
       if (quick) quick.value='';
       if (lbl) lbl.textContent = _loRangeLabel();
-      rLawOffices();
+      refreshLOView();
     });
     quick.addEventListener('change', function(){
       var v=this.value, n=new Date(), s='', e='';
@@ -6679,15 +6680,17 @@ function initLOFilters() {
         LO_STATE.from=s; LO_STATE.to=e;
         if (fromInp) fromInp.value=s; if (toInp) toInp.value=e;
         if (lbl) lbl.textContent = _loRangeLabel();
-        rLawOffices();
+        refreshLOView();
       }
     });
-    document.getElementById('lo-sort').addEventListener('change', function(){ LO_STATE.sort = this.value; rLawOffices(); });
-    document.getElementById('lo-search').addEventListener('input', function(){ LO_STATE.search = this.value.toLowerCase(); rLawOffices(); });
+    document.getElementById('lo-sort').addEventListener('change', function(){ LO_STATE.sort = this.value; refreshLOView(); });
+    document.getElementById('lo-search').addEventListener('input', function(){ LO_STATE.search = this.value.toLowerCase(); refreshLOView(); });
     document.getElementById('lo-detail-back').addEventListener('click', function(){
+      LO_STATE.viewing = null;
       document.getElementById('lo-detail').style.display = 'none';
       document.getElementById('lo-grid').style.display = 'block';
       document.getElementById('lo-summary-cards').style.display = 'grid';
+      rLawOffices();
     });
     // List-level Print / Save PDF / Email
     document.getElementById('lo-list-print').addEventListener('click', function(){ printLOList(false); });
@@ -6975,11 +6978,31 @@ function rLawOffices() {
     }).join('')+'</div>';
 }
 
+function refreshLOView() {
+  // If user is viewing a specific law office detail, re-render the detail with current filters.
+  // Otherwise render the list. This keeps date-range / sort / search changes from bouncing the
+  // user back to the list while they're inspecting a single law office.
+  if (LO_STATE.viewing) {
+    openLODetail(encodeURIComponent(LO_STATE.viewing));
+  } else {
+    rLawOffices();
+  }
+}
+
 function openLODetail(nameEnc) {
   var name = decodeURIComponent(nameEnc);
+  LO_STATE.viewing = name;
   var data = buildLOData();
   var lo   = data.find(function(x){ return x.name === name; });
-  if (!lo) return;
+  if (!lo) {
+    // Filter excluded this law office (no matching data) — show the list with an info note.
+    LO_STATE.viewing = null;
+    document.getElementById('lo-grid').style.display = 'block';
+    document.getElementById('lo-summary-cards').style.display = 'grid';
+    document.getElementById('lo-detail').style.display = 'none';
+    rLawOffices();
+    return;
+  }
 
   document.getElementById('lo-grid').style.display = 'none';
   document.getElementById('lo-summary-cards').style.display = 'none';
