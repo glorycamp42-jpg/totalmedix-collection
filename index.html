@@ -1643,7 +1643,7 @@ function loadFromSupabase() {
     // Map Supabase rows → app format (keep demo data if Supabase table is empty)
     if (dbCases.length) {
       DB.cases = dbCases.map(function(r) {
-        return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
+        return {id:r.id,lo:r.law_office,branch:r.law_office_branch||null,acct:r.account_num,pat:r.patient_name,prov:r.provider,
                 dol:r.date_of_loss,st:r.status,ct:mapCT(r.clinic_type),bi:parseFloat(r.billed)||0,
                 bal:parseFloat(r.balance)||0,gr:r.grade,notes:r.notes||'',
                 phone:r.phone||'',dob:r.dob||null,sex:r.sex||'',
@@ -1660,7 +1660,7 @@ function loadFromSupabase() {
     }
     if (dbPays.length) {
       DB.pays = dbPays.map(function(r) {
-        return {id:r.id,lo:r.law_office,acct:r.account_num,pat:r.patient_name,prov:r.provider,
+        return {id:r.id,lo:r.law_office,branch:r.law_office_branch||null,acct:r.account_num,pat:r.patient_name,prov:r.provider,
                 dol:r.date_of_loss,pd:r.pay_date,cs:r.check_status,ct:mapCT(r.clinic_type),
                 ch:parseFloat(r.charged)||0,paid:parseFloat(r.paid)||0,
                 chkFrontPath:r.check_front_path||null,chkBackPath:r.check_back_path||null};
@@ -2476,7 +2476,7 @@ function rCase(){
   if (typeof S.caseLimit !== 'number') S.caseLimit = 200;
   var view = data.slice(0, S.caseLimit);
   document.getElementById('case-tb').innerHTML=view.length?view.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+(c.branch?' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">'+c.branch+'</span>':'')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
   }).join(''):'<tr><td colspan="16"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
   // Append a "Load more" footer row if there are more records
   if (data.length > S.caseLimit) {
@@ -2503,7 +2503,7 @@ function openCD(id){
   document.getElementById('cd-body').innerHTML=
     '<div class="dhero">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">'+
-        '<div><h1>'+(c.pat||'Unknown')+'</h1><p>Account #'+(c.acct||'—')+' · '+(c.lo||'—')+' · '+(c.prov||'—')+'</p></div>'+
+        '<div><h1>'+(c.pat||'Unknown')+'</h1><p>Account #'+(c.acct||'—')+' · '+(c.lo||'—')+(c.branch?' <span style="background:rgba(255,255,255,.18);padding:1px 8px;border-radius:6px;font-size:11px;font-weight:600">'+c.branch+'</span>':'')+' · '+(c.prov||'—')+'</p></div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+sb(c.st)+' '+gb(c.gr)+
           '<button style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" data-edit-case="'+c.id+'">Edit</button>'+
           '<button style="background:rgba(124,58,237,.4);border:1px solid rgba(124,58,237,.6);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" data-ai-case="'+c.id+'">🤖 AI Analyze</button>'+
