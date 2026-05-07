@@ -4664,11 +4664,173 @@ function aiCaseSnippet(c) {
   };
 }
 
+// ── Intent detection: "show ALL / print / pdf / email / csv" requests ─────
+function aiDetectListIntent(q){
+  var lo = q.toLowerCase();
+  var listAll = /\b(all|every|list|show)\b/.test(lo) || /모두|모든|다\s*보여|다\s*프린트|다\s*리스트|전체|싹\s*다/.test(q);
+  var print   = /\bprint\b/.test(lo) || /프린트|인쇄/.test(q);
+  var pdf     = /\bpdf\b/.test(lo) || /pdf로|pdf\s*저장/i.test(q);
+  var email   = /\bemail\b/.test(lo) || /이메일|메일\s*보내/.test(q);
+  var csv     = /\b(csv|excel|export|download)\b/.test(lo) || /엑셀|csv|내보내기/.test(q);
+  return {listAll:listAll, print:print, pdf:pdf, email:email, csv:csv,
+          anyAction: listAll||print||pdf||email||csv};
+}
+// ── Find cases matching filters extracted from the question ──────────────
+function aiFilterCases(q){
+  var lo = q.toLowerCase();
+  // Status filter (Bill Sent, Bill Pending, Paid, Settled, Closed, Active, Pending, etc.)
+  var statusMap = {
+    'bill sent': 'Bill Sent', 'bill pending':'Bill Pending', 'mri pending':'Mri Pending',
+    'paid':'Paid', 'settled':'Settled', 'closed':'Closed', 'active':'Active',
+    'pending':'Pending', 'sent to collections':'Sent to collections', 'dropped':'Dropped',
+    'ic report':'IC Report Pending', 'liberty mutual':'Liberty Mutual Case',
+    'unsigned lien':'Unsigned Liens', 'litigation':'Litigation'
+  };
+  var matchedStatus = null;
+  Object.keys(statusMap).forEach(function(k){ if (lo.indexOf(k)>=0) matchedStatus = statusMap[k]; });
+  // Law office filter — try to match by substring against all distinct names
+  var loNames = {};
+  DB.cases.forEach(function(c){ if(c.lo) loNames[c.lo]=true; });
+  var matchedLO = null;
+  Object.keys(loNames).forEach(function(name){
+    if (matchedLO) return;
+    if (lo.indexOf(name.toLowerCase()) >= 0) matchedLO = name;
+  });
+  // Patient filter — try common patient names mentioned
+  var matchedPat = null;
+  // Date range filters
+  var matchedDateFrom = null, matchedDateTo = null;
+  var dr = q.match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4}).{0,15}(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/);
+  if (dr) {
+    function norm(d){ if(/\d{4}-\d{2}-\d{2}/.test(d)) return d; var m=d.split('/'); return m[2]+'-'+String(m[0]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0'); }
+    matchedDateFrom = norm(dr[1]); matchedDateTo = norm(dr[2]);
+  }
+  // Filter cases
+  var hits = DB.cases.filter(function(c){
+    if (c.merged_into) return false;
+    if (matchedStatus && c.stCfpc !== matchedStatus && c.st !== matchedStatus) return false;
+    if (matchedLO && c.lo !== matchedLO) return false;
+    if (matchedDateFrom && (!c.dol || c.dol < matchedDateFrom)) return false;
+    if (matchedDateTo && (!c.dol || c.dol > matchedDateTo)) return false;
+    return true;
+  });
+  return { hits: hits, status: matchedStatus, lawOffice: matchedLO,
+           dateFrom: matchedDateFrom, dateTo: matchedDateTo };
+}
+// ── Render a full data table with action buttons in chat ──────────────────
+function aiRenderListResponse(filter, intent, q){
+  var hits = filter.hits;
+  if (!hits.length) {
+    return '<div style="color:var(--g500)">No cases match your filters: '+
+      [filter.status?'status='+filter.status:'',filter.lawOffice?'law office='+filter.lawOffice:'',
+       filter.dateFrom?'from '+filter.dateFrom:'',filter.dateTo?'to '+filter.dateTo:''].filter(Boolean).join(', ')+'</div>';
+  }
+  // Build a unique action token to wire buttons
+  var token = 'aires-'+Date.now();
+  window['_aiHits_'+token] = hits;
+  window['_aiFilter_'+token] = filter;
+  var totalBilled = hits.reduce(function(s,c){return s+(c.bi||0);},0);
+  var totalBalance = hits.reduce(function(s,c){return s+(c.bal||0);},0);
+  var ctxLabel = [
+    filter.lawOffice ? '🏛️ '+filter.lawOffice : null,
+    filter.status    ? '🏷️ '+filter.status    : null,
+    (filter.dateFrom||filter.dateTo) ? '📅 '+(filter.dateFrom||'…')+' → '+(filter.dateTo||'…') : null
+  ].filter(Boolean).join(' · ');
+  var rowsHtml = hits.slice(0,500).map(function(c){
+    return '<tr><td style="padding:4px 8px;font-size:11px;border-top:1px solid var(--g200)"><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" onclick="openCD('+c.id+')">'+(c.acct||'—')+'</a></td>'+
+           '<td style="padding:4px 8px;font-size:11px;border-top:1px solid var(--g200)">'+(c.pat||'—')+'</td>'+
+           '<td style="padding:4px 8px;font-size:11px;border-top:1px solid var(--g200);color:var(--g600)">'+(c.lo||'—')+(c.branch?' <span style="background:#dbeafe;color:#1e40af;padding:0 5px;border-radius:4px;font-size:9px;font-weight:700">'+c.branch+'</span>':'')+'</td>'+
+           '<td style="padding:4px 8px;font-size:11px;border-top:1px solid var(--g200)">'+(c.stCfpc||c.st||'—')+'</td>'+
+           '<td style="padding:4px 8px;font-size:11px;border-top:1px solid var(--g200);text-align:right;font-weight:700">'+fc(c.bi)+'</td>'+
+           '<td style="padding:4px 8px;font-size:11px;border-top:1px solid var(--g200);text-align:right;font-weight:700;color:var(--red)">'+fc(c.bal)+'</td></tr>';
+  }).join('');
+  return '<div style="font-size:13px"><div style="margin-bottom:8px"><strong>📋 '+hits.length+' cases match</strong>'+(ctxLabel?' · '+ctxLabel:'')+'<br><span style="font-size:11px;color:var(--g500)">Total Billed: <strong>'+fc(totalBilled)+'</strong> · Outstanding: <strong style="color:var(--red)">'+fc(totalBalance)+'</strong></span></div>'+
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<button data-aires="'+token+'" data-act="print" style="background:#0f1e4a;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🖨️ Print</button>'+
+      '<button data-aires="'+token+'" data-act="pdf"   style="background:#dc2626;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📄 Save PDF</button>'+
+      '<button data-aires="'+token+'" data-act="email" style="background:#0ea472;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📧 Email</button>'+
+      '<button data-aires="'+token+'" data-act="csv"   style="background:#3b5bdb;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📊 CSV</button>'+
+    '</div>'+
+    '<div style="max-height:340px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead style="background:var(--g50);position:sticky;top:0"><tr><th style="padding:6px 8px;text-align:left">Acct #</th><th style="padding:6px 8px;text-align:left">Patient</th><th style="padding:6px 8px;text-align:left">Law Office</th><th style="padding:6px 8px;text-align:left">Status</th><th style="padding:6px 8px;text-align:right">Billed</th><th style="padding:6px 8px;text-align:right">Balance</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'+
+    (hits.length>500?'<div style="font-size:11px;color:var(--g500);margin-top:6px">Showing first 500 of '+hits.length+'. Use Print/PDF/CSV to get all.</div>':'')+
+    '</div>';
+}
+// ── Action handlers for the AI result buttons ─────────────────────────────
+function aiActionForResult(token, act){
+  var hits = window['_aiHits_'+token]; var filter = window['_aiFilter_'+token];
+  if (!hits) return;
+  var ctxLabel = [filter.lawOffice, filter.status, (filter.dateFrom||filter.dateTo)?(filter.dateFrom||'…')+' → '+(filter.dateTo||'…'):null].filter(Boolean).join(' · ');
+  var totalBilled = hits.reduce(function(s,c){return s+(c.bi||0);},0);
+  var totalBalance = hits.reduce(function(s,c){return s+(c.bal||0);},0);
+  if (act==='csv'){
+    var csv = 'Account,Patient,Law Office,Branch,Status,CFPC Status,Billed,Balance,Phone,DOL\n' +
+      hits.map(function(c){
+        var cells=[c.acct||'',c.pat||'',c.lo||'',c.branch||'',c.st||'',c.stCfpc||'',c.bi||0,c.bal||0,c.phone||'',c.dol||''];
+        return cells.map(function(v){var s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',');
+      }).join('\n');
+    var blob=new Blob([csv],{type:'text/csv'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ai-cases-'+Date.now()+'.csv'; a.click();
+    return;
+  }
+  if (act==='print' || act==='pdf'){
+    var win=window.open('','_blank','width=900,height=900');
+    win.document.write('<html><head><title>'+(act==='pdf'?'PDF — ':'')+'Case List ('+hits.length+')</title><style>'+getPrintStyles()+'</style></head><body>'+
+      (act==='pdf'?'<div style="background:#fef3c7;border:1px solid #f59e0b;color:#78350f;padding:10px 14px;margin-bottom:14px;border-radius:8px;font-size:13px"><strong>📄 Save as PDF:</strong> In the print dialog, select <strong>Save as PDF</strong> as the destination.</div>':'')+
+      '<div class="header"><h1>'+COMPANY.name+'</h1><div class="divider"></div><div class="info">'+COMPANY.address+'</div><div class="info">Tel: '+COMPANY.phone+' &bull; '+COMPANY.email+'</div></div>'+
+      '<div class="title">Case List</div>'+
+      '<div class="subtitle">'+hits.length+' cases'+(ctxLabel?' &bull; '+ctxLabel:'')+'</div>'+
+      '<div class="meta"><div><div class="l">Total Cases</div><div class="v">'+hits.length+'</div></div><div><div class="l">Total Billed</div><div class="v">'+fc(totalBilled)+'</div></div><div><div class="l">Outstanding</div><div class="v r">'+fc(totalBalance)+'</div></div></div>'+
+      '<table><thead><tr><th>Acct #</th><th>Patient</th><th>Law Office</th><th>Branch</th><th>Status</th><th>DOL</th><th>Billed</th><th>Balance</th></tr></thead><tbody>'+
+      hits.map(function(c){return '<tr><td>'+(c.acct||'—')+'</td><td>'+(c.pat||'—')+'</td><td>'+(c.lo||'—')+'</td><td>'+(c.branch||'—')+'</td><td>'+(c.stCfpc||c.st||'—')+'</td><td>'+fd(c.dol)+'</td><td>'+fc(c.bi)+'</td><td class="r" style="font-weight:700">'+fc(c.bal)+'</td></tr>';}).join('')+
+      '</tbody></table>'+
+      '<div class="footer">'+COMPANY.name+' &bull; AI-Generated Case List &bull; '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'+
+      '<div class="conf">CONFIDENTIAL — Privileged information for authorized personnel only.</div>'+
+      '</body></html>');
+    win.document.close();
+    setTimeout(function(){win.print();},400);
+    return;
+  }
+  if (act==='email'){
+    var subj='Case List ('+hits.length+' cases)'+(ctxLabel?' — '+ctxLabel:'');
+    var body='CASE LIST\n\n'+ctxLabel+'\n'+hits.length+' cases\n\nTotal Billed: '+fc(totalBilled)+'\nOutstanding: '+fc(totalBalance)+'\n\n'+
+      hits.map(function(c){return (c.acct||'—')+' | '+(c.pat||'—')+' | '+(c.lo||'—')+(c.branch?' ('+c.branch+')':'')+' | '+(c.stCfpc||c.st||'—')+' | Billed: '+fc(c.bi)+' | Bal: '+fc(c.bal);}).join('\n')+
+      '\n\n— '+COMPANY.name;
+    window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body),'_blank');
+    return;
+  }
+}
+
 function sendAI(){
   var input=document.getElementById('ai-input');
   var q=input.value.trim();if(!q)return;
   addMsg(q,'u');input.value='';
   document.getElementById('ai-quick').style.display='none';
+  // ── NEW: detect "list all / print / pdf / email / csv" intent and skip Claude ──
+  var intent = aiDetectListIntent(q);
+  if (intent.anyAction) {
+    var filter = aiFilterCases(q);
+    if (filter.hits.length > 0 || filter.status || filter.lawOffice) {
+      var html = aiRenderListResponse(filter, intent, q);
+      addMsg(html, 'b');
+      // Wire action buttons
+      setTimeout(function(){
+        document.querySelectorAll('[data-aires]').forEach(function(b){
+          if (b._wired) return; b._wired = true;
+          b.addEventListener('click', function(){ aiActionForResult(b.dataset.aires, b.dataset.act); });
+        });
+        // If user explicitly asked to print/pdf/email/csv, auto-trigger that action
+        if (intent.print || intent.pdf || intent.email || intent.csv) {
+          var btns = document.querySelectorAll('[data-aires]');
+          var lastToken = btns.length ? btns[btns.length-1].dataset.aires : null;
+          if (lastToken) {
+            var act = intent.csv?'csv':intent.email?'email':intent.pdf?'pdf':'print';
+            setTimeout(function(){ aiActionForResult(lastToken, act); }, 300);
+          }
+        }
+      }, 50);
+      return;
+    }
+  }
   // If no API key, fall back to canned responses (legacy demo behavior)
   if (!S.aiKey) {
     var fallback='I can help once an Anthropic API key is set.<br><br><strong>How to enable:</strong><br>1. Go to <em>Settings → 🔑 API Keys</em><br>2. Paste your <code>sk-ant-...</code> key<br>3. Save<br><br>Then ask me anything about collections, cases, follow-ups, or billing trends.';
