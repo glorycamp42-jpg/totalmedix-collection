@@ -487,7 +487,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="tab" id="tab-completed">Completed <span class="cn" id="tc-done">0</span></div>
         </div>
         <div class="tb">
-          <div class="sw"><span class="si">🔍</span><input id="fu-q" placeholder="Search patient, law office..."></div>
+          <div class="sw"><span class="si">🔍</span><input id="fu-q" placeholder="Search patient, law office, phone, DOL, action, subject, branch... (multi-word OK)"></div>
           <select class="fl" id="fu-pri-filter"><option value="">All Priority</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
           <span class="rc" id="fu-rc"></span>
         </div>
@@ -508,7 +508,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div style="font-size:12px;color:var(--g400);margin-top:2px">PDF, Images, Office documents</div>
         </div>
         <div class="tb">
-          <div class="sw"><span class="si">🔍</span><input id="file-q" placeholder="Search file name..."></div>
+          <div class="sw"><span class="si">🔍</span><input id="file-q" placeholder="Search file name, category, patient, account #, law office... (multi-word OK)"></div>
           <select class="fl" id="file-cat-filter"><option value="">All Categories</option><option>General</option><option>Medical Records</option><option>Legal</option><option>Insurance</option><option>Billing</option></select>
           <span class="rc" id="file-rc"></span>
         </div>
@@ -2387,9 +2387,9 @@ function searchMatch(obj, q, fields) {
   return keywords.every(function(k){ return hay.indexOf(k) >= 0; });
 }
 
-var PAY_SEARCH_FIELDS = ['lo','acct','pat','prov','dol','pd','cs','ct'];
-var CASE_SEARCH_FIELDS = ['lo','acct','pat','prov','cfpc_pid','phone','dob','dol','refmd','location','proc','sex','notes','st','stCfpc','gr','ct','study'];
-var PAT_SEARCH_FIELDS = ['name','pid','phone','lo','dol','dob'];
+var PAY_SEARCH_FIELDS = ['lo','branch','acct','pat','prov','dol','pd','cs','ct'];
+var CASE_SEARCH_FIELDS = ['lo','branch','acct','pat','prov','cfpc_pid','phone','dob','dol','refmd','location','proc','sex','notes','st','stCfpc','gr','ct','study'];
+var PAT_SEARCH_FIELDS = ['name','pid','phone','lo','branch','dol','dob'];
 
 function rPay(){
   var data=DB.pays.filter(function(p){
@@ -2994,7 +2994,18 @@ function rFU(){
     return true;
   });
   if(S.fuPri)data=data.filter(function(f){return f.pri===S.fuPri;});
-  if(S.fuQ){var q=S.fuQ.toLowerCase();data=data.filter(function(f){return[f.pat,f.lo,f.acct].some(function(v){return v&&v.toLowerCase().indexOf(q)>=0;});});}
+  if(S.fuQ){
+    var q=S.fuQ.toLowerCase();
+    var keywords=q.split(/\s+/).filter(Boolean);
+    data=data.filter(function(f){
+      // Also pull related case fields for richer search
+      var c = DB.cases.find(function(x){return x.id===f.cid;}) || {};
+      var hay=[f.pat,f.lo,f.acct,f.act,f.subj,f.pri,f.st,f.due,f.notes,
+               c.phone,c.dob,c.dol,c.refmd,c.prov,c.proc,c.location,c.branch,c.gr,c.stCfpc]
+              .filter(Boolean).join(' ').toLowerCase();
+      return keywords.every(function(k){return hay.indexOf(k)>=0;});
+    });
+  }
   document.getElementById('fu-rc').textContent=data.length+' records';
   document.getElementById('fu-tb').innerHTML=data.length?data.map(function(f){
     var od=dov(f.due),isOv=od>0&&f.st==='pending';
@@ -3165,7 +3176,15 @@ function isPreviewable(name){
 }
 function rFile(){
   var data=DB.files.filter(function(f){
-    var m=!S.fileQ||f.name.toLowerCase().indexOf(S.fileQ.toLowerCase())>=0;
+    var q=(S.fileQ||'').toLowerCase().trim();
+    var m=true;
+    if(q){
+      // Also pull case-related fields if file is linked
+      var c=f.cid?DB.cases.find(function(x){return x.id===f.cid;}):null;
+      var hay=[f.name,f.cat,f.by,f.date,c?c.pat:'',c?c.acct:'',c?c.lo:'',c?c.phone:'']
+              .filter(Boolean).join(' ').toLowerCase();
+      m=q.split(/\s+/).filter(Boolean).every(function(k){return hay.indexOf(k)>=0;});
+    }
     return m&&(!S.fileCat||f.cat===S.fileCat);
   });
   document.getElementById('file-rc').textContent=data.length+' record'+(data.length!==1?'s':'');
