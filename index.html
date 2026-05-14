@@ -3915,6 +3915,33 @@ function uploadCheckImages(payId){
 }
 
 // ── SAVE ─────────────────────────────────────────────────────
+// Recalculate billed/balance for any case matching this account_num.
+// Called after savePay/delPay so the Outstanding number updates immediately.
+function recalcCaseBalanceForAcct(acct){
+  if (!acct) return;
+  var pays = DB.pays.filter(function(p){return p.acct===acct;});
+  var totalCharged = pays.reduce(function(s,p){return s+(parseFloat(p.ch)||0);},0);
+  var totalPaid    = pays.reduce(function(s,p){return s+(parseFloat(p.paid)||0);},0);
+  var newBal = Math.max(totalCharged - totalPaid, 0);
+  // Update every case with this account_num (usually 1, sometimes 2-3)
+  DB.cases.forEach(function(c){
+    if (c.acct !== acct) return;
+    c.bi  = totalCharged;
+    c.bal = newBal;
+    // Persist to Supabase (fire-and-forget; UI updates locally regardless)
+    try { SB.update('cases', c.id, {billed: totalCharged, balance: newBal}).catch(function(){}); } catch(e){}
+  });
+  // Refresh visible pages
+  if (document.getElementById('pg-cases') && document.getElementById('pg-cases').classList.contains('on')) rCase();
+  if (document.getElementById('pg-patprofile') && document.getElementById('pg-patprofile').classList.contains('on')) {/* user is on a profile — refresh? leave alone for now */}
+  if (S.curCase) {
+    var cc = DB.cases.find(function(x){return x.id===S.curCase;});
+    if (cc && cc.acct === acct && document.getElementById('pg-casedetail') && document.getElementById('pg-casedetail').classList.contains('on')) {
+      openCD(S.curCase);
+    }
+  }
+}
+
 function savePay(){
   var id=S.eid.pay;
   var o={lo:document.getElementById('pf-law').value,acct:document.getElementById('pf-acct').value,pat:document.getElementById('pf-pat').value,prov:document.getElementById('pf-prov').value,dol:document.getElementById('pf-dol').value||null,pd:document.getElementById('pf-pd').value||null,cs:document.getElementById('pf-st').value||null,ch:parseFloat(document.getElementById('pf-ch').value)||0,paid:parseFloat(document.getElementById('pf-pd2').value)||0,ct:document.getElementById('pf-ct').value||null};
@@ -3939,15 +3966,18 @@ function savePay(){
         });
       }
     }
+    // ── NEW: Immediately recompute Billed/Balance/Outstanding on the matching case
+    recalcCaseBalanceForAcct(o.acct);
   }).catch(function(e){
     if(id){Object.assign(DB.pays.find(function(p){return p.id===id;}),o);}
     else{o.id=DB.nid.pay++;DB.pays.unshift(o);}
     var payId=o.id||id;
     uploadCheckImages(payId).catch(function(){});
     toast('Saved locally (DB error)','⚠️');rPay();
+    recalcCaseBalanceForAcct(o.acct);
   });
 }
-function delPay(id){if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');}
+function delPay(id){if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});var acct=p?p.acct:null;if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');recalcCaseBalanceForAcct(acct);}
 
 function viewCheckImages(payId){
   var p=DB.pays.find(function(x){return x.id===payId;});
@@ -7118,9 +7148,10 @@ function rLawOffices() {
   var totalCh  = data.reduce(function(s,lo){return s+lo.charged;},0);
   var totalPd  = data.reduce(function(s,lo){return s+lo.paid;},0);
   var avgRate  = totalCh>0?(totalPd/totalCh*100):0;
-  var topLO    = data.length ? data.sort(function(a,b){return b.paid-a.paid;})[0] : null;
+  // Find top law office WITHOUT mutating the sort order
+  var topLO    = data.length ? data.reduce(function(a,b){return a.paid>=b.paid?a:b;}) : null;
 
-  // Re-sort after summary
+  // Apply user's chosen sort
   data.sort(function(a,b) {
     if (LO_STATE.sort === 'cases')     return b.caseCount - a.caseCount;
     if (LO_STATE.sort === 'rate')      return b.rate - a.rate;
