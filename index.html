@@ -2408,10 +2408,18 @@ function rPay(){
   else if(psort==='ch-desc') data.sort(function(a,b){return (b.ch||0)-(a.ch||0);});
   else if(psort==='paid-desc') data.sort(function(a,b){return (b.paid||0)-(a.paid||0);});
   document.getElementById('pay-rc').textContent=data.length+' records';
-  document.getElementById('pay-tb').innerHTML=data.length?data.map(function(p){
+  if (typeof S.payLimit !== 'number') S.payLimit = 200;
+  var viewP = data.slice(0, S.payLimit);
+  document.getElementById('pay-tb').innerHTML=viewP.length?viewP.map(function(p){
     var hasChk=p.chkFrontPath||p.chkBackPath;
     return '<tr><td style="font-weight:500">'+(p.lo||'—')+'</td><td><span class="mn">'+(p.acct||'—')+'</span></td><td>'+(p.pat||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(p.prov||'—')+'</td><td style="font-size:12px">'+fd(p.dol)+'</td><td style="font-size:12px">'+fd(p.pd)+'</td><td>'+ctBadge(p.ct)+'</td><td>'+cb(p.cs)+(hasChk?' <span title="Check images attached" style="cursor:pointer" data-view-chk="'+p.id+'">📸</span>':'')+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="white-space:nowrap">'+(hasChk?'<button class="ib" title="View check" data-view-chk="'+p.id+'">📸</button>':'')+'<button class="ib" data-edit-pay="'+p.id+'">✏️</button><button class="ib del" data-del-pay="'+p.id+'">🗑️</button></td></tr>';
-  }).join(''):'<tr><td colspan="10"><div class="empty"><div class="ei">📭</div><div class="et">No payments found</div></div></td></tr>';
+  }).join(''):'<tr><td colspan="11"><div class="empty"><div class="ei">📭</div><div class="et">No payments found</div></div></td></tr>';
+  if (data.length > S.payLimit) {
+    var rem = data.length - S.payLimit;
+    document.getElementById('pay-tb').insertAdjacentHTML('beforeend','<tr><td colspan="11" style="text-align:center;padding:14px;background:#f8fafc"><button id="pay-load-more" style="background:#3b5bdb;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">▼ Load '+Math.min(rem,500)+' more (showing '+S.payLimit+' of '+data.length+')</button> &nbsp; <button id="pay-load-all" style="background:#fff;border:1px solid var(--g300);color:var(--g600);padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Load all</button></td></tr>');
+    var lm=document.getElementById('pay-load-more'); if(lm)lm.addEventListener('click',function(){S.payLimit+=500;rPay();});
+    var la=document.getElementById('pay-load-all'); if(la)la.addEventListener('click',function(){S.payLimit=data.length;rPay();});
+  }
 }
 
 // ── CASES ────────────────────────────────────────────────────
@@ -4972,14 +4980,17 @@ function bindAll(){
   var btnDupScan = document.getElementById('btn-dup-scan');
   if(btnDupScan) btnDupScan.addEventListener('click', runDupScan);
 
+  // ── PERF: debounce helper for search inputs (avoid re-rendering 8k rows on every keystroke)
+  function _debounce(fn, ms){var t;return function(){clearTimeout(t);var ctx=this,args=arguments;t=setTimeout(function(){fn.apply(ctx,args);},ms||220);};}
+
   // Payments
   document.getElementById('btn-add-pay2').addEventListener('click',function(){openModal('pay',null);});
   document.getElementById('btn-export-pay').addEventListener('click',function(){exportCSV('pays');});
   document.getElementById('btn-print-pay').addEventListener('click',function(){printListPage('payments');});
-  document.getElementById('pay-q').addEventListener('input',function(){S.payQ=this.value;rPay();});
-  document.getElementById('pay-st-filter').addEventListener('change',function(){S.paySt=this.value;rPay();});
+  document.getElementById('pay-q').addEventListener('input',_debounce(function(){S.payQ=this.value;S.payLimit=200;rPay();}));
+  document.getElementById('pay-st-filter').addEventListener('change',function(){S.paySt=this.value;S.payLimit=200;rPay();});
   var payCt=document.getElementById('pay-ct-filter');
-  if(payCt)payCt.addEventListener('change',function(){S.ct=this.value;rPay();});
+  if(payCt)payCt.addEventListener('change',function(){S.ct=this.value;S.payLimit=200;rPay();});
   var paySort=document.getElementById('pay-sort');
   if(paySort)paySort.addEventListener('change',function(){S.paySort=this.value;rPay();});
 
@@ -4987,20 +4998,20 @@ function bindAll(){
   document.getElementById('btn-add-case').addEventListener('click',function(){openModal('case',null);});
   document.getElementById('btn-export-cases').addEventListener('click',function(){exportCSV('cases');});
   document.getElementById('btn-print-cases').addEventListener('click',function(){printListPage('cases');});
-  document.getElementById('case-q').addEventListener('input',function(){S.caseQ=this.value;rCase();});
-  document.getElementById('case-st-filter').addEventListener('change',function(){S.caseSt=this.value;rCase();});
+  document.getElementById('case-q').addEventListener('input',_debounce(function(){S.caseQ=this.value;S.caseLimit=200;rCase();}));
+  document.getElementById('case-st-filter').addEventListener('change',function(){S.caseSt=this.value;S.caseLimit=200;rCase();});
   var caseCt=document.getElementById('case-ct-filter');
-  if(caseCt)caseCt.addEventListener('change',function(){S.ct=this.value;rCase();});
+  if(caseCt)caseCt.addEventListener('change',function(){S.ct=this.value;S.caseLimit=200;rCase();});
   var caseSort=document.getElementById('case-sort');
   if(caseSort)caseSort.addEventListener('change',function(){S.caseSort=this.value;rCase();});
   var caseSolF=document.getElementById('case-sol-filter');
-  if(caseSolF)caseSolF.addEventListener('change',function(){S.caseSolF=this.value;rCase();});
+  if(caseSolF)caseSolF.addEventListener('change',function(){S.caseSolF=this.value;S.caseLimit=200;rCase();});
 
   // Patients
   document.getElementById('btn-print-pat').addEventListener('click',function(){printPatients();});
-  document.getElementById('pat-q').addEventListener('input',function(){S.patQ=this.value;rPatients();});
+  document.getElementById('pat-q').addEventListener('input',_debounce(function(){S.patQ=this.value;S.patLimit=200;rPatients();}));
   var patCt=document.getElementById('pat-ct-filter');
-  if(patCt)patCt.addEventListener('change',function(){S.patCt=this.value;rPatients();});
+  if(patCt)patCt.addEventListener('change',function(){S.patCt=this.value;S.patLimit=200;rPatients();});
   var patSort=document.getElementById('pat-sort');
   if(patSort)patSort.addEventListener('change',function(){S.patSort=this.value;rPatients();});
 
@@ -5018,7 +5029,7 @@ function bindAll(){
   ['bfu-cfpc','bfu-bal','bfu-sol','bfu-cold','bfu-skip-existing'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.addEventListener('change', bfuPreview);
   });
-  document.getElementById('fu-q').addEventListener('input',function(){S.fuQ=this.value;rFU();});
+  document.getElementById('fu-q').addEventListener('input',_debounce(function(){S.fuQ=this.value;rFU();}));
   document.getElementById('fu-pri-filter').addEventListener('change',function(){S.fuPri=this.value;rFU();});
   ['pending','overdue','high','today','completed'].forEach(function(t){
     document.getElementById('tab-'+t).addEventListener('click',function(){
@@ -5058,7 +5069,7 @@ function bindAll(){
     toast('Uploading '+count+' file'+(count>1?'s':'')+'...','📎');
     input.value='';
   });
-  document.getElementById('file-q').addEventListener('input',function(){S.fileQ=this.value;rFile();});
+  document.getElementById('file-q').addEventListener('input',_debounce(function(){S.fileQ=this.value;rFile();}));
   document.getElementById('file-cat-filter').addEventListener('change',function(){S.fileCat=this.value;rFile();});
   // File drop zone
   var fdz=document.getElementById('file-drop-zone');
@@ -6910,7 +6921,7 @@ function initLOFilters() {
       }
     });
     document.getElementById('lo-sort').addEventListener('change', function(){ LO_STATE.sort = this.value; refreshLOView(); });
-    document.getElementById('lo-search').addEventListener('input', function(){ LO_STATE.search = this.value.toLowerCase(); refreshLOView(); });
+    document.getElementById('lo-search').addEventListener('input', (function(){var t;return function(){var v=this.value.toLowerCase();clearTimeout(t);t=setTimeout(function(){LO_STATE.search=v;refreshLOView();},220);};})());
     document.getElementById('lo-detail-back').addEventListener('click', function(){
       LO_STATE.viewing = null;
       document.getElementById('lo-detail').style.display = 'none';
