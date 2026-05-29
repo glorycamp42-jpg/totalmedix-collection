@@ -437,7 +437,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
           <div class="sw"><span class="si">🔍</span><input id="case-q" placeholder="Search by name, PID, phone, DOB, DOL, doctor, procedure, location, notes... (multi-word OK)"></div>
           <button class="btn bs bsm" id="btn-smart-search" title="Ask AI to find cases by natural language" style="background:#faf5ff;border-color:#e9d5ff;color:#7c3aed">✨ Smart Search</button>
           <select class="fl" id="case-ct-filter"><option value="">All Clinics</option><option value="MRI">MRI</option><option value="Chiro">Chiropractic</option><option value="Pain">Pain Mgmt</option></select>
-          <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select>
+          <select class="fl" id="case-st-filter"><option value="">All Status</option><option value="Active">Active</option><option value="Bill Sent">Bill Sent</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Paid">Paid</option><option value="Closed">Closed</option></select>
           <select class="fl" id="case-sort"><option value="">Default</option><option value="sol-urgent">⏰ SOL Most Urgent</option><option value="coldest">❄️ Coldest Contact</option><option value="dol-desc">DOL Newest</option><option value="dol-asc">DOL Oldest</option><option value="pat-asc">Patient A-Z</option><option value="pat-desc">Patient Z-A</option><option value="lo-asc">Law Office A-Z</option><option value="lo-desc">Law Office Z-A</option></select>
           <select class="fl" id="case-sol-filter" title="SOL urgency filter"><option value="">All SOL</option><option value="expired">❌ Expired</option><option value="critical">🚨 ≤30 days</option><option value="urgent">🔴 ≤90 days</option><option value="warn">⚠️ ≤180 days</option></select>
           <span class="rc" id="case-rc"></span>
@@ -1249,7 +1249,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
       <div class="fd"><label>Date of Loss</label><input type="date" id="cf-dol"></div>
       <div class="fd"><label>Study Date</label><input type="date" id="cf-study"></div>
       <div class="fd"><label>Procedure</label><input id="cf-proc" placeholder="MRI / CESI / PRP / Consult..."></div>
-      <div class="fd"><label>Status</label><select id="cf-st"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Closed">Closed</option></select></div>
+      <div class="fd"><label>Status</label><select id="cf-st"><option value="Active">Active</option><option value="Bill Sent">Bill Sent</option><option value="Pending">Pending</option><option value="Settled">Settled</option><option value="Paid">Paid</option><option value="Closed">Closed</option></select></div>
       <div class="fd"><label>Lien ($)</label><input type="number" id="cf-lien" step="0.01"></div>
       <div class="fd"><label>Billed ($)</label><input type="number" id="cf-bi" step="0.01"></div>
       <div class="fd"><label>Balance ($)</label><input type="number" id="cf-bal" step="0.01"></div>
@@ -1855,7 +1855,7 @@ var S = {
   fileQ:'', fileCat:'',
   fuQ:'', patQ:'', ct:'',
   rptStart:null, rptEnd:null,
-  curCase:null, aiKey:'',
+  curCase:null, curPatKey:null, aiKey:'',
   eid:{pay:null,case:null,fu:null,user:null}
 };
 
@@ -1869,7 +1869,7 @@ function clr(n){var c=['#3b5bdb','#0ea472','#f59e0b','#e53935','#7c3aed','#06b6d
 
 function sb(s){
   if(!s)return '<span style="color:#ccc">—</span>';
-  var m={active:'bg3',pending:'ba',settled:'bb',closed:'bgr',completed:'bg3',cancelled:'bgr'};
+  var m={active:'bg3',pending:'ba',settled:'bb',closed:'bgr',completed:'bg3',cancelled:'bgr','Bill Sent':'ba',Active:'bg3',Pending:'ba',Settled:'bb',Closed:'bgr',Paid:'bg3',paid:'bg3','bill sent':'ba'};
   return '<span class="bdg '+(m[s]||'bgr')+'">'+s+'</span>';
 }
 function cb(s){
@@ -2484,7 +2484,7 @@ function rCase(){
   if (typeof S.caseLimit !== 'number') S.caseLimit = 200;
   var view = data.slice(0, S.caseLimit);
   document.getElementById('case-tb').innerHTML=view.length?view.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+(c.branch?' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">'+c.branch+'</span>':'')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap"><button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+(c.branch?' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">'+c.branch+'</span>':'')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap">'+(c.st!=='Bill Sent'&&c.st!=='Paid'&&c.st!=='Settled'?'<button class="ib" title="Mark Bill Sent" style="color:#1e40af" data-bill-sent="'+c.id+'">💰</button>':'')+''+(c.bal>0&&c.st!=='Paid'&&c.st!=='Settled'?'<button class="ib" title="Mark Paid (settle case)" style="color:#059669" data-mark-paid="'+c.id+'">✅</button>':'')+'<button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
   }).join(''):'<tr><td colspan="16"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
   // Append a "Load more" footer row if there are more records
   if (data.length > S.caseLimit) {
@@ -3338,6 +3338,7 @@ function rPatients(){
 }
 
 function openPatProfile(key){
+  S.curPatKey = key;
   // key may be 'm<masterId>' OR cfpc_pid OR patient name OR 'id-<n>' fallback
   var masterId = key.indexOf('m')===0 && /^m\d+$/.test(key) ? parseInt(key.slice(1)) : null;
   var cases=DB.cases.filter(function(c){
@@ -3939,20 +3940,28 @@ function uploadCheckImages(payId){
 function recalcCaseBalanceForAcct(acct){
   if (!acct) return;
   var pays = DB.pays.filter(function(p){return p.acct===acct;});
-  var totalCharged = pays.reduce(function(s,p){return s+(parseFloat(p.ch)||0);},0);
   var totalPaid    = pays.reduce(function(s,p){return s+(parseFloat(p.paid)||0);},0);
-  var newBal = Math.max(totalCharged - totalPaid, 0);
+  var totalCharged = pays.reduce(function(s,p){return s+(parseFloat(p.ch)||0);},0);
   // Update every case with this account_num (usually 1, sometimes 2-3)
   DB.cases.forEach(function(c){
     if (c.acct !== acct) return;
-    c.bi  = totalCharged;
+    if (c.settleAmt != null) return; // skip already-settled cases
+    // Preserve case's manually-set billed amount; fall back to payment-charged sum if billed is 0
+    var billed = (c.bi && c.bi > 0) ? c.bi : totalCharged;
+    if (!c.bi || c.bi === 0) c.bi = billed;
+    var newBal = Math.max(billed - totalPaid, 0);
     c.bal = newBal;
-    // Persist to Supabase (fire-and-forget; UI updates locally regardless)
-    try { SB.update('cases', c.id, {billed: totalCharged, balance: newBal}).catch(function(){}); } catch(e){}
+    // Auto-mark Paid when balance reaches zero via payments
+    if (newBal === 0 && totalPaid > 0 && c.st !== 'Paid' && c.st !== 'Settled' && c.st !== 'Closed') {
+      c.st = 'Paid';
+      try { SB.update('cases', c.id, {billed: c.bi, balance: 0, status: 'Paid'}).catch(function(){}); } catch(e){}
+    } else {
+      try { SB.update('cases', c.id, {billed: c.bi, balance: newBal}).catch(function(){}); } catch(e){}
+    }
   });
   // Refresh visible pages
   if (document.getElementById('pg-cases') && document.getElementById('pg-cases').classList.contains('on')) rCase();
-  if (document.getElementById('pg-patprofile') && document.getElementById('pg-patprofile').classList.contains('on')) {/* user is on a profile — refresh? leave alone for now */}
+  if (document.getElementById('pg-patprofile') && document.getElementById('pg-patprofile').classList.contains('on') && S.curPatKey) { try{openPatProfile(S.curPatKey);}catch(e){} }
   if (S.curCase) {
     var cc = DB.cases.find(function(x){return x.id===S.curCase;});
     if (cc && cc.acct === acct && document.getElementById('pg-casedetail') && document.getElementById('pg-casedetail').classList.contains('on')) {
@@ -3997,6 +4006,41 @@ function savePay(){
   });
 }
 function delPay(id){if(!confirm('Delete?'))return;var p=DB.pays.find(function(x){return x.id===id;});var acct=p?p.acct:null;if(p&&p.chkFrontPath)STORAGE.remove(p.chkFrontPath).catch(function(){});if(p&&p.chkBackPath)STORAGE.remove(p.chkBackPath).catch(function(){});SB.delete('payments',id).catch(function(){});DB.pays=DB.pays.filter(function(p){return p.id!==id;});rPay();toast('Deleted','🗑️');recalcCaseBalanceForAcct(acct);}
+
+
+// ── Quick status actions ─────────────────────────────────────
+function markBillSent(caseId){
+  var c=DB.cases.find(function(x){return x.id===caseId;}); if(!c)return;
+  c.st='Bill Sent';
+  try{SB.update('cases',c.id,{status:'Bill Sent'}).catch(function(){});}catch(e){}
+  toast('Marked as Bill Sent','💰');
+  rCase();
+  if(S.curCase===caseId){openCD(caseId);}
+}
+function markCasePaid(caseId){
+  var c=DB.cases.find(function(x){return x.id===caseId;}); if(!c)return;
+  var defAmt = (c.bal||0).toFixed(2);
+  var amtStr = prompt('Mark case as Paid\n\nPatient: '+(c.pat||'(no name)')+'\nBilled: $'+(c.bi||0)+'\nCurrent balance: $'+(c.bal||0)+'\n\nAmount actually received ($):', defAmt);
+  if(amtStr===null) return;
+  var amt = parseFloat(amtStr);
+  if(isNaN(amt)||amt<0){toast('Invalid amount','⚠️');return;}
+  var sdate = today();
+  var notes = 'Quick-marked as Paid via Cases list';
+  var update = {balance:0, status:'Paid', settlement_amount:amt, settlement_date:sdate, settlement_reason:'paid_in_full', settlement_notes:notes};
+  c.bal=0; c.st='Paid'; c.settleAmt=amt; c.settleDate=sdate; c.settleReason='paid_in_full'; c.settleNotes=notes;
+  try{SB.update('cases',c.id,update).catch(function(){});}catch(e){}
+  // Insert payment record if amount > 0
+  if(amt>0){
+    var prow={law_office:c.lo,account_num:c.acct,patient_name:c.pat,provider:c.prov,date_of_loss:c.dol,pay_date:sdate,check_status:'cleared',clinic_type:c.ct==='Pain'?'Pain Management':c.ct,charged:c.bi||amt,paid:amt};
+    SB.insert('payments',prow).then(function(r){
+      var row=r&&r[0]?r[0]:r;
+      DB.pays.unshift({id:row?row.id:DB.nid.pay++,lo:c.lo,acct:c.acct,pat:c.pat,prov:c.prov,dol:c.dol,pd:sdate,cs:'cleared',ct:c.ct,ch:c.bi||amt,paid:amt});
+    }).catch(function(){});
+  }
+  toast('Case marked as Paid ($'+amt.toFixed(2)+')','✅');
+  rCase();
+  if(S.curCase===caseId){openCD(caseId);}
+}
 
 function viewCheckImages(payId){
   var p=DB.pays.find(function(x){return x.id===payId;});
@@ -5154,6 +5198,9 @@ function bindAll(){
   });
   document.getElementById('case-tb').addEventListener('click',function(e){
     var oc=e.target.closest('[data-open-case]');var ec=e.target.closest('[data-edit-case]');var dc=e.target.closest('[data-del-case]');
+    var bs=e.target.closest('[data-bill-sent]');var mp=e.target.closest('[data-mark-paid]');
+    if(bs){markBillSent(parseInt(bs.dataset.billSent));return;}
+    if(mp){markCasePaid(parseInt(mp.dataset.markPaid));return;}
     if(oc)openCD(parseInt(oc.dataset.openCase));
     if(ec)openModal('case',parseInt(ec.dataset.editCase));
     if(dc)delCase(parseInt(dc.dataset.delCase));
