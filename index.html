@@ -309,6 +309,78 @@ input[type="date"]::-webkit-datetime-edit-day-field {
 }
 input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="v3-theme">
+/* ═══ TotalMedix v3 design system — same features, new skin ═══ */
+:root{
+  --navy:#1c2b4a;--accent:#2563eb;--accent2:#1d4ed8;
+  --green:#15a06d;--red:#dc4437;--amber:#d97706;--purple:#7c3aed;
+  --g50:#faf9f7;--g100:#f2f1ed;--g200:#e6e4de;--g300:#d2cfc7;
+  --g400:#a09d94;--g500:#6f6c64;--g600:#54524b;--g700:#3d3b36;--g800:#27261f;--g900:#191813;
+}
+html{font-size:15px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;background:#f6f5f2;font-size:14.5px;line-height:1.55;letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--g300);border-radius:8px;border:2px solid #f6f5f2}
+::-webkit-scrollbar-track{background:transparent}
+
+/* sidebar — light & friendly */
+.sb{width:248px;background:#fff;border-right:1px solid var(--g200)}
+.sb-top{padding:20px 18px 16px;border-bottom:1px solid var(--g100)}
+.sb-ic{width:36px;height:36px;border-radius:10px;font-size:15px}
+.sb-name{color:var(--g900);font-size:15px;letter-spacing:-.01em}
+.sb-sub{color:var(--g400);font-size:11.5px}
+.sb-nav{padding:12px 10px}
+.sb-sec{color:var(--g400);font-size:10.5px;padding:16px 12px 6px}
+.ni{color:var(--g600);font-size:13.5px;padding:10px 12px;border-left:none;border-radius:10px;font-weight:500}
+.ni:hover{background:var(--g100);color:var(--g900)}
+.ni.on{background:#e9effd;color:var(--accent);font-weight:600;border-left:none}
+.ni .nb{font-size:10px}
+.sb-foot{border-top:1px solid var(--g100);padding:10px}
+.sb-uname{color:var(--g800)}
+.sb-urole{font-size:10px}
+.role-admin{background:#e1f5ec;color:#0c7a52}
+.role-staff{background:var(--g100);color:var(--g500)}
+.sb-foot .ni{color:var(--g500)}
+.main{margin-left:248px;padding:30px 36px}
+
+/* page headers */
+.pt{font-size:24px;font-weight:750;letter-spacing:-.02em}
+.ps{font-size:13.5px;margin-top:3px}
+.ph{margin-bottom:24px}
+
+/* buttons & inputs */
+.btn{padding:9px 16px;border-radius:11px;font-size:13.5px;box-shadow:0 1px 2px rgba(25,24,19,.04)}
+.btn.bsm{padding:7px 12px;font-size:12.5px}
+.bp{box-shadow:0 1px 2px rgba(37,99,235,.25)}
+input,select,textarea{font-family:inherit}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select,textarea{border-radius:10px}
+
+/* cards & metrics */
+.card{border-radius:16px;border-color:var(--g200);box-shadow:0 1px 2px rgba(25,24,19,.04);margin-bottom:20px}
+.ch{padding:15px 20px}
+.ct{font-size:13.5px}
+.cb{padding:20px}
+.mc{border-radius:16px;padding:18px 20px;box-shadow:0 1px 2px rgba(25,24,19,.04)}
+.mv{font-size:24px;font-weight:750;letter-spacing:-.02em}
+.ml{font-size:10.5px}
+
+/* tables — roomier, sticky header */
+thead th{padding:11px 16px;font-size:11px;background:var(--g50);position:sticky;top:0;z-index:1}
+tbody td{padding:13px 16px;font-size:13.5px}
+tbody tr:hover td{background:#f4f7ff}
+.tw{border-radius:0 0 16px 16px}
+
+/* modals & toast */
+.modal{border-radius:18px}
+.toast{border-radius:12px;font-size:13.5px}
+
+/* focus visibility for keyboard users */
+button:focus-visible,.ni:focus-visible,input:focus-visible,select:focus-visible{outline:2.5px solid var(--accent);outline-offset:1.5px}
+
+@media(max-width:768px){.main{padding:18px 14px}.pt{font-size:20px}}
+</style>
 </head>
 <body>
 
@@ -347,8 +419,11 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         </div>
       </div>
       <nav class="sb-nav">
+        <div class="sb-sec">Work</div>
+        <div class="ni on" id="ni-today">📞&nbsp; Today</div>
+        <div class="ni" id="ni-usearch">🔍&nbsp; Search</div>
         <div class="sb-sec">Main</div>
-        <div class="ni on" id="ni-dashboard">⊞&nbsp; Dashboard</div>
+        <div class="ni" id="ni-dashboard">⊞&nbsp; Dashboard</div>
         <div class="sb-sec">Records</div>
         <div class="ni" id="ni-payments">💳&nbsp; Payments</div>
         <div class="ni" id="ni-cases">📋&nbsp; Cases</div>
@@ -373,7 +448,7 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     </aside>
     <main class="main">
 
-      <div id="pg-dashboard" class="pg on">
+      <div id="pg-dashboard" class="pg">
         <div class="ph">
           <div><div class="pt">Dashboard</div><div class="ps" id="d-date"></div></div>
           <div class="ha">
@@ -405,6 +480,17 @@ input[type="date"] { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
         </div>
       </div>
 
+      <div id="pg-today" class="pg on">
+        <div class="ph"><div><div class="pt">Today</div><div class="ps">Your call queue — emails &amp; notices run automatically</div></div>
+        <div class="ha"><button class="btn bs bsm" id="v2-refresh">⟳ Refresh</button></div></div>
+        <div id="today-body"><div style="text-align:center;color:var(--g400);padding:40px 0">Loading…</div></div>
+      </div>
+      <div id="pg-usearch" class="pg">
+        <div class="ph"><div><div class="pt">Search</div><div class="ps">One box — patient, law office, phone, account #</div></div></div>
+        <input id="us-q" placeholder="Type anything… (press / from any page)" autocomplete="off" style="width:100%;padding:13px 18px;font-size:15px;border:1.5px solid var(--g200);border-radius:12px;outline:none;background:#fff;margin-bottom:6px">
+        <div style="font-size:11px;color:var(--g400);margin-bottom:14px">Results grouped by law office and patient · patient rows show every accident &amp; visit combined</div>
+        <div id="us-out"></div>
+      </div>
       <div id="pg-payments" class="pg">
         <div class="ph">
           <div><div class="pt">Payments</div><div class="ps">Manage payment records</div></div>
@@ -1717,7 +1803,9 @@ function loadFromSupabase() {
     showGlobalLoader(false);
     toast('Connected to Supabase ✓', '🟢');
     if(typeof loadMasters==='function') loadMasters();
+    try{reconcileAllBalances();}catch(e){}
     rDash();
+    try{rToday2();}catch(e){}
     updFUBadge();
     // Re-render Users page if currently active
     var pgUsers = document.getElementById('pg-users');
@@ -1918,7 +2006,7 @@ function updFUBadge(){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────
-var PAGES=['dashboard','payments','cases','casedetail','patients','patprofile','followups','files','reports','notices','agent','duplicates','users','settings'];
+var PAGES=['today','usearch','dashboard','payments','cases','casedetail','patients','patprofile','followups','files','reports','notices','agent','duplicates','users','settings'];
 // ── PHASE 1-B: DUPLICATE MERGE ──────────────────────────────
 var DUP_STATE = { candidates: [], history: [], mode: 'name-dol' };
 
@@ -2161,6 +2249,13 @@ function rDupHistory(){
   }).catch(function(){ el.innerHTML = '<em style="color:var(--g500)">Unable to load history (run migration first)</em>'; });
 }
 
+// FIX #6: jump to Cases page pre-filtered by status (e.g. Pending) from Reports
+function goCasesByStatus(st){
+  S.caseSt=st||'';
+  var sel=document.getElementById('case-st-filter');
+  if(sel)sel.value=(Array.prototype.some.call(sel.options,function(o){return o.value===S.caseSt;}))?S.caseSt:'';
+  go('cases');
+}
 function go(pg){
   PAGES.forEach(function(p){
     var el=document.getElementById('pg-'+p);
@@ -2174,6 +2269,8 @@ function go(pg){
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-ov').classList.remove('open');
   if(pg==='dashboard')  rDash();
+  if(pg==='today')      rToday2();
+  if(pg==='usearch'){rUSearch2();setTimeout(function(){var q=document.getElementById('us-q');if(q)q.focus();},60);}
   if(pg==='payments')   rPay();
   if(pg==='cases')      rCase();
   if(pg==='followups')  rFU();
@@ -2237,6 +2334,8 @@ function rDash(){
   var mPd=mp.reduce(function(s,p){return s+(p.paid||0);},0);
   var ov=DB.fus.filter(function(f){return f.st==='pending'&&f.due<today();}).length;
   var kpi=DB.kpi;
+  // FIX #1: Outstanding = sum of open case balances (not just payment records)
+  var caseOut=DB.cases.filter(function(c){if(c.merged_into)return false;var cm=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;return cm;}).reduce(function(t,c){return t+(c.bal||0);},0);
 
   // Alerts
   var al='';
@@ -2247,7 +2346,7 @@ function rDash(){
   var cards=[
     {l:'Total Charged',v:fc(tCh),c:'',acc:'#3b5bdb',ic:'💵',sub:'All time'},
     {l:'Total Paid',v:fc(tPd),c:'g',acc:'#0ea472',ic:'✅',sub:'All time'},
-    {l:'Outstanding',v:fc(tCh-tPd),c:'r',acc:'#e53935',ic:'⚠️',sub:'Uncollected'},
+    {l:'Outstanding',v:fc(caseOut),c:'r',acc:'#e53935',ic:'⚠️',sub:'Open case balances'},
     {l:'Payment Count',v:P.length,c:'',acc:'#8b5cf6',ic:'📊',sub:'Total records'},
     {l:'Month Charged',v:fc(mCh),c:'',acc:'#3b5bdb',ic:'📅',sub:'This month'},
     {l:'Month Collected',v:fc(mPd),c:'g',acc:'#0ea472',ic:'💰',sub:'This month'},
@@ -2587,7 +2686,18 @@ function openCD(id){
 
 function bindCDEvents(){
   var addPay=document.getElementById('cd-add-pay');
-  if(addPay)addPay.addEventListener('click',function(){openModal('pay',null);});
+  if(addPay)addPay.addEventListener('click',function(){
+    // FIX #3: pre-fill payment form from this case
+    openModal('pay',null);
+    document.getElementById('pf-law').value=c.lo||'';
+    document.getElementById('pf-acct').value=c.acct||'';
+    document.getElementById('pf-pat').value=c.pat||'';
+    document.getElementById('pf-prov').value=c.prov||'';
+    document.getElementById('pf-dol').value=c.dol||'';
+    document.getElementById('pf-pd').value=today();
+    var _pfct=document.getElementById('pf-ct');
+    if(_pfct&&!_pfct.disabled)_pfct.value=c.ct||'';
+  });
   var addFu=document.getElementById('cd-add-fu');
   if(addFu)addFu.addEventListener('click',function(){openModal('fu',null);});
   var addMemo=document.getElementById('cd-add-memo');
@@ -2719,7 +2829,7 @@ function printCaseDetail(pdfMode){
   var pays=DB.pays.filter(function(p){return p.acct===c.acct;});
   var tp=pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var cr=c.bi>0?Math.round(tp/c.bi*100):0;
-  var stColor=c.st==='active'?'#0ea472':c.st==='settled'?'#3b5bdb':'#d97706';
+  var stColor=(c.st||'').toLowerCase()==='active'?'#0ea472':c.st==='settled'?'#3b5bdb':'#d97706';
   var grColor={'A':'#0ea472','B':'#3b5bdb','C':'#d97706','D':'#e53935','F':'#7c3aed'}[c.gr]||'#94a3b8';
   var win=window.open('','_blank','width=800,height=900');
   win.document.write('<html><head><title>'+(pdfMode?'PDF — ':'')+'Case Report — '+(c.pat||'')+'</title>'+
@@ -2805,7 +2915,7 @@ function printDashboard(){
   var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd=DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
-  var active=DB.cases.filter(function(c){return c.st==='active';}).length;
+  var active=DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length;
   var pending=DB.cases.filter(function(c){return c.st==='pending';}).length;
   var settled=DB.cases.filter(function(c){return c.st==='settled';}).length;
   // Top 10 by balance
@@ -2850,7 +2960,7 @@ function printReportsOverview(){
   var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd=DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
   var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
-  var active=DB.cases.filter(function(c){return c.st==='active';}).length;
+  var active=DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length;
   var billSent=DB.cases.filter(function(c){return c.st==='Bill Sent';}).length;
   var settled=DB.cases.filter(function(c){return c.st==='settled';}).length;
   var closed=DB.cases.filter(function(c){return c.st==='closed';}).length;
@@ -3022,7 +3132,7 @@ function completeFU(id){var f=DB.fus.find(function(x){return x.id===id;});if(f){
 function delFU(id){if(!confirm('Delete?'))return;SB.delete('follow_ups',id).catch(function(){});DB.fus=DB.fus.filter(function(f){return f.id!==id;});rFU();toast('Deleted','🗑️');}
 function genFU(){
   var t=today(),added=0;
-  DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;}).forEach(function(c){
+  DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active'&&c.bal>0;}).forEach(function(c){
     if(!DB.fus.find(function(f){return f.cid===c.id&&f.st==='pending';})){
       DB.fus.push({id:DB.nid.fu++,cid:c.id,acct:c.acct,pat:c.pat,lo:c.lo,gr:c.gr,bal:c.bal,act:'call',subj:'Outstanding: '+fc(c.bal),pri:c.bal>=10000?'high':c.bal>=3000?'medium':'low',st:'pending',due:t,notes:''});added++;
     }
@@ -3586,7 +3696,7 @@ function rReport(preset){
   var tCh=pays.reduce(function(a,p){return a+(p.ch||0);},0);
   var tPd=pays.reduce(function(a,p){return a+(p.paid||0);},0);
   var rate=tCh>0?(tPd/tCh*100):0;
-  var acases=DB.cases.filter(function(c){return c.st==='active';}).length;
+  var acases=DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length;
   var pfu=DB.fus.filter(function(f){return f.st==='pending';}).length;
 
   var kpis=[
@@ -3699,7 +3809,7 @@ function rReport(preset){
   document.getElementById('rpt-cstatus').innerHTML=
     '<div style="display:flex;align-items:center;gap:16px">'+svg2+
     '<div style="display:flex;flex-direction:column;gap:7px;flex:1">'+cse.map(function(e){
-      return '<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--g700)"><div style="width:10px;height:10px;border-radius:3px;background:'+(csc[e[0]]||'#94a3b8')+'"></div><span style="flex:1;text-transform:capitalize">'+e[0]+'</span><span style="color:var(--g400);font-weight:700">'+e[1]+' ('+Math.round(e[1]/cst*100)+'%)</span></div>';
+      return '<div onclick="goCasesByStatus(\''+String(e[0]).replace(/'/g,'')+'\')" title="Click to view these cases" style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--g700);cursor:pointer;padding:2px 4px;border-radius:6px"><div style="width:10px;height:10px;border-radius:3px;background:'+(csc[e[0]]||'#94a3b8')+'"></div><span style="flex:1;text-transform:capitalize">'+e[0]+'</span><span style="color:var(--g400);font-weight:700">'+e[1]+' ('+Math.round(e[1]/cst*100)+'%)</span></div>';
     }).join('')+'</div></div>';
 
   // Outstanding table
@@ -3970,6 +4080,26 @@ function recalcCaseBalanceForAcct(acct){
   }
 }
 
+// FIX #1: one-time reconcile on load — cases saved with Billed only (balance 0, no payments)
+// get balance = Billed - Paid so they show up in Outstanding / Patients / Reports.
+function reconcileAllBalances(){
+  var fixed=0;
+  DB.cases.forEach(function(c){
+    if(c.merged_into)return;
+    if(c.settleAmt!=null)return;
+    if(c.st==='Paid'||c.st==='Settled'||c.st==='Closed')return;
+    if(!c.bi||c.bi<=0)return;
+    var tp=DB.pays.filter(function(p){return p.acct===c.acct;}).reduce(function(t,p){return t+(parseFloat(p.paid)||0);},0);
+    var exp=Math.max(c.bi-tp,0);
+    if(c.bal===0&&exp>0){
+      c.bal=exp;fixed++;
+      try{SB.update('cases',c.id,{balance:exp}).catch(function(){});}catch(e){}
+    }
+  });
+  if(fixed>0)toast(fixed+' case balance'+(fixed>1?'s':'')+' auto-recalculated (Billed − Paid)','🔧');
+  return fixed;
+}
+
 function savePay(){
   var id=S.eid.pay;
   var o={lo:document.getElementById('pf-law').value,acct:document.getElementById('pf-acct').value,pat:document.getElementById('pf-pat').value,prov:document.getElementById('pf-prov').value,dol:document.getElementById('pf-dol').value||null,pd:document.getElementById('pf-pd').value||null,cs:document.getElementById('pf-st').value||null,ch:parseFloat(document.getElementById('pf-ch').value)||0,paid:parseFloat(document.getElementById('pf-pd2').value)||0,ct:document.getElementById('pf-ct').value||null};
@@ -3985,7 +4115,7 @@ function savePay(){
     if(!id&&o.acct){
       var exists=DB.cases.some(function(c){return c.acct===o.acct;});
       if(!exists){
-        var nc={lo:o.lo,acct:o.acct,pat:o.pat,prov:o.prov,dol:o.dol,st:'active',ct:o.ct,bi:o.ch||0,bal:Math.max((o.ch||0)-(o.paid||0),0),gr:null,notes:''};
+        var nc={lo:o.lo,acct:o.acct,pat:o.pat,prov:o.prov,dol:o.dol,st:'Active',ct:o.ct,bi:o.ch||0,bal:Math.max((o.ch||0)-(o.paid||0),0),gr:null,notes:''};
         sbSaveCase(nc,null).then(function(cr){
           nc.id=cr?cr.id:DB.nid.case++;DB.cases.unshift(nc);rCase();
           toast('Case auto-created for '+o.pat,'📋');
@@ -4075,6 +4205,11 @@ function saveCase(){
     study:document.getElementById('cf-study').value||null,
     proc:document.getElementById('cf-proc').value,
     lien:parseFloat(document.getElementById('cf-lien').value)||0};
+  // FIX #1: if Balance left blank, auto-calc = Billed - payments received (so Outstanding is captured)
+  if(document.getElementById('cf-bal').value===''&&o.bi>0){
+    var _tpaid=DB.pays.filter(function(p){return p.acct===o.acct;}).reduce(function(t,p){return t+(parseFloat(p.paid)||0);},0);
+    o.bal=Math.max(o.bi-_tpaid,0);
+  }
   closeModal('m-case');
   sbSaveCase(o, id).then(function(r){
     if(id){Object.assign(DB.cases.find(function(c){return c.id===id;}),o);}
@@ -5034,7 +5169,7 @@ function bindAll(){
         var clinicNames={Pain:'Pain Clinic',Chiro:'Chiropractic Clinic',MRI:'MRI Center'};
         document.querySelector('.sb-sub').textContent=(S.clinicType&&clinicNames[S.clinicType]?clinicNames[S.clinicType]:'Staff')+' Portal';
       }
-      updFUBadge();go('dashboard');
+      updFUBadge();go('today');
       loadFromSupabase();
     }).catch(function(e){
       btn.disabled=false;btn.textContent='Sign in';
@@ -5044,7 +5179,7 @@ function bindAll(){
   document.getElementById('l-pw').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('login-btn').click();});
 
   // Sidebar nav
-  var navMap={dashboard:'dashboard',payments:'payments',cases:'cases',patients:'patients',followups:'followups',files:'files',reports:'reports',users:'users',settings:'settings',logout:'__logout'};
+  var navMap={today:'today',usearch:'usearch',dashboard:'dashboard',payments:'payments',cases:'cases',patients:'patients',followups:'followups',files:'files',reports:'reports',users:'users',settings:'settings',logout:'__logout'};
   Object.keys(navMap).forEach(function(k){
     var el=document.getElementById('ni-'+k);
     if(el)el.addEventListener('click',function(){
@@ -5619,13 +5754,13 @@ function bindNoticeEvents() {
     var tCh=DB.pays.reduce(function(s,p){return s+(p.ch||0);},0);
     var tPd=DB.pays.reduce(function(s,p){return s+(p.paid||0);},0);
     var rate=tCh>0?(tPd/tCh*100).toFixed(1):'0';
-    var active=DB.cases.filter(function(c){return c.st==='active';}).length;
+    var active=DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length;
     var subj='TotalMedix Collection Report — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     var body='TOTALMEDIX COLLECTION REPORT\n'+new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+
       '\n\nTotal Charged: '+fc(tCh)+'\nTotal Collected: '+fc(tPd)+'\nOutstanding: '+fc(tCh-tPd)+'\nCollection Rate: '+rate+'%'+
       '\nActive Cases: '+active+'\nTotal Cases: '+DB.cases.length+'\nTotal Payments: '+DB.pays.length+
       '\n\nTop Outstanding:\n'+
-      DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10)
+      DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active'&&c.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,10)
         .map(function(c,i){return (i+1)+'. '+(c.pat||'—')+' ('+(c.lo||'—')+') — '+fc(c.bal);}).join('\n')+
       '\n\n— TotalMedix Collection';
     window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
@@ -5714,7 +5849,7 @@ function rAgent() {
 
   // Task 2 preview: cases without follow-ups
   var noFU = DB.cases.filter(function(c){
-    return c.st==='active' && c.bal>0 && !DB.fus.find(function(f){return f.cid===c.id&&f.st==='pending';});
+    return (c.st||'').toLowerCase()==='active' && c.bal>0 && !DB.fus.find(function(f){return f.cid===c.id&&f.st==='pending';});
   });
   document.getElementById('task2-preview').innerHTML = noFU.length
     ? '<span style="font-weight:600">'+noFU.length+' active cases</span> have no pending follow-up:<br>'+
@@ -5722,7 +5857,7 @@ function rAgent() {
     : '<span style="color:var(--green)">✓ All active cases have follow-ups</span>';
 
   // Task 3 preview: risk summary
-  var highRisk = DB.cases.filter(function(c){return c.st==='active'&&c.bal>5000&&(!c.gr||c.gr==='C'||c.gr==='D');});
+  var highRisk = DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active'&&c.bal>5000&&(!c.gr||c.gr==='C'||c.gr==='D');});
   document.getElementById('task3-preview').innerHTML = highRisk.length
     ? '<strong>'+highRisk.length+' high-risk cases</strong> identified (balance >$5k, grade C/D or ungraded)<br>Click to run full AI analysis.'
     : '<span style="color:var(--green)">✓ No high-risk cases detected</span>';
@@ -5735,7 +5870,7 @@ function rAgent() {
   document.getElementById('task4-preview').innerHTML =
     'Current period summary:<br>'+
     '• Charged: <strong>'+fc(tCh)+'</strong> | Collected: <strong>'+fc(tPd)+'</strong><br>'+
-    '• Collection Rate: <strong>'+rate+'%</strong> | Active Cases: <strong>'+DB.cases.filter(function(c){return c.st==='active';}).length+'</strong>';
+    '• Collection Rate: <strong>'+rate+'%</strong> | Active Cases: <strong>'+DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length+'</strong>';
 }
 
 // ── TASK 1: Send Notices via Gmail ───────────────────────────
@@ -5855,7 +5990,7 @@ function runAutoFollowups() {
   var added = 0;
   var scheduled = 0;
 
-  DB.cases.filter(function(c){ return c.st==='active' && c.bal>0; }).forEach(function(c) {
+  DB.cases.filter(function(c){ return (c.st||'').toLowerCase()==='active' && c.bal>0; }).forEach(function(c) {
     var existing = DB.fus.find(function(f){ return f.cid===c.id && f.st==='pending'; });
     if (!existing) {
       // Create follow-up
@@ -5891,7 +6026,7 @@ function runRiskAnalysis() {
   if (!S.aiKey) {
     // Demo analysis
     setTimeout(function() {
-      var highBal = DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
+      var highBal = DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active'&&c.bal>0;})
         .sort(function(a,b){return b.bal-a.bal;}).slice(0,5);
       var analysis = '<strong>🤖 AI Risk Analysis (Demo)</strong><br><br>'+
         '<strong>High Priority Cases:</strong><br>'+
@@ -5909,7 +6044,7 @@ function runRiskAnalysis() {
   }
 
   // Real Claude AI analysis
-  var context = DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
+  var context = DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active'&&c.bal>0;})
     .map(function(c){return c.pat+': $'+c.bal+' (grade:'+(c.gr||'N/A')+', dol:'+( c.dol||'unknown')+')'})
     .join('\n');
 
@@ -5954,7 +6089,7 @@ function runWeeklyReport() {
   var tCh = P.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd = P.reduce(function(s,p){return s+(p.paid||0);},0);
   var rate = tCh>0?(tPd/tCh*100).toFixed(1):0;
-  var activeCases = DB.cases.filter(function(c){return c.st==='active';}).length;
+  var activeCases = DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length;
   var pendingFU = DB.fus.filter(function(f){return f.st==='pending';}).length;
   var overdueFU = DB.fus.filter(function(f){return f.st==='pending'&&f.due<(today?today():new Date().toISOString().slice(0,10));}).length;
 
@@ -5970,7 +6105,7 @@ function runWeeklyReport() {
     'Pending Follow-ups: '+pendingFU+'\n'+
     'Overdue Follow-ups: '+overdueFU+'\n'+
     '\n=== TOP OUTSTANDING BALANCES ===\n'+
-    DB.cases.filter(function(c){return c.st==='active'&&c.bal>0;})
+    DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active'&&c.bal>0;})
       .sort(function(a,b){return b.bal-a.bal;}).slice(0,5)
       .map(function(c,i){return (i+1)+'. '+c.pat+' ('+c.lo+') — '+fc(c.bal);})
       .join('\n')+
@@ -6483,7 +6618,7 @@ function loadScheduleFields() {
     status.innerHTML = [
       {label:'Pending notices', val:pending, color:pending>0?'var(--red)':'var(--green)'},
       {label:'Pending follow-ups', val:DB.fus.filter(function(f){return f.st==='pending';}).length, color:'var(--accent)'},
-      {label:'Active cases', val:DB.cases.filter(function(c){return c.st==='active';}).length, color:'var(--g700)'},
+      {label:'Active cases', val:DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length, color:'var(--g700)'},
     ].map(function(s){
       return '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--g50);border-radius:8px">'+
         '<span style="font-size:13px;color:var(--g600)">'+s.label+'</span>'+
@@ -7524,6 +7659,232 @@ function emailLODetail(lo){
     '\n\n— TotalMedix Collection';
   window.open('mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body));
 }
+
+// ── v2 layer: Today queue + unified search (all original features untouched) ──
+function v2norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9\uac00-\ud7a3]/g,'');}
+function v2esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function v2DaysAgo(s){if(!s)return 9999;return Math.floor((Date.now()-new Date(s+'T12:00:00'))/864e5);}
+function v2Done(){try{return JSON.parse(localStorage.getItem('tmx2done_'+today()))||{};}catch(e){return {};}}
+function v2MarkDone(k){var d=v2Done();d[k]=1;localStorage.setItem('tmx2done_'+today(),JSON.stringify(d));}
+function v2Dism(){try{return JSON.parse(localStorage.getItem('tmx2dism'))||{};}catch(e){return {};}}
+function v2Groups(){
+  var by={},list=[];
+  DB.cases.forEach(function(c){
+    if(c.merged_into)return;
+    var k=v2norm(c.pat);if(!k)return;
+    k=k+'|'+(c.dob||'');
+    if(!by[k]){by[k]={key:k,name:c.pat,phone:c.phone,dob:c.dob,cases:[],accs:{},offices:{},bal:0,bi:0,last:null};list.push(by[k]);}
+    var p=by[k];if(!p.phone&&c.phone)p.phone=c.phone;
+    p.cases.push(c);p.bal+=(+c.bal||0);p.bi+=(+c.bi||0);
+    if(c.lo)p.offices[c.lo]=1;
+    var ak=c.dol||'unknown';if(!p.accs[ak])p.accs[ak]={dol:c.dol,n:0,bal:0};p.accs[ak].n++;p.accs[ak].bal+=(+c.bal||0);
+    (DB.acts[c.id]||[]).forEach(function(a){if(a.date&&(!p.last||a.date>p.last))p.last=a.date;});
+  });
+  return list;
+}
+var V2Q=[],V2HITS=[],V2LOHITS=[],V2DEC=[];
+function v2Queue(){
+  var done=v2Done();V2Q=[];
+  v2Groups().forEach(function(p){
+    if(p.bal<=0||done[p.key])return;
+    var live=p.cases.some(function(c){return ['Paid','Settled','Closed'].indexOf(c.st)<0&&['Disregard','Dropped','Paid'].indexOf(c.stCfpc||'')<0;});
+    if(!live)return;
+    var cold=p.last?v2DaysAgo(p.last):999;
+    var oldest=null;p.cases.forEach(function(c){if(c.dol&&(!oldest||c.dol<oldest))oldest=c.dol;});
+    var sol=oldest?730-v2DaysAgo(oldest):999;
+    var score=p.bal*(1+Math.min(cold,120)/30);
+    if(sol>0&&sol<90)score*=2.5;
+    var due=DB.fus.some(function(f){return f.st==='pending'&&f.due&&f.due<=today()&&v2norm(f.pat)===v2norm(p.name);});
+    if(due)score*=2;
+    V2Q.push({p:p,score:score,cold:cold,sol:sol,due:due});
+  });
+  V2Q.sort(function(a,b){return b.score-a.score;});
+}
+function v2Primary(p){var l=p.cases.filter(function(c){return (+c.bal||0)>0;}).sort(function(a,b){return (+b.bal||0)-(+a.bal||0);});return l[0]||p.cases[0];}
+function rToday2(){
+  var el=document.getElementById('today-body');if(!el)return;
+  v2Queue();
+  var td=today();
+  var sent=(typeof NOTICE_STATE!=='undefined'&&NOTICE_STATE.sent?NOTICE_STATE.sent:[]).filter(function(n){return n.date===td;});
+  var pays=DB.pays.filter(function(p){return p.pd===td;});
+  var paidSum=pays.reduce(function(s,p){return s+(+p.paid||0);},0);
+  var fuOver=DB.fus.filter(function(f){return f.st==='pending'&&f.due&&f.due<td;}).length;
+  var done=Object.keys(v2Done()).length;
+  var dism=v2Dism();
+  var recent={};DB.pays.forEach(function(p){if(p.pd&&v2DaysAgo(p.pd)<=14)recent[v2norm(p.pat)]=1;});
+  V2DEC=[];
+  v2Groups().forEach(function(p){
+    if(p.bal<=0||dism[p.key]||!recent[v2norm(p.name)])return;
+    var paid=0;p.cases.forEach(function(c){DB.pays.forEach(function(py){if(py.acct===c.acct)paid+=(+py.paid||0);});});
+    if(paid>0)V2DEC.push({p:p,paid:paid});
+  });
+  V2DEC.sort(function(a,b){return b.p.bal-a.p.bal;});
+  var h='<div class="card" style="margin-bottom:14px"><div style="padding:14px 18px">'+
+    '<div style="font-size:12px;font-weight:700;color:var(--g500);margin-bottom:8px">🤖 DONE AUTOMATICALLY TODAY</div>';
+  if(sent.length||pays.length){
+    if(sent.length)h+='<div style="font-size:13.5px;padding:2px 0"><span style="color:#0ea472">✓</span> '+sent.length+' notice email'+(sent.length>1?'s':'')+' sent</div>';
+    if(pays.length)h+='<div style="font-size:13.5px;padding:2px 0"><span style="color:#0ea472">✓</span> '+pays.length+' payment'+(pays.length>1?'s':'')+' recorded ('+fc(paidSum)+')</div>';
+  }else{h+='<div style="font-size:13px;color:var(--g400)">Nothing yet today.</div>';}
+  if(fuOver)h+='<div style="font-size:13.5px;padding:2px 0"><span style="color:#d97706">⚠</span> '+fuOver+' follow-up'+(fuOver>1?'s':'')+' overdue</div>';
+  h+='</div></div>';
+  if(V2DEC.length){
+    h+='<div style="font-size:12px;font-weight:700;color:var(--g500);margin:4px 0 8px">⚖️ NEEDS YOUR DECISION — partial payments</div>';
+    V2DEC.slice(0,5).forEach(function(d,i){
+      h+='<div class="card" style="margin-bottom:8px"><div style="padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="font-size:13.5px"><b>'+v2esc(d.p.name)+'</b> <span style="color:var(--g500)">· '+v2esc(Object.keys(d.p.offices)[0]||'')+'</span><br>'+
+        '<span style="color:var(--g500);font-size:12.5px">paid '+fc(d.paid)+' of '+fc(d.p.bi)+' · <b style="color:#e53935">'+fc(d.p.bal)+' left</b></span></div>'+
+        '<div style="display:flex;gap:6px"><button class="btn bs bsm" onclick="v2OpenDec('+i+')">Open patient →</button>'+
+        '<button class="btn bs bsm" onclick="v2KeepDec('+i+')">Keep collecting</button></div></div></div>';
+    });
+  }
+  var list=V2Q.slice(0,25);
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">'+
+    '<div style="font-size:12px;font-weight:700;color:var(--g500)">📞 YOUR CALLS TODAY</div>'+
+    '<span style="background:#dbeafe;color:#1e40af;font-size:12px;font-weight:700;padding:3px 12px;border-radius:999px">'+list.length+' in queue'+(done?' · '+done+' done':'')+'</span></div>';
+  if(!list.length)h+='<div class="card"><div style="padding:34px;text-align:center;color:var(--g400)">Queue is clear. Nice work 🎉</div></div>';
+  list.forEach(function(q,i){
+    var p=q.p;
+    h+='<div class="card" style="margin-bottom:8px;cursor:pointer" id="v2qi-'+i+'" onclick="v2Expand('+i+')"><div style="padding:12px 18px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+      '<div style="font-size:14px"><b>'+v2esc(p.name)+'</b> <span style="color:var(--g500);font-size:12.5px">· '+v2esc(Object.keys(p.offices)[0]||'—')+'</span>'+
+      (q.due?' <span style="background:#fffbeb;color:#d97706;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px">due today</span>':'')+
+      (q.sol>0&&q.sol<90?' <span style="background:#fef2f2;color:#e53935;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px">SOL '+q.sol+'d</span>':'')+
+      '</div><div style="text-align:right"><b style="color:#e53935">'+fc(p.bal)+'</b><br><span style="font-size:11px;color:var(--g400)">'+(q.cold>=999?'never contacted':q.cold+'d since contact')+'</span></div></div>'+
+      '<div id="v2qx-'+i+'"></div></div></div>';
+  });
+  el.innerHTML=h;
+}
+window.v2OpenDec=function(i){var d=V2DEC[i];if(d)openPatProfile(d.p.name);};
+window.v2KeepDec=function(i){var d=V2DEC[i];if(!d)return;var x=v2Dism();x[d.p.key]=1;localStorage.setItem('tmx2dism',JSON.stringify(x));rToday2();toast('Kept in queue','👍');};
+window.v2Expand=function(i){
+  var q=V2Q[i];if(!q)return;var p=q.p;var box=document.getElementById('v2qx-'+i);
+  for(var j=0;j<25;j++){var b=document.getElementById('v2qx-'+j);if(b&&b!==box)b.innerHTML='';}
+  if(box.innerHTML){box.innerHTML='';return;}
+  var c=v2Primary(p);
+  var la=null;p.cases.forEach(function(cc){(DB.acts[cc.id]||[]).forEach(function(a){if(!la||(a.date||'')>(la.date||''))la=a;});});
+  var h='<div style="margin-top:10px;font-size:12.5px;color:var(--g500)" onclick="event.stopPropagation()">'+
+    (p.phone?'📞 <a href="tel:'+v2esc(p.phone)+'" style="color:var(--accent);font-weight:700;text-decoration:none">'+v2esc(p.phone)+'</a> · ':'')+
+    (la?'Last: '+v2esc(la.outcome||la.type||'note')+' '+v2esc(la.date||''):'No contact history')+
+    ' · <span style="color:var(--accent);cursor:pointer;font-weight:600" onclick="openPatProfile(\''+String(p.name).replace(/'/g,"\\'")+'\')">Open patient →</span></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px" onclick="event.stopPropagation()">'+
+    '<button class="btn bs bsm" onclick="v2Log('+i+',\'no_answer\')">No answer</button>'+
+    '<button class="btn bs bsm" style="color:#1e40af;border-color:#93c5fd" onclick="v2Ptp('+i+')">Promised</button>'+
+    '<button class="btn bs bsm" onclick="v2Log('+i+',\'dispute\')">Dispute</button>'+
+    '<button class="btn bs bsm" style="color:#059669;border-color:#6ee7b7" onclick="v2Pay('+i+')">Got payment</button></div>';
+  box.innerHTML=h;
+};
+function v2FUplus(p,days,subj,pri){
+  var c=v2Primary(p);var d=new Date();d.setDate(d.getDate()+days);var due=d.toISOString().slice(0,10);
+  var o={cid:c.id,acct:c.acct,pat:p.name,lo:c.lo,gr:c.gr,bal:p.bal,act:'call',subj:subj,pri:pri||'medium',st:'pending',due:due};
+  sbSaveFU(o,null).then(function(r){o.id=r&&r.id?r.id:DB.nid.fu++;DB.fus.unshift(o);try{updFUBadge();}catch(e){}}).catch(function(){});
+  return due;
+}
+window.v2Log=function(i,kind){
+  var q=V2Q[i];if(!q)return;var p=q.p;var c=v2Primary(p);
+  var by=(S.user&&S.user.name)||'Staff';
+  if(kind==='no_answer'){
+    sbSaveActivity(c.id,'call','No answer — left message',by,{outcome:'no_answer',dir:'out'}).catch(function(){});
+    if(!DB.acts[c.id])DB.acts[c.id]=[];DB.acts[c.id].push({type:'call',text:'No answer — left message',date:today(),by:by,outcome:'no_answer'});
+    v2FUplus(p,3,'Retry call — no answer');toast('Logged · retry in 3 days','📞');
+  }else if(kind==='dispute'){
+    sbSaveActivity(c.id,'call','Balance disputed',by,{outcome:'dispute',dir:'out'}).catch(function(){});
+    if(!DB.acts[c.id])DB.acts[c.id]=[];DB.acts[c.id].push({type:'call',text:'Balance disputed',date:today(),by:by,outcome:'dispute'});
+    v2FUplus(p,1,'Review dispute — '+p.name,'high');toast('Dispute logged — review task created','⚠️');
+  }
+  v2MarkDone(p.key);rToday2();
+};
+window.v2Ptp=function(i){
+  var q=V2Q[i];if(!q)return;var p=q.p;var c=v2Primary(p);
+  var amt=prompt('Promise to pay — '+p.name+'\n\nAmount ($):',(p.bal||0).toFixed(2));if(amt===null)return;
+  amt=parseFloat(amt)||0;
+  var dd=new Date();dd.setDate(dd.getDate()+14);
+  var dt=prompt('Promised date (YYYY-MM-DD):',dd.toISOString().slice(0,10));if(dt===null)return;
+  var by=(S.user&&S.user.name)||'Staff';
+  sbSaveActivity(c.id,'call','Promised $'+amt+' by '+dt,by,{outcome:'ptp',dir:'out',ptpAmt:amt,ptpDate:dt}).catch(function(){});
+  if(!DB.acts[c.id])DB.acts[c.id]=[];DB.acts[c.id].push({type:'call',text:'Promised $'+amt+' by '+dt,date:today(),by:by,outcome:'ptp',ptpAmt:amt,ptpDate:dt});
+  var o={cid:c.id,acct:c.acct,pat:p.name,lo:c.lo,gr:c.gr,bal:p.bal,act:'call',subj:'PTP due — $'+amt,pri:'high',st:'pending',due:dt};
+  sbSaveFU(o,null).then(function(r){o.id=r&&r.id?r.id:DB.nid.fu++;DB.fus.unshift(o);try{updFUBadge();}catch(e){}}).catch(function(){});
+  v2MarkDone(p.key);rToday2();toast('Promise saved — follow-up on '+dt,'🤝');
+};
+window.v2Pay=function(i){
+  var q=V2Q[i];if(!q)return;var p=q.p;var c=v2Primary(p);
+  openModal('pay',null);
+  document.getElementById('pf-law').value=c.lo||'';
+  document.getElementById('pf-acct').value=c.acct||'';
+  document.getElementById('pf-pat').value=c.pat||'';
+  document.getElementById('pf-prov').value=c.prov||'';
+  document.getElementById('pf-dol').value=c.dol||'';
+  document.getElementById('pf-pd').value=today();
+  document.getElementById('pf-ch').value=c.bal||'';
+  document.getElementById('pf-pd2').value=c.bal||'';
+  var ct=document.getElementById('pf-ct');if(ct&&!ct.disabled)ct.value=c.ct||'';
+  v2MarkDone(p.key);
+  toast('Save the payment — balance updates automatically','💰');
+};
+function rUSearch2(){
+  var qel=document.getElementById('us-q');if(!qel)return;
+  v2RenderSearch(qel.value||'');
+}
+function v2RenderSearch(qs){
+  var out=document.getElementById('us-out');if(!out)return;
+  qs=String(qs).trim();
+  if(qs.length<2){out.innerHTML='<div style="text-align:center;color:var(--g400);padding:30px 0;font-size:13px">Start typing — name, phone, law office, account #…</div>';return;}
+  var terms=qs.toLowerCase().split(/\s+/);var pq=qs.replace(/\D/g,'');
+  V2HITS=[];V2LOHITS=[];
+  var groups=v2Groups();
+  groups.forEach(function(p){
+    var hay=(p.name+' '+(p.phone||'')+' '+Object.keys(p.offices).join(' ')+' '+p.cases.map(function(c){return (c.acct||'')+' '+(c.cfpc_pid||'');}).join(' ')).toLowerCase();
+    var ok=terms.every(function(t){return hay.indexOf(t)>=0;})||(pq.length>=4&&String(p.phone||'').replace(/\D/g,'').indexOf(pq)>=0);
+    if(ok)V2HITS.push(p);
+  });
+  V2HITS.sort(function(a,b){return b.bal-a.bal;});
+  var lom={};
+  DB.cases.forEach(function(c){if(c.merged_into||!c.lo)return;if(!lom[c.lo])lom[c.lo]={name:c.lo,n:0,bal:0,pats:{}};lom[c.lo].n++;lom[c.lo].bal+=(+c.bal||0);lom[c.lo].pats[v2norm(c.pat)]=1;});
+  Object.keys(lom).forEach(function(k){if(k.toLowerCase().indexOf(qs.toLowerCase())>=0)V2LOHITS.push(lom[k]);});
+  V2LOHITS.sort(function(a,b){return b.bal-a.bal;});
+  var h='';
+  if(V2LOHITS.length){
+    h+='<div style="font-size:12px;font-weight:700;color:var(--g500);margin:4px 0 8px">🏛️ LAW OFFICES ('+V2LOHITS.length+')</div><div class="card" style="margin-bottom:14px"><div style="padding:8px">';
+    V2LOHITS.slice(0,6).forEach(function(o,i){
+      h+='<div style="padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background=\'var(--g50)\'" onmouseout="this.style.background=\'\'" onclick="v2OpenLO('+i+')">'+
+        '<div><b style="font-size:13.5px">'+v2esc(o.name)+'</b><br><span style="font-size:11.5px;color:var(--g500)">'+Object.keys(o.pats).length+' patients · '+o.n+' cases</span></div>'+
+        '<b style="color:#e53935;font-size:13px">'+fc(o.bal)+'</b></div>';
+    });
+    h+='</div></div>';
+  }
+  if(V2HITS.length){
+    h+='<div style="font-size:12px;font-weight:700;color:var(--g500);margin:4px 0 8px">🧑‍⚕️ PATIENTS ('+V2HITS.length+')</div><div class="card"><div style="padding:8px">';
+    V2HITS.slice(0,15).forEach(function(p,i){
+      var na=Object.keys(p.accs).length;
+      h+='<div style="padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px" onmouseover="this.style.background=\'var(--g50)\'" onmouseout="this.style.background=\'\'" onclick="v2OpenP('+i+')">'+
+        '<div><b style="font-size:13.5px">'+v2esc(p.name)+'</b> <span style="font-size:11.5px;color:var(--g500)">'+v2esc(p.phone||'')+'</span><br>'+
+        '<span style="font-size:11.5px;color:var(--g500)">'+v2esc(Object.keys(p.offices).join(', ')||'—')+' · '+na+' accident'+(na>1?'s':'')+' · '+p.cases.length+' visit'+(p.cases.length>1?'s':'')+'</span></div>'+
+        (p.bal>0?'<b style="color:#e53935;font-size:13px">'+fc(p.bal)+'</b>':'<span style="font-size:11px;background:var(--g100);color:var(--g500);padding:2px 10px;border-radius:999px">closed</span>')+'</div>';
+    });
+    h+='</div></div>';
+  }
+  if(!V2HITS.length&&!V2LOHITS.length)h='<div style="text-align:center;color:var(--g400);padding:30px 0">No matches for “'+v2esc(qs)+'”</div>';
+  out.innerHTML=h;
+}
+window.v2OpenP=function(i){var p=V2HITS[i];if(p)openPatProfile(p.name);};
+window.v2OpenLO=function(i){
+  var o=V2LOHITS[i];if(!o)return;
+  go('reports');
+  try{switchReportView('lawoffice',document.getElementById('rview-lawoffice'));}catch(e){}
+  setTimeout(function(){try{openLODetail(encodeURIComponent(o.name));}catch(e){}},80);
+};
+(function(){
+  var q=document.getElementById('us-q');
+  if(q){var tm=null;q.addEventListener('input',function(){clearTimeout(tm);var v=this.value;tm=setTimeout(function(){v2RenderSearch(v);},130);});}
+  var r=document.getElementById('v2-refresh');
+  if(r)r.addEventListener('click',function(){localStorage.removeItem('tmx2done_'+today());rToday2();toast('Queue refreshed','⟳');});
+  document.addEventListener('keydown',function(e){
+    if(e.key==='/'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){
+      var app=document.getElementById('app');
+      if(app&&app.style.display!=='none'){e.preventDefault();go('usearch');}
+    }
+  });
+})();
 
 // Init on page load
 document.addEventListener('DOMContentLoaded', function(){
