@@ -2327,8 +2327,11 @@ function rDash(){
     });
   }
   var P=DB.pays.filter(function(p){var cMatch=S.clinicType?p.ct===S.clinicType:!S.ct||p.ct===S.ct;return cMatch;});
-  var tCh=P.reduce(function(s,p){return s+(p.ch||0);},0);
+  var payCh=P.reduce(function(s,p){return s+(p.ch||0);},0);
   var tPd=P.reduce(function(s,p){return s+(p.paid||0);},0);
+  // Total Charged reflects case Billed (source of truth); fall back to payment-charged when no case billing exists
+  var caseBilled=DB.cases.filter(function(c){if(c.merged_into)return false;var cm=S.clinicType?c.ct===S.clinicType:!S.ct||c.ct===S.ct;return cm;}).reduce(function(t,c){return t+(parseFloat(c.bi)||0);},0);
+  var tCh=caseBilled>0?caseBilled:payCh;
   var rate=tCh>0?(tPd/tCh*100):0;
   var m1=new Date();m1.setDate(1);var m1s=m1.toISOString().slice(0,10);
   var mp=P.filter(function(p){return p.pd&&p.pd>=m1s;});
@@ -7304,8 +7307,15 @@ function buildLOData() {
 
   // Calculate metrics
   var result = Object.values(map).map(function(lo) {
-    var rate = lo.charged > 0 ? (lo.paid / lo.charged * 100) : 0;
-    var balance = lo.charged - lo.paid;
+    // Source of truth: cases hold Billed (c.bi) and Outstanding balance (c.bal);
+    // payments hold money actually Collected (p.paid). Fall back to payment-charged
+    // only when a law office has no case billed amounts on record.
+    var caseBilled  = lo.cases.reduce(function(s,c){return s+(parseFloat(c.bi)||0);},0);
+    var caseBalance = lo.cases.reduce(function(s,c){return s+(parseFloat(c.bal)||0);},0);
+    var charged = caseBilled > 0 ? caseBilled : lo.charged;
+    var balance = caseBilled > 0 ? caseBalance : (lo.charged - lo.paid);
+    lo.charged = charged;
+    var rate = charged > 0 ? (lo.paid / charged * 100) : 0;
 
     // Grade based on collection rate
     var grade = rate >= 80 ? 'A' : rate >= 60 ? 'B' : rate >= 40 ? 'C' : rate >= 20 ? 'D' : 'F';
