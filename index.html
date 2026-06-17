@@ -3699,8 +3699,15 @@ function rReport(preset){
   document.getElementById('rpt-lbl').textContent=lbl;
 
   var pays=fPays(s,e);
-  var tCh=pays.reduce(function(a,p){return a+(p.ch||0);},0);
+  var payCh=pays.reduce(function(a,p){return a+(p.ch||0);},0);
   var tPd=pays.reduce(function(a,p){return a+(p.paid||0);},0);
+  // For the all-time view, Total Charged = case Billed and Outstanding = case Balance (source of truth).
+  // When a date range is selected we keep payment-based charged, since Billed has no date.
+  var noRange=!s&&!e;
+  var caseBilled=DB.cases.filter(function(c){return !c.merged_into;}).reduce(function(t,c){return t+(parseFloat(c.bi)||0);},0);
+  var caseOut=DB.cases.filter(function(c){return !c.merged_into;}).reduce(function(t,c){return t+(parseFloat(c.bal)||0);},0);
+  var tCh=(noRange&&caseBilled>0)?caseBilled:payCh;
+  var tOut=(noRange&&caseBilled>0)?caseOut:(payCh-tPd);
   var rate=tCh>0?(tPd/tCh*100):0;
   var acases=DB.cases.filter(function(c){return (c.st||'').toLowerCase()==='active';}).length;
   var pfu=DB.fus.filter(function(f){return f.st==='pending';}).length;
@@ -3709,7 +3716,7 @@ function rReport(preset){
     {l:'Payments',v:pays.length,c:'',acc:'#3b5bdb',ic:'💳'},
     {l:'Total Charged',v:fc(tCh),c:'',acc:'#8b5cf6',ic:'💵'},
     {l:'Total Collected',v:fc(tPd),c:'g',acc:'#0ea472',ic:'✅'},
-    {l:'Outstanding',v:fc(tCh-tPd),c:'r',acc:'#e53935',ic:'⚠️'},
+    {l:'Outstanding',v:fc(tOut),c:'r',acc:'#e53935',ic:'⚠️'},
     {l:'Collection Rate',v:rate.toFixed(1)+'%',c:rate>=DB.kpi.collectionRate?'g':'r',acc:rate>=DB.kpi.collectionRate?'#0ea472':'#e53935',ic:'📈'},
     {l:'Active Cases',v:acases,c:'',acc:'#f59e0b',ic:'📋'},
     {l:'Pending FU',v:pfu,c:pfu>10?'r':'',acc:pfu>10?'#e53935':'#3b5bdb',ic:'🔔'},
