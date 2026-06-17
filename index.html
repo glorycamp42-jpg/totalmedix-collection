@@ -529,7 +529,7 @@ button:focus-visible,.ni:focus-visible,input:focus-visible,select:focus-visible{
           <span class="rc" id="case-rc"></span>
         </div>
         <div id="case-cfpc-pills" style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;align-items:center"></div>
-        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th title="Last contact heat-map">Last Contact 🌡</th><th>Status</th><th title="CFPC pipeline stage">CFPC</th><th>Clinic</th><th>Grade</th><th>Billed</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
+        <div class="card tw"><table><thead><tr><th>Law Office</th><th>Account #</th><th>Patient</th><th>Phone</th><th>Provider</th><th>Procedure</th><th>DOL</th><th title="Statute of Limitations countdown">SOL ⏰</th><th title="Last contact heat-map">Last Contact 🌡</th><th>Status</th><th title="CFPC pipeline stage">CFPC</th><th>Clinic</th><th>Grade</th><th>Billed</th><th title="Actual amount received">Received</th><th>Balance</th><th></th></tr></thead><tbody id="case-tb"></tbody></table></div>
       </div>
 
       <div id="pg-casedetail" class="pg">
@@ -1951,6 +1951,8 @@ var S = {
 function fc(v){return v==null?'—':'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fd(s){if(!s)return '—';try{var d=new Date(s+'T00:00:00');var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return months[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}catch(e){return s;}}
 function today(){return new Date().toISOString().slice(0,10);}
+// Total actually received for a case = sum of all payments on its account (single source of truth)
+function caseRecv(c){if(!c||!c.acct)return 0;return DB.pays.filter(function(p){return p.acct===c.acct;}).reduce(function(s,p){return s+(parseFloat(p.paid)||0);},0);}
 function dov(d){if(!d)return 0;var r=Math.floor((new Date()-new Date(d+'T00:00:00'))/86400000);return r>0?r:0;}
 function ini(n){return (n||'?').split(' ').map(function(x){return x[0]}).join('').slice(0,2).toUpperCase();}
 function clr(n){var c=['#3b5bdb','#0ea472','#f59e0b','#e53935','#7c3aed','#06b6d4'];return c[(n||'').charCodeAt(0)%c.length];}
@@ -2583,7 +2585,7 @@ function rCase(){
   if (typeof S.caseLimit !== 'number') S.caseLimit = 200;
   var view = data.slice(0, S.caseLimit);
   document.getElementById('case-tb').innerHTML=view.length?view.map(function(c){
-    return '<tr><td style="font-weight:500">'+(c.lo||'—')+(c.branch?' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">'+c.branch+'</span>':'')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap">'+(c.st!=='Bill Sent'&&c.st!=='Paid'&&c.st!=='Settled'?'<button class="ib" title="Mark Bill Sent" style="color:#1e40af" data-bill-sent="'+c.id+'">💰</button>':'')+''+(c.bal>0&&c.st!=='Paid'&&c.st!=='Settled'?'<button class="ib" title="Mark Paid (settle case)" style="color:#059669" data-mark-paid="'+c.id+'">✅</button>':'')+'<button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
+    return '<tr><td style="font-weight:500">'+(c.lo||'—')+(c.branch?' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:700">'+c.branch+'</span>':'')+'</td><td><a class="mn" style="color:var(--accent);cursor:pointer;font-weight:700" data-open-case="'+c.id+'">'+(c.acct||'—')+' ↗</a></td><td>'+(c.pat||'—')+'</td><td style="font-size:12px;color:var(--g600);white-space:nowrap">'+(c.phone||'—')+'</td><td style="font-size:12px;color:var(--g500)">'+(c.prov||'—')+'</td><td style="font-size:12px;color:var(--g700);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(c.proc||'')+'">'+(c.proc||'—')+'</td><td style="font-size:12px">'+fd(c.dol)+'</td><td>'+solBadge(c.dol)+'</td><td>'+lastContactBadge(c.id)+'</td><td>'+sb(c.st)+'</td><td>'+(cfpcStatusBadge(c.stCfpc)||'<span style="color:var(--g400);font-size:11px">—</span>')+'</td><td>'+ctBadge(c.ct)+'</td><td>'+gb(c.gr)+'</td><td style="font-weight:700">'+fc(c.bi)+'</td><td style="font-weight:700;color:var(--green)">'+(caseRecv(c)>0?fc(caseRecv(c)):'<span style="color:var(--g300)">—</span>')+'</td><td style="font-weight:700;color:var(--red)">'+fc(c.bal)+'</td><td style="white-space:nowrap">'+(c.st!=='Bill Sent'&&c.st!=='Paid'&&c.st!=='Settled'?'<button class="ib" title="Mark Bill Sent" style="color:#1e40af" data-bill-sent="'+c.id+'">💰</button>':'')+''+(c.bal>0&&c.st!=='Paid'&&c.st!=='Settled'?'<button class="ib" title="Mark Paid (settle case)" style="color:#059669" data-mark-paid="'+c.id+'">✅</button>':'')+'<button class="ib" data-edit-case="'+c.id+'">✏️</button><button class="ib del" data-del-case="'+c.id+'">🗑️</button></td></tr>';
   }).join(''):'<tr><td colspan="16"><div class="empty"><div class="ei">📭</div><div class="et">No cases found</div></div></td></tr>';
   // Append a "Load more" footer row if there are more records
   if (data.length > S.caseLimit) {
@@ -2628,6 +2630,7 @@ function openCD(id){
         '<div class="ds"><div class="dsl">Collected</div><div class="dsv g">'+fc(tp)+'</div><div class="pw"><div class="pb" style="width:'+Math.min(cr,100)+'%"></div></div></div>'+
         '<div class="ds"><div class="dsl">Collection Rate</div><div class="dsv '+(cr>=50?'g':'r')+'">'+cr+'%</div></div>'+
       '</div>'+
+      (c.settleAmt!=null?('<div style="margin-top:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 14px;font-size:12.5px;color:#fff">🤝 '+(c.st==='Settled'?'Settled':'Paid')+' · Received <b>'+fc(tp)+'</b>'+((c.bi||0)>tp?' · Write-off <b>'+fc((c.bi||0)-tp)+'</b>':'')+(c.settleDate?' · '+fd(c.settleDate):'')+(c.settleNotes?' · <span style="opacity:.85">'+c.settleNotes.replace(/</g,'&lt;')+'</span>':'')+'</div>'):'')+
     '</div>'+
     '<div class="card" style="margin-top:14px"><div class="ch"><span class="ct">👤 Patient & Case Info</span></div>'+
       '<div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;font-size:13px">'+
@@ -4149,27 +4152,49 @@ function markBillSent(caseId){
 }
 function markCasePaid(caseId){
   var c=DB.cases.find(function(x){return x.id===caseId;}); if(!c)return;
-  var defAmt = (c.bal||0).toFixed(2);
-  var amtStr = prompt('Mark case as Paid\n\nPatient: '+(c.pat||'(no name)')+'\nBilled: $'+(c.bi||0)+'\nCurrent balance: $'+(c.bal||0)+'\n\nAmount actually received ($):', defAmt);
+  var bal=c.bal||0;
+  var amtStr = prompt('💰 Mark case as Paid / 입금 기록\n\nPatient: '+(c.pat||'(no name)')+'\nBilled: $'+(c.bi||0)+'\nCurrent balance: $'+bal+'\n\nAmount actually received ($) / 실제 받은 금액:', bal.toFixed(2));
   if(amtStr===null) return;
   var amt = parseFloat(amtStr);
   if(isNaN(amt)||amt<0){toast('Invalid amount','⚠️');return;}
   var sdate = today();
-  var notes = 'Quick-marked as Paid via Cases list';
-  var update = {balance:0, status:'Paid', settlement_amount:amt, settlement_date:sdate, settlement_reason:'paid_in_full', settlement_notes:notes};
-  c.bal=0; c.st='Paid'; c.settleAmt=amt; c.settleDate=sdate; c.settleReason='paid_in_full'; c.settleNotes=notes;
-  try{SB.update('cases',c.id,update).catch(function(){});}catch(e){}
-  // Insert payment record if amount > 0
-  if(amt>0){
-    var prow={law_office:c.lo,account_num:c.acct,patient_name:c.pat,provider:c.prov,date_of_loss:c.dol,pay_date:sdate,check_status:'cleared',clinic_type:c.ct==='Pain'?'Pain Management':c.ct,charged:c.bi||amt,paid:amt};
-    SB.insert('payments',prow).then(function(r){
-      var row=r&&r[0]?r[0]:r;
-      DB.pays.unshift({id:row?row.id:DB.nid.pay++,lo:c.lo,acct:c.acct,pat:c.pat,prov:c.prov,dol:c.dol,pd:sdate,cs:'cleared',ct:c.ct,ch:c.bi||amt,paid:amt});
-    }).catch(function(){});
+  var rem = Math.max(bal-amt, 0);
+  // When received < current balance, let the user choose each time:
+  //   OK  = write off the remainder and close the case at $0 (Paid)
+  //   Cancel = keep the remainder as an outstanding balance (stays in collections)
+  var writeOff=false;
+  if(amt>0 && amt<bal){
+    writeOff=confirm('받은 금액 / Received: $'+amt.toFixed(2)+'\n남은 금액 / Remaining: $'+rem.toFixed(2)+'\n\n[ 확인 / OK ] = 남은 $'+rem.toFixed(2)+' 삭감(write-off) 후 케이스 종료 (Paid)\n\n[ 취소 / Cancel ] = 남은 $'+rem.toFixed(2)+' 를 미수금(balance)으로 유지');
   }
-  toast('Case marked as Paid ($'+amt.toFixed(2)+')','✅');
-  rCase();
-  if(S.curCase===caseId){openCD(caseId);}
+  function refreshViews(){
+    rCase();
+    if(document.getElementById('pg-patprofile')&&document.getElementById('pg-patprofile').classList.contains('on')&&S.curPatKey){try{openPatProfile(S.curPatKey);}catch(e){}}
+    if(S.curCase===caseId){openCD(caseId);}
+  }
+  function finalize(){
+    if(writeOff){
+      // Total received across all payments on this account is the source of truth.
+      var totalPaid=DB.pays.filter(function(p){return p.acct===c.acct;}).reduce(function(s,p){return s+(parseFloat(p.paid)||0);},0);
+      var wo=Math.max((c.bi||bal)-totalPaid,0);
+      var notes='Received $'+totalPaid.toFixed(2)+' · wrote off $'+wo.toFixed(2)+' (Mark Paid)';
+      c.bal=0; c.st='Paid'; c.settleAmt=totalPaid; c.settleDate=sdate; c.settleReason='partial_writeoff'; c.settleNotes=notes;
+      try{SB.update('cases',c.id,{balance:0,status:'Paid',settlement_amount:totalPaid,settlement_date:sdate,settlement_reason:'partial_writeoff',settlement_notes:notes}).catch(function(){});}catch(e){}
+      toast('Paid $'+amt.toFixed(2)+' · 나머지 $'+wo.toFixed(2)+' 삭감','✅');
+      refreshViews();
+    } else {
+      // Keep remainder as balance (or paid-in-full → recalc zeros it). recalc refreshes all views.
+      recalcCaseBalanceForAcct(c.acct);
+      toast('Received $'+amt.toFixed(2)+' recorded','✅');
+      refreshViews();
+    }
+  }
+  if(amt>0){
+    var payObj={lo:c.lo,acct:c.acct,pat:c.pat,prov:c.prov,dol:c.dol,pd:sdate,cs:'cleared',ct:c.ct,ch:c.bi||amt,paid:amt};
+    sbSavePay(payObj,null).then(function(r){payObj.id=(r&&r.id)?r.id:DB.nid.pay++;DB.pays.unshift(payObj);finalize();})
+      .catch(function(){payObj.id=DB.nid.pay++;DB.pays.unshift(payObj);toast('Saved locally (DB error)','⚠️');finalize();});
+  } else {
+    finalize();
+  }
 }
 
 function viewCheckImages(payId){
@@ -4498,7 +4523,7 @@ function saveSettlement() {
       return supaFetch('payments',{method:'POST', body:{
         law_office: c.lo, account_num: c.acct, patient_name: c.pat, provider: c.prov,
         date_of_loss: c.dol, pay_date: sdate, check_status: 'cleared',
-        clinic_type: c.ct, charged: c.bi||0, paid: amt
+        clinic_type: unmapCT(c.ct), charged: c.bi||0, paid: amt
       }, prefer:'return=representation'});
     })
     .then(function(payRows){
@@ -7859,7 +7884,9 @@ function v2RenderSearch(qs){
       h+='<div style="padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px" onmouseover="this.style.background=\'var(--g50)\'" onmouseout="this.style.background=\'\'" onclick="v2OpenP('+i+')">'+
         '<div><b style="font-size:13.5px">'+v2esc(p.name)+'</b> <span style="font-size:11.5px;color:var(--g500)">'+v2esc(p.phone||'')+'</span><br>'+
         '<span style="font-size:11.5px;color:var(--g500)">'+v2esc(Object.keys(p.offices).join(', ')||'—')+' · '+na+' accident'+(na>1?'s':'')+' · '+p.cases.length+' visit'+(p.cases.length>1?'s':'')+'</span></div>'+
-        (p.bal>0?'<b style="color:#e53935;font-size:13px">'+fc(p.bal)+'</b>':'<span style="font-size:11px;background:var(--g100);color:var(--g500);padding:2px 10px;border-radius:999px">closed</span>')+'</div>';
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          (p.bal>0?'<b style="color:#e53935;font-size:13px">'+fc(p.bal)+'</b><button title="Receive payment / 입금 기록" style="background:#0ea472;color:#fff;border:none;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap" onclick="event.stopPropagation();v2Receive('+i+')">💵 Receive</button>':'<span style="font-size:11px;background:var(--g100);color:var(--g500);padding:2px 10px;border-radius:999px">closed</span>')+
+        '</div></div>';
     });
     h+='</div></div>';
   }
@@ -7867,6 +7894,23 @@ function v2RenderSearch(qs){
   out.innerHTML=h;
 }
 window.v2OpenP=function(i){var p=V2HITS[i];if(p)openPatProfile(p.name);};
+// Receive a payment straight from Search — opens Add Payment prefilled for the patient's
+// highest-balance case. savePay() then recalcs balance and refreshes every view.
+window.v2Receive=function(i){
+  var p=V2HITS[i];if(!p)return;
+  var cs=p.cases.slice().filter(function(c){return (+c.bal||0)>0;});
+  cs.sort(function(a,b){return (+b.bal||0)-(+a.bal||0);});
+  var c=cs[0]||p.cases[0];if(!c){toast('No case found','⚠️');return;}
+  openModal('pay',null);
+  setTimeout(function(){
+    function setv(id,val){var e=document.getElementById(id);if(e)e.value=val;}
+    setv('pf-law',c.lo||'');setv('pf-acct',c.acct||'');setv('pf-pat',c.pat||p.name||'');
+    setv('pf-prov',c.prov||'');setv('pf-dol',c.dol||'');setv('pf-pd',today());
+    setv('pf-st','cleared');setv('pf-ch',(c.bi||c.bal||0));
+    var ctEl=document.getElementById('pf-ct');if(ctEl&&!ctEl.disabled)ctEl.value=c.ct||'';
+    var paid=document.getElementById('pf-pd2');if(paid){paid.value='';paid.focus();}
+  },40);
+};
 window.v2OpenLO=function(i){
   var o=V2LOHITS[i];if(!o)return;
   go('reports');
