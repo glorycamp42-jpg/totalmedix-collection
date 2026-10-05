@@ -619,6 +619,7 @@ button:focus-visible,.ni:focus-visible,input:focus-visible,select:focus-visible{
           <button class="rq" id="rq-month">This Month</button>
           <button class="rq" id="rq-last30">Last 30 Days</button>
           <button class="rq" id="rq-lastmonth">Last Month</button>
+          <select class="fl" id="rpt-year" style="font-size:12px;margin-left:4px"><option value="">Year…</option></select>
           <input type="date" id="rpt-start" style="padding:6px 10px;border:1.5px solid var(--g200);border-radius:8px;font-size:13px;outline:none;margin-left:8px;color-scheme:light" lang="en-US">
           <span style="font-size:12px;color:var(--g400)">—</span>
           <input type="date" id="rpt-end" style="padding:6px 10px;border:1.5px solid var(--g200);border-radius:8px;font-size:13px;outline:none;color-scheme:light" lang="en-US">
@@ -636,6 +637,11 @@ button:focus-visible,.ni:focus-visible,input:focus-visible,select:focus-visible{
         <div class="g2">
           <div class="card"><div class="ch"><span class="ct">⚠️ Outstanding by Office</span></div><div class="tw" id="rpt-outstanding"></div></div>
           <div class="card"><div class="ch"><span class="ct">🎯 Grade Distribution</span></div><div class="cb" id="rpt-grades"></div></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">📋 Cases in Period</span><span style="display:flex;gap:8px;align-items:center"><select class="fl" id="rpt-case-datefield" style="font-size:12px"><option value="dol">By Date of Loss</option><option value="study">By Study Date</option><option value="any">Either date</option></select><span class="rc" id="rpt-casecount"></span><button class="btn bs bsm" id="btn-rpt-cases-csv">⬇ CSV</button></span></div>
+          <div id="rpt-casesum" style="padding:8px 18px 0;font-size:12px;color:var(--g600)"></div>
+          <div class="tw" style="max-height:520px;overflow:auto"><table><thead><tr><th>Account #</th><th>Patient</th><th>Law Office</th><th>Date of Loss</th><th>Study Date</th><th>Status</th><th>CFPC Status</th><th>Clinic</th></tr></thead><tbody id="rpt-casetb"></tbody></table></div>
         </div>
         <div class="card">
           <div class="ch"><span class="ct">💳 Payment Activity</span><span class="rc" id="rpt-paycount"></span></div>
@@ -2277,7 +2283,7 @@ function go(pg){
   if(pg==='cases')      rCase();
   if(pg==='followups')  rFU();
   if(pg==='files')      rFile();
-  if(pg==='reports')    rReport('all');
+  if(pg==='reports')    {fillRptYears();rReport('all');}
   if(pg==='notices')    rNotices();
   if(pg==='agent')      rAgent();
   if(pg==='duplicates') rDuplicates();
@@ -3878,6 +3884,54 @@ function rReport(preset){
     }
     return '<tr><td style="font-size:12px">'+fd(p.pd)+'</td>'+patCell+'<td style="font-size:12px;color:var(--g500)">'+(p.lo||'—')+'</td><td>'+cb(p.cs)+'</td><td style="font-weight:700">'+fc(p.ch)+'</td><td style="font-weight:700;color:var(--green)">'+fc(p.paid)+'</td><td style="font-weight:700;color:var(--red)">'+fc((p.ch||0)-(p.paid||0))+'</td></tr>';
   }).join(''):'<tr><td colspan="7"><div class="empty" style="padding:30px"><div class="ei">📭</div><div class="et">No payments in period</div></div></td></tr>';
+
+  rReportCases(s,e);
+}
+
+// Cases whose Date of Loss / Study Date falls in the selected report period
+function rptCasesInPeriod(s,e){
+  var fieldSel=document.getElementById('rpt-case-datefield');
+  var mode=fieldSel?fieldSel.value:'dol';
+  function inRange(d){if(!d)return false;if(s&&d<s)return false;if(e&&d>e)return false;return true;}
+  return DB.cases.filter(function(c){
+    if(c.merged_into)return false;
+    if(!s&&!e)return true;
+    if(mode==='dol')return inRange(c.dol);
+    if(mode==='study')return inRange(c.study);
+    return inRange(c.dol)||inRange(c.study);
+  }).sort(function(a,b){return (a.dol||'').localeCompare(b.dol||'')||(a.pat||'').localeCompare(b.pat||'');});
+}
+function rReportCases(s,e){
+  var tb=document.getElementById('rpt-casetb');if(!tb)return;
+  var list=rptCasesInPeriod(s,e);
+  document.getElementById('rpt-casecount').textContent=list.length+' cases';
+  var st={};list.forEach(function(c){var k=(c.st||'—');st[k]=(st[k]||0)+1;});
+  document.getElementById('rpt-casesum').innerHTML=list.length?Object.keys(st).sort().map(function(k){return '<span style="margin-right:12px"><b>'+k+'</b> '+st[k]+'</span>';}).join(''):'';
+  tb.innerHTML=list.length?list.map(function(c){
+    return '<tr><td style="font-size:12px;font-family:monospace">'+(c.acct||'—')+'</td>'+
+      '<td style="font-weight:600"><a class="mn" style="color:var(--accent);cursor:pointer;text-decoration:none" onclick="openCD('+c.id+')">'+(c.pat||'—')+' ↗</a></td>'+
+      '<td style="font-size:12px;color:var(--g500)">'+(c.lo||'—')+'</td>'+
+      '<td style="font-size:12px">'+fd(c.dol)+'</td><td style="font-size:12px">'+fd(c.study)+'</td>'+
+      '<td>'+cb(c.st)+'</td><td style="font-size:11px;color:var(--g500)">'+(c.stCfpc||'—')+'</td><td style="font-size:11px">'+(c.ct||'—')+'</td></tr>';
+  }).join(''):'<tr><td colspan="8"><div class="empty" style="padding:30px"><div class="ei">📭</div><div class="et">No cases in period</div></div></td></tr>';
+}
+function rptCasesCSV(){
+  var list=rptCasesInPeriod(S.rptStart,S.rptEnd);
+  var rows=[['Account #','Patient','Law Office','Date of Loss','Study Date','Status','CFPC Status','Clinic','Provider','Phone']].concat(list.map(function(c){return [c.acct,c.pat,c.lo,c.dol,c.study,c.st,c.stCfpc,c.ct,c.prov,c.phone];}));
+  var csv=rows.map(function(r){return r.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='cases_'+(S.rptStart||'all')+'_'+(S.rptEnd||'all')+'.csv';a.click();
+}
+function rptYearSelect(y){
+  if(!y)return;
+  document.getElementById('rpt-start').value=y+'-01-01';
+  document.getElementById('rpt-end').value=y+'-12-31';
+  rReport('custom');
+}
+function fillRptYears(){
+  var sel=document.getElementById('rpt-year');if(!sel||sel.options.length>1)return;
+  var ys={};DB.cases.forEach(function(c){[c.dol,c.study].forEach(function(d){if(d&&/^\d{4}/.test(d)){var y=d.slice(0,4);if(y>='2000')ys[y]=1;}});});
+  Object.keys(ys).sort().reverse().forEach(function(y){var o=document.createElement('option');o.value=y;o.textContent=y;sel.appendChild(o);});
 }
 
 // ── USERS ────────────────────────────────────────────────────
@@ -5348,6 +5402,9 @@ function bindAll(){
   });
   document.getElementById('rpt-start').addEventListener('change',function(){rReport('custom');});
   document.getElementById('rpt-end').addEventListener('change',function(){rReport('custom');});
+  document.getElementById('rpt-year').addEventListener('change',function(){rptYearSelect(this.value);});
+  document.getElementById('rpt-case-datefield').addEventListener('change',function(){rReportCases(S.rptStart,S.rptEnd);});
+  document.getElementById('btn-rpt-cases-csv').addEventListener('click',rptCasesCSV);
 
   // Users
   document.getElementById('btn-add-user').addEventListener('click',function(){openModal('user',null);});
